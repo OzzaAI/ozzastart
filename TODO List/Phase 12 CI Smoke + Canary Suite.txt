@@ -1,0 +1,76 @@
+Got it. I’ll create a complete and deterministic TO DO checklist for the 'CI Smoke + Canary Suite' phase.
+
+This checklist will:
+
+* Define how to spin up a `deploy_canary_<sha>` schema dynamically in Supabase.
+* Script the exact flow: tenant signup → publish test page → coach read-only view → teardown.
+* Run this flow entirely via GitHub Actions CI.
+* Ensure that the pipeline fails on any error.
+* Avoid all ambiguity by specifying exact script locations, environment setup, schema isolation, and teardown procedure.
+
+I’ll begin and notify you when it’s ready.
+
+
+# CI Smoke + Canary Suite To-Do Checklist
+
+## Setup CI Workflow in GitHub Actions
+
+1. **Create CI workflow trigger:** Add a new GitHub Actions workflow file (e.g., `.github/workflows/canary-smoke.yml`) that runs the smoke test suite on a consistent event. For example, trigger on **main branch merges** (post-merge) so it acts as a final verification step before deploy. This ensures the suite runs after each code integration (choose either main merges or pull requests and stick to it).
+
+2. **Define environment and secrets:** Configure the workflow with required environment variables for Supabase access. In the GitHub Actions YAML, provide the Supabase project URL (e.g., `SUPABASE_URL`) and **Supabase API keys** via CI secrets. Include the **service-role key** (for admin tasks like schema creation) and the **anon public key** (for user auth calls) as secrets. Ensure these are injected as env vars in the job (e.g., `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`) and **never hard-coded**. This allows the CI job to interact with the database and Auth API securely.
+
+3. **Install dependencies in CI:** In the workflow, add steps to set up the repo and install any needed tools. For a Node.js monorepo, run `npm install` (or `pnpm install`) to ensure the custom CLI and test scripts are available. If using the Supabase CLI or `psql` for direct SQL, install those as well. This prepares the environment to run the canary test commands.
+
+## Canary Schema Initialization
+
+4. **Spin up a new tenant schema:** Use the commit SHA to create an **ephemeral schema** inside the existing Supabase project for testing. For example, derive a schema name like **`deploy_canary_<sha>`**, using the short Git SHA (e.g., `deploy_canary_ab12ef3`). Implement this in a script or CLI command:
+
+   * If using the Ozza CLI, add a command (e.g., `ozza-cli tenant:create deploy_canary_<sha>`) that uses the Supabase **service role** to run `CREATE SCHEMA deploy_canary_<sha>;` inside the database. This ensures the new tenant schema is created just like a real tenant would be.
+   * After creating the schema, **initialize it with all required tables and functions**. Run the latest migrations or a schema setup routine to populate `deploy_canary_<sha>` with the same tables (sites, pages, forms, etc.) and RLS policies that other tenant schemas have. This can be done by invoking the existing migration scripts or using the CLI to apply a template of the schema. Verify that the schema now contains all expected tenant tables (identical structure to other tenants).
+
+5. **Verify schema isolation:** Confirm the new schema is properly isolated and does not interfere with any other tenant data. The multi-tenant design uses **one schema per tenant** with RLS to silo data, so the `deploy_canary_<sha>` schema should stand alone. Ensure no cross-schema data leakage:
+
+   * The new schema should have its own set of tables (e.g., `deploy_canary_<sha>.sites`, `...pages`, etc.), separate from `public` and other schemas.
+   * Check that the creation succeeded (e.g., the CLI returns success and a simple query like `SELECT schema_name FROM information_schema.schemata` shows `deploy_canary_<sha>` exists). Only proceed if the schema is created successfully.
+
+## End-to-End Test Flow
+
+6. **Simulate tenant sign-up:** Next, perform a full **tenant signup flow** using the new schema. This should mimic a real agency/tenant onboarding:
+
+   * **User registration:** Call the platform’s sign-up API or Supabase Auth endpoint to create a new user (e.g., POST to `/api/auth/v1/signup` with a test email/password using the anon key, or use a Next.js API route that wraps this). This will generate a new Supabase Auth user.
+   * **Account creation:** Ensure the sign-up process creates a new entry in the `public.accounts` table for the tenant and links the user to that account. Normally, the backend (Next.js API route or Edge Function) would, upon sign-up, create an `accounts` record and an `account_members` entry (role = Owner) for the user. Verify this happens: the new account should have `schema_name = deploy_canary_<sha>` (or equivalent mapping) and the user’s UID attached as owner.
+   * **JWT claim check:** After sign-up, retrieve the user’s JWT (e.g., via Supabase client session) and confirm it includes the custom claim for the new `account_id` and the role (Owner) in that tenant. The Supabase Auth hook/trigger should inject these claims on sign-up. This ensures multi-tenancy context is established for the test user.
+
+7. **Publish a test site/page:** With the new tenant user authenticated, simulate creating content and publishing it:
+
+   * **Create a site:** Use the application’s normal flow (e.g., an API call or front-end simulation via Supabase client) to create a new site in the `deploy_canary_<sha>` schema. This might involve calling a Next.js API route like `POST /api/sites` with the tenant’s JWT, or inserting into `deploy_canary_<sha>.sites` via the Supabase JS client (which will respect RLS and JWT claims).
+   * **Add a page and publish:** Similarly, create a page (e.g., `POST /api/pages`) under that site with some sample content. Then mark the page as published. For example, set a `published` flag to true or call a “publish” endpoint. This step should use the normal business logic (not direct SQL) so that any triggers or side-effects run as in real use.
+   * **Verify page creation:** Check that the page is created in the database. You can query the `deploy_canary_<sha>.pages` table (via the Supabase client using the tenant user’s JWT) to confirm the record exists and is marked published. Alternatively, assert that the API response for creating the page indicates success and contains the page ID or URL. At this point, the new tenant has a published site/page in their schema.
+
+8. **Coach portal read-only access:** Now simulate a coach user accessing that tenant’s data in read-only mode:
+
+   * **Create coach user:** Register a second test user (e.g., `test-coach@example.com`) via Supabase Auth to act as the coach. This user initially has no access to the new schema.
+   * **Link coach to account:** Imitate the agency inviting the coach. Using a secure method (e.g., an admin API route or a direct DB call with service role), insert a row into `public.account_members` linking the coach user’s UID to the new tenant’s account ID with role `'Coach'`. This grants the coach user access permission for that account. Ensure this step respects any business rules (for example, use an API endpoint like `POST /api/invite-coach` if implemented, which would perform the insert and send a notification).
+   * **Fetch data via coach portal:** Have the coach user log in and use the **coach portal API** to fetch the agency’s data. For instance, call the Next.js API route designed for coach read-only data (e.g., `GET /api/coach/agency?id=<account_id>` or similar) with the coach’s JWT. The backend should verify the coach’s membership and use the service role to retrieve the page data from `deploy_canary_<sha>`. Confirm that the response contains the site/page created in step 7. The coach is never directly querying the tenant schema with their own JWT (impersonation is off); instead, the server-side route provides the data if authorized.
+   * **Verify read-only behavior:** Ensure that the coach cannot modify data. This can be an optional check: for example, attempt a write action as the coach (like editing the page via a PUT request) and assert it fails (HTTP 403 Forbidden or no RLS permission). This confirms RLS and role policies are properly enforcing read-only access for coaches.
+
+## Teardown and Cleanup
+
+9. **Drop the canary schema:** After the above tests pass, tear down the ephemeral tenant to leave the database clean. Implement a cleanup script or step that runs regardless of test outcome (use the `always()` condition in GitHub Actions to ensure it executes even if prior steps failed):
+
+   * Drop the schema by executing `DROP SCHEMA deploy_canary_<sha> CASCADE;` using the Supabase service role (this can be done via the CLI or a direct SQL command in the workflow). This will remove all tables and data for that tenant.
+   * Clean up related entries in shared tables. Remove the account from `public.accounts` and any entries in `public.account_members` for the test users (especially the coach link and owner membership). Since we avoid cross-schema foreign keys, you’ll need to delete these manually (e.g., via an SQL `DELETE` where `account_id` matches the canary account).
+   * Optionally, delete the test users from the Supabase Auth users list to avoid clutter (Supabase provides an admin API or you can use the CLI `supabase auth remove user` if available). This ensures no residual test accounts or schemas remain after the run.
+
+10. **Fail pipeline on errors:** Ensure the CI job is configured to **fail if any step fails**. All the above actions (schema creation, API calls, data verification) should be part of a script or set of scripts that exit with a non-zero status on error. For example:
+
+    * If using a Node.js script for the E2E flow, make sure to `process.exit(1)` or throw on any failed assertion or unhandled promise rejection. In shell, use `set -e` so any failing command aborts the script.
+    * In the GitHub Actions workflow, do not ignore errors of any step. The default behavior will mark the job failed if a command exits with failure. This is critical so that a failing smoke test **blocks the merge/deployment**. According to the plan, if any part of this flow fails, the pipeline should halt and **prevent production rollout**.
+
+11. **Document and refine:** (Optional) Document this CI smoke/canary test process in the repository for future developers:
+
+    * Note in the README or docs that on each main push, a canary schema is created and tested with a full signup → publish → coach flow, then dropped. Emphasize the naming convention (`deploy_canary_<sha>`) and that it’s isolated from real tenants.
+    * Ensure the Supabase project is configured to handle concurrent schemas creation. (By design, Postgres can handle many schemas, but extremely high counts should be monitored.) If this suite will run frequently, periodically review the DB for any leftover schemas or accounts (in case of earlier failures) and clean them up.
+    * Adjust the test flow over time to cover additional critical paths if needed (e.g., Stripe billing flow in CI, etc.), but keep it fast – it should remain a “smoke test” that runs quickly on each trigger.
+
+Each of these steps should be implemented in order to have a robust **CI Smoke + Canary suite**. Following this checklist will ensure a full **end-to-end SaaS test path** on an isolated schema is run on every code change, catching multi-tenant issues early and preventing bad deployments from affecting real tenants. All actions are executed in the context of the monorepo’s CI pipeline and use real interactions (Auth, HTTP API calls, or CLI commands) rather than mock SQL, in line with best practices for end-to-end testing in a multi-schema Supabase setup.

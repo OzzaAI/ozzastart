@@ -1,0 +1,215 @@
+Understood. I’ll now generate a complete, unambiguous TO DO list for the Custom JWT Trigger and Auth Wiring module, covering everything needed in the MVP as specified in the blueprint. This will focus on setting up the codebase accurately, using Supabase SQL-based JWT claims injection as described.
+
+
+# Custom JWT Trigger & Auth Wiring Implementation (MVP) – To-Do Checklist
+
+## 1. Configure Supabase Auth Settings (MVP Defaults)
+
+1. **Enable Email Verification for Sign-ups:** In the Supabase Auth settings, require new users to verify their email address before full access. Supabase will send confirmation emails by default. This ensures only validated emails can log in.
+2. **JWT Expiry Configuration:** Use the default 1-hour JWT expiry for access tokens. Ensure refresh tokens are enabled so that users can maintain long sessions without re-login (the Supabase client will use the refresh token to get new JWTs automatically).
+3. **Email Change Security:** If supported by Supabase, enable “email change requires reauthentication” – meaning users must re-login or provide a password to change their email. This prevents hijacking accounts via email change.
+4. **Disable 2FA/Phone for MVP:** Do not enable phone SMS login or two-factor authentication in MVP (to reduce friction). The design should allow adding 2FA later, but for now keep Auth simple.
+5. **Customize Auth Emails (Branding):** Configure the SMTP settings and email templates so that confirmation emails, password resets, etc., use the platform’s branding and domain. (This is part of the white-label requirement, ensuring emails come from our domain.)
+6. **Allow User Sign-ups:** Ensure that sign-ups are enabled (unless a global setting like `public.settings.allow_signups` is meant to control this). For MVP, we allow self-service sign-up of new accounts. If there is a toggle in the `public.settings` table for this, set it accordingly on deployment.
+
+## 2. Set Up Database Schema for Accounts & Memberships
+
+1. **Create `public.accounts` Table:** This table holds one record per tenant account. Include the following fields as per the blueprint:
+
+   * `id` (UUID, primary key for the account)
+   * `account_name` (text, e.g. agency or company name)
+   * `schema_name` (text, unique schema identifier for this account’s data schema)
+   * `plan_id` (text or UUID, foreign key to `public.plans`, default to “free” for new accounts)
+   * `plan_status` (text, e.g. “active”, “past\_due”, etc., default “active” on sign-up)
+   * Other fields like `stripe_customer_id`, `maintenance_mode` (boolean), timestamps, etc., as described in the blueprint.
+     Add a foreign key on `plan_id` referencing `public.plans.plan_id` for data integrity (plans table contains plan definitions).
+   * **RLS:** Implement row-level security on `public.accounts` so that a logged-in user can `SELECT` *only* their own account row. (Typically, define a policy using the custom JWT claim `account_id` – e.g., `account_id = auth.jwt()->>’account_id’` – to allow access to that account’s data.) No access to other accounts should be allowed.
+2. **Create `public.account_members` Table:** This table links **Auth users** to **accounts** with a role designating their permissions in that tenant. Fields:
+
+   * `account_id` (UUID, foreign key to `public.accounts.id`)
+   * `user_id` (UUID, foreign key to `auth.users.id` – referencing the Supabase Auth users table – with `ON DELETE CASCADE` so that deleting a user in Auth cleans up memberships).
+   * `role` (text, the user’s role in that account, e.g., “Owner”, “Admin”, “Coach”, “Member”). Consider making this an enum or constrained set based on defined roles.
+   * Timestamps (`created_at`, etc.) for audit purposes.
+     Add a composite primary key or unique index on `(account_id, user_id)` to prevent duplicate memberships.
+   * **RLS:** Enable RLS on `account_members`. Add policies so that:
+
+     * Users can view **membership rows of their own account**. For example, allow `SELECT` on `account_members` where `account_id = auth.jwt()->>’account_id’` (so they see members of the account they’re logged into).
+     * Users can only insert or update this table through controlled pathways (e.g., an account owner inviting a user via a secure function). Initially, for MVP, inserts will happen via our backend logic only (when creating a new account or accepting an invite) – direct client inserts should not be allowed.
+     * Optionally, allow a user to see **their own memberships** across accounts (if needed). However, since multi-account usage is limited in MVP, you could skip a cross-account view. The primary use is to list team members of the current account.
+     * As with accounts, ensure no user can see or alter account\_members of accounts they don’t belong to.
+3. **Link to Plans and Other Tables:** Ensure the `public.plans` table is seeded with at least the “free” plan (and any other plans for MVP) since new accounts will reference it. Also ensure other shared tables like `public.features`, `public.account_features`, etc., exist if relevant to the auth setup (not strictly required for JWT, but part of overall schema).
+4. **Verify Schema Structure:** Make sure the `public` schema is included in search\_path for the Auth role so that these tables and the JWT function (created next) are accessible. Grant appropriate privileges to the Supabase Auth roles on these tables: e.g., the role `authenticated` should have `SELECT` on `public.accounts` and `public.account_members` (but RLS will restrict actual rows returned). The role `service_role` (used by our backend) should have full access for administrative tasks.
+
+## 3. Implement the Custom JWT Claims Trigger Function
+
+1. **Define the JWT Hook Function (SQL):** Create a PostgreSQL function to act as the **Supabase custom access token hook**, which will be called on user login and token refresh. For example:
+
+   ```sql
+   CREATE OR REPLACE FUNCTION public.custom_access_token_hook(event JSONB)
+   RETURNS JSONB
+   LANGUAGE plpgsql
+   AS $$
+   DECLARE 
+     uid UUID;
+     claims JSONB;
+     acct_record RECORD;
+   BEGIN
+     -- Extract the user ID from the event payload
+     uid := (event->>'user_id')::UUID;
+     claims := event->'claims';
+     /* Query the account_memberships for this user */
+     SELECT account_id, role
+     INTO acct_record
+     FROM public.account_members
+     WHERE user_id = uid
+     ORDER BY created_at ASC
+     LIMIT 1;
+     -- Single-account user (or first account for multi-account user):
+     IF acct_record.account_id IS NOT NULL THEN
+       claims := jsonb_set(claims, '{account_id}', to_jsonb(acct_record.account_id)); 
+       claims := jsonb_set(claims, '{role}', to_jsonb(acct_record.role)); 
+     END IF;
+     -- (If no account found, just return original claims unchanged)
+     RETURN jsonb_set(event, '{claims}', claims);
+   END;
+   $$;
+   ```
+
+   This function uses the `account_members` table to find the account context for the user. It adds two custom claims:
+
+   * **`account_id`:** the UUID of the tenant account the user is associated with.
+   * **`role`:** the user’s role name within that account (e.g. `"Owner"`, `"Admin"`, etc.).
+     For most users (who belong to exactly one account), it will find that one membership and attach those claims.
+2. **Handle Multi-Account Users (MVP Default):** If the user belongs to multiple accounts, the function will **pick one account as the default**. In the example above, we simply take the first account (by creation order) for the user. This aligns with the MVP decision **not** to support multi-account sessions – the JWT will carry only one `account_id` at a time. (In the future, we may implement a more sophisticated context switch or multiple claims, but for MVP this is explicitly out of scope.)
+
+   * **Do not implement switching logic or multiple IDs** in the JWT. The function should **not** include an array of accounts or any runtime account switching mechanism. It should just choose one account and proceed.
+3. **Optional – Allowed DB Roles (advanced, can skip in MVP):** The blueprint suggests an optional enhancement for defense-in-depth: including an `allowed_roles` array and changing the Supabase JWT’s built-in `role` claim to a tenant-specific Postgres role. This would involve:
+
+   * Creating a Postgres role per tenant (e.g., `role_<schema_name>` with rights only on that tenant’s schema).
+   * Adding to the JWT claims: `allowed_roles: ['authenticated', 'role_acme']` (for example) and setting the JWT’s `role: 'role_acme'` so that the user’s DB session is limited to that role.
+   * **MVP Decision:** This is not required for MVP and should only be done if time permits and if the extra security is desired now. The simpler approach is to keep all app users on the default `authenticated` DB role and rely on RLS policies plus the custom `account_id` claim for security. For MVP, we will **not implement tenant-specific Postgres roles**, so skip adding `allowed_roles` unless instructed later.
+4. **Ensure Function Logic Matches Blueprint:** The function should only add the claims and not modify other parts of the JWT payload except as needed to insert these values. It should gracefully handle unexpected cases (e.g., if for some reason no account is found for a user, the function currently leaves the claims unchanged – which would result in a JWT without `account_id`; since every normal user should have an account, this scenario is not expected in MVP). The logic follows the blueprint’s description exactly.
+
+## 4. Set Permissions for the JWT Hook Function
+
+1. **Allow Supabase Auth to Execute the Function:** Grant execution rights on the new function to the Supabase Auth role. On Supabase, the JWT hook executes with a special role (often `supabase_auth_admin`). For example:
+
+   ```sql
+   GRANT EXECUTE ON FUNCTION public.custom_access_token_hook TO supabase_auth_admin;
+   ```
+
+   Also grant usage on the schema if needed:
+
+   ```sql
+   GRANT USAGE ON SCHEMA public TO supabase_auth_admin;
+   ```
+
+   These grants ensure the GoTrue auth engine can invoke our function when generating tokens. No other roles (anon or authenticated) should have execute permission on this function (revoke execute for safety from public/others).
+2. **Grant Read Access to Membership Data:** The function reads from `public.account_members`, so the Supabase Auth role needs to be able to select that data. Since RLS is enabled on `account_members`, we must accommodate the auth role:
+
+   * Grant direct SELECT privileges on `public.account_members` to `supabase_auth_admin`:
+
+     ```sql
+     GRANT SELECT ON public.account_members TO supabase_auth_admin;
+     ```
+   * Create a RLS policy to allow this role to bypass row restrictions. For example, a policy:
+
+     ```sql
+     CREATE POLICY "Allow auth admin to read all memberships"
+       ON public.account_members
+       FOR SELECT
+       TO supabase_auth_admin
+       USING (true);
+     ```
+
+     This ensures the JWT hook function (running as the auth admin role) can see all membership rows and find the appropriate account for the user. (Supabase’s auth system roles are subject to RLS, hence this explicit policy is needed.)
+   * Similarly, if our function or future hooks need to read other tables (like `public.accounts` to fetch plan info or `user_roles` in other examples), grant and policy would be needed. For the current scope, reading `account_members` (and possibly writing nothing) is sufficient.
+3. **Security Definer (if needed):** Alternatively to the above, the function could be created with `SECURITY DEFINER` and owned by a role with access, but using the Supabase recommended approach (granting the auth role access) is cleaner and aligns with their documentation. We will follow the documented pattern to avoid deviation from best practices.
+4. **Verify No Excess Privileges:** Double-check that regular authenticated users and anonymous users cannot call the function or read sensitive tables:
+
+   * The function should not be executable by `authenticated` or `anon` (we only granted it to the system role).
+   * The `account_members` table should not allow arbitrary reads or writes outside of our policies. (By default, with RLS and no generic SELECT granted to authenticated, users can only see what policies allow.)
+   * This way, only the Supabase token issuance process can use the function to read membership info and embed claims, keeping this logic secure.
+
+## 5. Enable the Custom JWT Hook in Supabase
+
+1. **Configure Auth Hook in Dashboard:** Go to the Supabase project’s dashboard, under **Authentication > Auth Hooks** (Beta). Enable the “Custom Access Token Hook” and select the function we created (e.g. `public.custom_access_token_hook`) from the dropdown. This tells Supabase to invoke our database function every time an access token is generated or refreshed.
+
+   * Confirm that the hook is enabled and using the correct function. From now on, any new sign-ins or token refreshes should trigger our function to attach claims.
+2. **Environment Variables (if self-hosting):** If the platform is running Supabase Auth in a self-hosted environment, set the appropriate environment vars in the Auth service config (Gotrue):
+
+   * `GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_ENABLED=true`
+   * `GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_URI="pg-function://postgres/public/custom_access_token_hook"` (adjust schema/name if different).
+     These are not needed on Supabase Cloud (the dashboard toggle handles it), but are required for self-hosted instances to know about the hook function.
+3. **JWT Secret & Client Config:** Ensure the Supabase JWT secret is configured in your environment (Supabase sets this up by default – available in Project Settings > API). The Next.js app or any backend service that needs to **verify or decode JWTs** should have access to this secret if doing manual verification. Typically, the Supabase client libraries handle JWT verification, so exposing the secret in client-side code is not needed (and not recommended). Instead, use Supabase’s provided methods. For server-side checks (e.g., in Next.js API routes), you can decode the JWT using the secret to double-check claims if necessary.
+4. **Verify Hook Functionality:** After enabling, test a simple login to ensure the hook runs (the next section covers detailed testing). You can also check the Supabase logs or use the JWT debugger in Supabase to confirm that the custom claims appear in the token. This completes the “wiring up” of Supabase Auth to issue JWTs with our `account_id` and `role` claims.
+
+## 6. Implement Sign-Up → Account Creation Flow
+
+1. **New User Sign-Up Trigger:** When a new user signs up (e.g., via the registration form using Supabase Auth email/password), initiate the account creation process. This can be done in a Next.js API route (server-side) that listens for sign-up events or is called immediately after a successful sign-up on the client.
+
+   * *If email confirmation is required*: The user will not be fully logged in until they confirm via the email link. We should create their account **after** confirmation (to avoid creating accounts for unverified emails). Supabase can send a webhook or we can poll for confirmation. A simpler approach: on the confirmation link, redirect to our app which triggers account setup.
+   * *If email confirmation is disabled (not recommended in MVP, but if it were)*: The user gets a session immediately on sign-up. In that case, proceed to create the account instantly. (We’ll handle the JWT update logic below for this scenario.)
+2. **Create Account & Schema:** Implement the steps to create a new tenant for the user, as outlined in the blueprint:
+   a. **Insert into `public.accounts`:** Generate a new UUID for the account (`account_id`). Use the user-provided organization name (or user name) to populate `account_name`. Also generate a unique `schema_name` for the account – this could be a sanitized slug of the name or simply the new UUID as string. Insert a new row into `accounts` with these values, and default plan info: set `plan_id = 'free'` (or the appropriate default plan) and `plan_status = 'active'` for the new account. Set any other default flags (e.g., if Free plan has `WHITE_LABEL=false`, etc.) according to the blueprint’s plan definitions.
+   b. **Create the New Schema:** Using the Supabase admin access (service role), create a new Postgres schema named with the `schema_name` from above. This can be done by executing a SQL command (`CREATE SCHEMA <schema_name>;`) via the Supabase client or an API call. Ensure this schema name is unique and properly formatted (no illegal characters, etc.).
+   c. **Provision Tenant Tables:** After creating the schema, populate it with the required tables for that tenant. You might have a SQL template or migration script that you can run to create tables like `<schema>.sites`, `<schema>.pages`, etc., matching the structure defined for tenant schemas. For MVP, these tables can start empty. (No need for example data beyond what’s necessary for an empty account.) Verify that each table in the new schema has the proper structure and any necessary default data.
+   d. **Link User to Account (account\_members):** Insert a new row into `public.account_members`: use the `account_id` from the new account and the `user_id` of the signing-up user (Supabase provides this `uid`, e.g., via the auth session or event). Set the `role` to **Owner** for this user, since the first user of a new account is the Owner by default. This gives them full permissions on that tenant.
+   e. **Wrap in a Transaction (if possible):** It’s ideal to perform steps (a) through (d) in a single transaction or workflow to avoid partial setup. However, creating a schema and running DDL statements might require superuser privileges and may not run inside a transaction on some platforms. If not using a transaction, handle errors at each step – e.g., if schema creation fails, delete the accounts row that was inserted to clean up. Ensure consistency (don’t leave an account row without a schema or vice versa).
+   f. **Use Service Role for Setup:** These operations should be done with elevated privileges (the Supabase **service role**). In Next.js, you can use the service role API key (from Supabase config) to initialize a Supabase client and perform the above inserts and schema creation. This bypasses RLS and permission issues for setup. *Never expose the service key on the client side.* Do this on the server (API route or similar) only.
+3. **Post-Account-Creation Token Handling:**
+
+   * If email confirmation was required: by the time the user logs in (after confirming), the `account_members` record exists. The custom JWT function will run on login and find the membership, injecting `account_id` and `role` into the JWT. No special handling needed – the first JWT they get upon logging in will be correct.
+   * If no email confirmation (instant sign-in on registration): the user’s initial JWT from the sign-up might **not** include the custom claims, because at the moment of token issuance the account didn’t exist yet. In this case, after inserting the account and membership, prompt the client to refresh the token or silently re-authenticate: for example, call Supabase’s `refreshSession()` or perform a quick `signIn` with saved credentials to force a new JWT. This new JWT will trigger the hook and include the claims. Ensure the user’s session is updated client-side so subsequent requests use the new token. (Alternatively, one could delay creating the session until after account creation, but that complicates the flow.)
+   * Confirm that after this step, the user’s JWT in the browser contains the correct `account_id` and `role`. The Next.js app can store this session (in memory, local storage, or cookie as appropriate) for use in API calls.
+4. **Invited User Flow (Existing Account):** If implementing invites in MVP (optional): when a user is invited to join an existing account, a similar process should happen without creating a new account:
+
+   * Likely, the invite link or flow will carry a token identifying the account and role. Upon the invited user completing sign-up (or accepting invite if already signed up), create a new `account_members` entry linking their `user_id` to the given `account_id` with the role specified (e.g., “Admin” or “Coach”).
+   * The JWT hook will then include that account\_id and role on their login. They won’t have their own schema; they join an existing one. Ensure not to call the schema creation step in this case. (This distinction can be determined by the presence of an invite or a flag in the sign-up process.)
+5. **No Multi-Account Session Support:** Document clearly in the code/comments that if a user somehow ends up in multiple accounts, the system currently doesn’t support simultaneous access. They will always default to one account per session. If a user needs to access another account they belong to, they must log out and re-login (or use a separate browser session). We do **not** implement any UI for switching accounts in-app for MVP.
+6. **Confirmation & Error Handling:** After a successful account creation and JWT claim injection, redirect the user to their new dashboard (e.g., `/dashboard`). If any part fails, handle it gracefully: e.g., if schema creation failed, inform the user and roll back the account record. Log such errors for debugging. The process should be robust to avoid “half-created” tenants.
+
+## 7. Post-Login Behavior and Verification
+
+1. **Accessing Claims in the App:** Ensure that once the user is logged in and has the session JWT, the app can access the custom claims. In Next.js, after `supabase.auth.signIn()` (or on auth state change), decode the JWT or use Supabase client’s user/metadata to retrieve `account_id` and `role`. The blueprint notes that the Next.js app will have the session and can store these values (e.g., in context or a cookie). Verify that `session.access_token` contains the fields – for example, using `jwt-decode` on the client to inspect `account_id` and `role`.
+2. **Use Claims for Data Fetching:** On initial page load after login, fetch account-scoped data using the claims. For instance, call an API route like `/api/account` which uses the `account_id` from JWT to fetch the account details (name, plan, features) from `public.accounts` and related tables. Because RLS is in effect and the JWT has `account_id`, even direct Supabase queries from the client (e.g., `supabase.from('accounts').select(...)`) will only return the row for that account. Ensure that our RLS policies on tables like `accounts`, `account_features`, etc., are all keyed to `auth.jwt()->> 'account_id'` so that this works automatically.
+3. **UI Personalization:** Use the `role` claim to tailor the UI. For example, if `role = 'Owner'`, show admin settings; if `role = 'Coach'`, show the coach portal view, etc.. This claim is available immediately in the client after login, so you can conditionally render components based on it.
+4. **Backend Authorization Checks:** For any Next.js API routes or Supabase Edge Functions (like Stripe webhooks or other server tasks), if they receive a JWT from the client, they should verify the token and then trust the `account_id` and `role` claims for authorization logic. For example, an API route receiving a request to `/api/projects?projectId=XYZ` can check that the project XYZ belongs to `req.user.account_id` (from the JWT) before proceeding. This **double-checks** on top of RLS, as described in the blueprint.
+
+   * Implement helper middleware on the server to decode JWTs (using the Supabase JWT secret or the Supabase Node client) and attach the user claims to the request context for easy access.
+   * Always use the `account_id` from the token – never trust a client-supplied account id. This prevents a malicious user from querying another account by guessing an ID.
+5. **RLS Policies Verification:** Cross-verify that every table that should be tenant-scoped has an RLS policy using the JWT’s `account_id`. E.g., for any table in `public` that has an `account_id` column (or is tenant-specific), ensure a policy like `account_id = auth.jwt()->> 'account_id'` is in place for `SELECT/UPDATE/DELETE` as appropriate. The custom claim is critical to these policies.
+
+   * For tables inside each tenant schema (e.g., `<tenant>.sites, <tenant>.pages`), the separation is physical (each tenant has their own schema). We might not need RLS on those since no other tenant’s data is present in the same table. However, consider adding a safety RLS policy on each tenant’s tables as well, using the same claim check (the row’s `account_id` matches JWT) if those tables include an `account_id` field. This is “belt and suspenders” – the schema separation and Postgres role permissions already isolate tenants, but it can guard against accidental cross-schema queries if using a single role. (This step is optional if per-tenant roles are not used, but mention it for thoroughness).
+6. **Session Management:** Confirm that refresh tokens and expiration are working. The Supabase client by default will handle refreshing the JWT when it’s about to expire. Our custom claims function will also run on refresh, meaning if a user’s role or account membership changes between sessions, a refreshed token will update accordingly. (E.g., if you change a user’s role in the database, the next refresh token usage should pull the new role). This is a nice side effect to test.
+7. **Logout Flow:** Implement logout such that it removes the session and any stored JWTs on client side. Call `supabase.auth.signOut()` which invalidates the refresh token. After logout, the user should be redirected to a login page. Ensure that any cached account context is cleared.
+
+## 8. Testing & Validation
+
+1. **New Account Signup Test:** Simulate a full sign-up as a new user. After email verification (if enabled) and automatic login, verify the JWT contains the correct claims: use the network inspector or decode the token on the client to check `account_id` and `role`. They should match the newly created account’s ID and show `"Owner"` role (for the initial user). Attempt to read data from `public.accounts` via the Supabase client – it should return exactly one record (your account) and no others, confirming RLS and claims are working.
+2. **Single-Account Behavior:** Create another regular user (not invited to any other account) and repeat the process. Ensure that for every user with one account, the JWT always carries the correct one. They should never see data outside their `account_id`. Also check that their role claim corresponds to what’s in `account_members` (e.g., if you manually change a role in the DB and have them re-login, the token should reflect the new role).
+3. **Multi-Account Edge Case Test:** Manually associate a user with two accounts (insert a second `account_members` row for a test user). Then have that user log in. Verify that the JWT includes only **one** `account_id` (whichever comes first by our function’s logic). The user should only have access to that one account’s data in this session. Confirm that trying to access the second account’s data either via direct queries or UI fails (e.g., a direct Supabase query for the other account’s `accounts` row returns nothing due to RLS). This test confirms that multi-account users are constrained to one context at a time in MVP.
+4. **Forbidden Access Tests:** Using an authenticated session JWT, attempt various cross-tenant actions to ensure security:
+
+   * Query another account’s ID directly via the API or Supabase client (e.g., if you have account IDs A and B, log in as account A’s user and try to select data from account B). The result should be empty or an error – no data leak.
+   * Attempt to insert or update data with a different `account_id` than your JWT’s into a shared table (should be blocked by RLS).
+   * Ensure that even if the front-end is tampered with, the backend and DB layers still stop any cross-account access.
+     This “penetration test” approach verifies the RLS + JWT claims are effectively enforcing tenant isolation at all three layers (UI, API, DB).
+5. **Token Refresh Test:** Let the access token expire (you can reduce the expiry in a test setting or use the refresh token flow). Verify that when the token is refreshed by the client, the new JWT still includes `account_id` and `role`. There should be no scenario where a refreshed token loses the claims. If the user’s role was changed or their account access revoked between token issues, ensure the claims update appropriately on refresh (the function will run each time).
+6. **Password Reset / Email Change:** Though ancillary to JWT, test that a password reset flow or email change doesn’t break anything. After a password reset, the user gets a new session – it should still trigger the JWT hook and include claims. If the user changes email (if allowed in UI), ensure they are reauthenticated if required and the JWT claims remain correct (user\_id doesn’t change on email update, so account linkage remains).
+7. **Audit Trail:** (If logging is implemented for security events) Check that any cross-tenant access via the coach-proxy or admin (if those exist in MVP) is logged. Specifically for JWT, ensure that a platform admin using a “sudo” mode or a coach accessing another account’s data does so through proper channels, not by manipulating their JWT (we do not support JWT role elevation in client). These are more for future, but mention for completeness.
+8. **Developer Review:** Have another engineer or the founder review the implementation against the blueprint. Verify that **nothing is missing or added** beyond what the blueprint specifies. For example, ensure we did not accidentally introduce multi-account JWT support or an Edge Function for auth (since those are out of scope), and that we did include all required claims and security measures. The blueprint is the single source of truth – confirm our worklog matches it.
+
+## 9. **Out of Scope – Do NOT Implement in MVP**
+
+To avoid any ambiguity, explicitly note the features **not** to be built as part of this MVP scope (per the blueprint guidelines):
+
+* **Runtime Account Switching:** No UI or backend support for switching the active `account_id` in a user’s JWT without re-login. A user cannot toggle between multiple accounts in one session; they must sign out and back in to change account context. Do not implement any JWT containing multiple accounts or any “switch account” dropdown.
+* **Multi-Account JWT Claims:** Only one `account_id` claim is present in the token. We do **not** include an array of account IDs or support concurrent multi-tenant access in the JWT. Supporting a user being logged into multiple accounts at once (or a token representing multiple accounts) is deferred to future versions.
+* **Supabase Edge Function for Auth Hook:** The optional Edge Function (`/auth-token-hook`) mentioned in the blueprint is **not used in MVP**. We exclusively use the database trigger function (`auth.jwt()` via our SQL function) for adding JWT claims. Do not create or deploy the auth token Edge Function at this time.
+* **Per-Tenant Postgres Roles (Allowed Roles):** We are **not implementing** the advanced feature of creating a distinct Postgres role per tenant and injecting that into the JWT in MVP (unless explicitly decided later). All users will use the built-in `authenticated` role on the database. The custom claims (`account_id`, `role`) combined with RLS are sufficient for security at this stage.
+* **Two-Factor Auth & Social Logins:** No two-factor authentication (2FA) or third-party OAuth/social login flows are in scope for MVP. Only basic email/password (with email verification) is implemented.
+* **Coach Impersonation via JWT:** Coaches in MVP have their own logins and **do not impersonate agency users** by swapping JWTs. The coach access is implemented via the separate “coach portal” and proxy queries (if at all) – but they still operate under their own identity and JWT. Do not implement any JWT generation that makes a coach’s token temporarily assume an agency user’s identity. (Any cross-account data viewing by coaches is handled by server-side checks and redactions, not by JWT changes.)
+* **Anything Not in Blueprint:** Finally, adhere strictly to the blueprint’s instructions. If a feature or detail isn’t described in the blueprint’s MVP scope (or in this task list), consider it out-of-scope. For example, do not add extra claims to JWT beyond `account_id` and `role` (unless needed for the allowed\_roles advanced step), do not create tables or functions unrelated to auth, and do not deviate with creative implementations. Every step we implemented above is directly traced to the blueprint. Any changes require founder approval as per the blueprint mandate.
+
+Each item in this checklist should be executed and verified. By following these to-do steps, an engineer (AI or human) can implement the custom JWT trigger and auth wiring for the Ozza platform confidently, without ambiguity or omission, and exactly in line with the blueprint’s intent.

@@ -1,0 +1,18 @@
+# Node
+node_modules/
+.env
+.env.local
+
+# Turbo
+.turbo/
+
+# Next.js
+.next/
+
+# Supabase
+supabase/.temp/
+
+# Build artifacts
+dist/
+out/
+coverage/ 

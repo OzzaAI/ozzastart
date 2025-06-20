@@ -1,0 +1,186 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Ozza AI Coding Agent Rules (ozza_cursor_rules.mdc)
+
+Last updated 2025‑06‑20
+
+0  Purpose
+
+This file tells Cursor’s AI Agent where to find authoritative knowledge for the Ozza codebase and how to think when working through the implementation phase by phase.  It complements the existing problem‑specific agents in
+
+C:\Users\henry\OneDrive\Bizloai\Ozza\Agent Prompts\
+
+Always keep this rule‑set in memory while editing the Ozza repo.
+
+1  Canonical Knowledge Locations
+
+Key alias
+
+Absolute path (Windows)
+
+What lives there
+
+When to open it
+
+AGENT_RULES_DIR
+
+C:\Users\henry\OneDrive\Bizloai\Ozza\Agent Prompts\
+
+Individual thinking pattern .mdc files (e.g. ChainOfThought.mdc, RubberDuck.mdc, SchemaGuardian.mdc).
+
+Whenever the current task needs a specialised reasoning style.
+
+TODO_MASTER
+
+C:\Users\henry\OneDrive\Bizloai\Ozza\TODO List
+
+The master phase‑ordered To‑Do list. Each unchecked bullet is an outstanding implementation task.
+
+At the start of every session and before committing code.
+
+BIZ_MODEL
+
+C:\Users\henry\OneDrive\Bizloai\Ozza\Model 6-20.txt
+
+High‑level business and product model.
+
+When a task’s outcome might affect revenue model, pricing, or end‑user UX.
+
+Never invent structure or conventions not found in these files.
+
+2  Standard Operating Loop
+
+Boot‑up:
+
+Load TODO_MASTER and locate the first unchecked phase.
+
+Copy the entire phase block (tasks + Done criteria) into your scratch context.
+
+Pick Thinking Module:
+
+Default to ChainOfThought.mdc.
+
+If the task involves SQL/RLS → also load SchemaGuardian.mdc.
+
+If debugging failing CI → load RubberDuck.mdc.
+
+Rule of thumb: one specialised module at a time; nest only when notes say they are composable.
+
+Plan: Outline subtasks, order, and success checks before writing code.
+
+Execute: Generate code / config edits exactly in the folders specified by the blueprint.  Use additive‑only migrations, lowercase snake_case, commit with lint‑clean messages.
+
+Self‑test:
+
+Run pnpm lint && pnpm type-check && pnpm test.
+
+For SQL tasks, run pnpm run lint:sql.
+
+For CI tasks, push to branch and watch GitHub Actions.
+
+Mark Done:  Tick the checkbox in TODO_MASTER, add a one‑line summary beneath the task explaining what changed.
+
+Commit & push.  Husky hooks must pass; if blocked, return to step 3.
+
+3  Thinking Modules Cheat‑Sheet
+
+(Stored in AGENT_RULES_DIR – load on demand)
+
+File
+
+Description
+
+Typical trigger
+
+ChainOfThought.mdc
+
+Break complex requirement into ordered micro‑decisions, then solve them sequentially.
+
+Any non‑trivial feature build.
+
+SchemaGuardian.mdc
+
+Ensure SQL is additive‑only, enforces RLS, and matches naming rules.
+
+Creating/altering tables, writing migrations, plan‑limit triggers.
+
+RubberDuck.mdc
+
+Explain the bug and solution in plain English first; catch logic errors early.
+
+CI fails, runtime bug, or unclear error message.
+
+CIBuilder.mdc
+
+YAML‑first thinking: define job, cache, and secret structure before writing steps.
+
+Adding or editing GitHub Actions.
+
+RefactorLens.mdc
+
+Scan for duplication, dead code; propose minimal, safe refactor.
+
+Tech‑debt cleanup tasks.
+
+If no module fits, fall back to Chain Of Thought.
+
+4  Golden Rules (never violate)
+
+Additive‑only DB migrations – no DROP, TRUNCATE, RENAME, or destructive DDL.
+
+Lower‑case snake_case for every file, folder, DB identifier.
+
+RLS default‑deny for multi‑tenant tables; whitelist with account_id equality only.
+
+No secrets or service‑role keys in client code or committed files.
+
+CI must stay green; commit only when lint, type‑check, and tests pass locally.
+
+Preserve white‑label integrity – never leak "Ozza" branding to end‑user UI paths.
+
+5  Debug Quick‑Commands
+
+Task
+
+Command
+
+Re‑run all tests
+
+pnpm test --run --passWithNoTests
+
+Lint SQL migrations
+
+pnpm run lint:sql
+
+Create local tenant schema
+
+pnpm dlx ozza-cli create-tenant dev_canary
+
+Diff DB vs migrations
+
+supabase db diff
+
+Start local Supabase
+
+supabase start
+
+6  Escalation Path
+
+If a task cannot be completed with available info:
+
+Search TODO_MASTER for a later phase that may hold missing context.
+
+Search AGENT_RULES_DIR for a deeper thinking module.
+
+Finally open BIZ_MODEL to ensure alignment with product intent.
+
+If still blocked, raise a BLOCKER: comment at the top of the relevant task in TODO_MASTER and ping the founder.
+
+End of Rule‑Set
+
+Copy or symlink this .mdc file into any local agent repo so Cursor recognises it automatically.
+
+

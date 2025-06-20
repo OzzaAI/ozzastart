@@ -1,0 +1,135 @@
+Thanks for confirming. I’ll generate a detailed to-do list that strictly follows the blueprint’s implementation rules for the Feature‑Flag Resolver components:
+
+* Populating `account_features` on account creation and plan changes
+* Implementing the `useFeature('FLAG')` React hook
+* Creating middleware to inject feature maps into API requests
+* Automating a quarterly flag-cleanup CI script
+
+I’ll ensure the steps are broken down explicitly with no room for ambiguity or creative guesswork.
+I’ll let you know when it’s ready for review.
+
+
+# Feature-Flag Resolver Implementation To-Do List
+
+## Database (Feature Flags Schema)
+
+* [ ] **Add Feature Flag Tables:** Create a new migration file `packages/db/migrations/YYYYMMDD-HHMM_add_feature_flags.sql` to define the feature flag schema:
+
+  * Define `public.features` table with `feature_key` (text primary key), `description` (text), and optionally a default or plan-indicator column. This table enumerates all possible feature toggles (e.g., `CUSTOM_DOMAIN`, `WHITE_LABEL`, `ANALYTICS_DASHBOARD`, `AI_CONTENT_ASSISTANT`) and their descriptions.
+  * Define `public.account_features` table with `account_id` (UUID, foreign key to `accounts.id`), `feature_key` (text, foreign key to `features.feature_key`), and `enabled` (boolean). Each row represents a specific feature flag’s value for a given account. Enforce uniqueness on `(account_id, feature_key)` so each flag appears only once per account.
+  * If not already present, insert initial records into `public.features` for all planned feature flags with descriptions. For example, seed flags like `CUSTOM_DOMAIN`, `WHITE_LABEL`, etc., to ensure the system “knows” all flags from the start.
+* [ ] **Apply RLS Policies:** Enable Row-Level Security on `public.account_features` and add a policy to allow tenants to read only their own flags. For example: `USING (account_id = current_setting('request.jwt.claims.account_id'))` ensures a user’s JWT `account_id` claim must match the row’s `account_id` for select access. Do **not** allow regular users to insert or update rows in this table (flag changes are managed internally). Only service roles or admin roles (via Supabase’s RLS bypass or a special role) should be permitted to modify feature flags.
+
+  * The `public.features` table can be readable by all authenticated users (contains no sensitive data) so the front-end or tools can fetch the list of flags if needed. No RLS is required on `features` or you can set a policy that all can select.
+* [ ] **Initial Plan Defaults:** Decide how to represent plan-based default flag values. The blueprint allows either seeding defaults in `account_features` or checking plan in code. We will implement it via data seeding: e.g., add a column or reference in `public.features` to note which plans get the flag by default, or maintain this mapping in application logic. (No separate `plan_features` table was specified, so using a hard-coded mapping or an extra column like `default_on_pro` could be acceptable, as long as it’s documented and consistent with the plans.)
+
+## Account Provisioning (Defaults on Creation & Plan Changes)
+
+* [ ] **Insert Flags on New Account Creation:** Extend the tenant creation flow (the sign-up provisioning process) to initialize feature flags for the new account. After inserting a new row into `public.accounts` (with default `plan_id` such as `"free"` and `plan_status = 'active'`), immediately insert corresponding entries into `public.account_features` for each feature based on that plan’s defaults. For example, on a Free plan account, set features like `WHITE_LABEL = false`, `CUSTOM_DOMAIN = false`, `ANALYTICS_DASHBOARD = false` (if those are only for paid plans), whereas on a Pro plan account, set those to true. Use the predefined plan-to-feature mapping (from the previous step or config) to drive these inserts so that no logic is missed. Each feature flag for the account should now have an explicit true/false entry at creation, reflecting the plan’s entitlements.
+
+  * Implement this in the account provisioning backend code. If using a Next.js API route for sign-up completion, add this logic after creating the account and before responding. If using the CLI (`ozza-cli create-tenant`), update that command to include seeding `account_features` for the new account. This guarantees new accounts have a complete feature flag set.
+* [ ] **Update Flags on Plan Change (Upgrade/Downgrade):** In the Stripe webhook handler for subscription updates (Supabase Edge Function at `supabase/functions/stripe-webhook/index.ts`), add logic to adjust feature flags whenever an account’s plan changes. On receiving a `customer.subscription.updated` event (or `...created` if applicable):
+
+  * Determine the account and the new plan (e.g., by looking up the `accounts` table via `stripe_customer_id` or subscription ID in the payload). Update the account’s `plan_id` and related fields as already planned, then **enable or disable features according to the new plan’s defaults**. For example, if the account upgraded from Free to Pro, set `WHITE_LABEL` flag to true (and any other Pro-only features to true). If the account downgraded from Pro to Free, set those flags to false to revoke access. Use an UPSERT operation (insert with `ON CONFLICT DO UPDATE`) for each relevant `account_features` row to either create or update the flag value.
+  * Only modify flags that are tied to plan differences. Flags that were manually enabled as experimental overrides (not normally included in the plan) should ideally remain unless the new plan also disallows them. (The system may not have such cases in MVP, but keep this in mind for future: e.g., if an account had a beta feature on Free, downgrading or upgrading shouldn’t remove that unless intended.)
+  * Use the Supabase service role (with `process.env.SUPABASE_SERVICE_ROLE_KEY`) inside the webhook function to perform these updates so that RLS restrictions are bypassed for this admin operation. The code should only touch the specific account’s flags and related billing fields, in line with the blueprint’s narrow scope for service-role operations.
+* [ ] **Handle Cancellations/Graceful Downgrade:** In the Stripe webhook logic for `customer.subscription.deleted` or plan cancellation events, ensure the account is set to a fallback plan (e.g., `free`) and update feature flags accordingly. For instance, if the plan is canceled and we revert the account to Free tier, disable any flags that are not part of Free by setting their `enabled = false`. Also consider setting a flag or field (like an extended grace period if any, though not mentioned explicitly) if needed. This ensures a consistent experience: when a subscription ends, the account behaves like a Free plan account with only Free features.
+* [ ] **Testing & Verification for Flags:** Write tests or seed scenarios to confirm:
+
+  * New accounts get correct default flags. For a Free-plan sign-up, after provisioning, query `account_features` and verify flags match Free defaults (false for premium features, true for any that Free should have). Do the same for a Pro-plan sign-up.
+  * Simulate a plan upgrade via the Stripe webhook function (you can invoke the handler with a test event): ensure that after an upgrade event, the account’s flags in the DB match the new plan’s defaults (features that should be enabled are true). Similarly, simulate a downgrade or cancellation and verify flags are turned off appropriately.
+  * Ensure that the flag updates do not override any unrelated flags. Only plan-related feature flags should change. For example, toggling `WHITE_LABEL` on plan change should not affect an experimental flag like `AI_CONTENT_ASSISTANT` if that was manually enabled for the account (unless the plan itself influences AI usage).
+  * All these changes should adhere to the additive-only migration rule: we are not dropping any schema element, only adding/updating data, so this is in line with the blueprint’s constraints.
+
+## Frontend Client (Feature Flag Hook and Usage)
+
+* [ ] **Fetch Flags on Login:** On user login or initial app load, retrieve the feature flags for the user’s account and make them available on the client. Integrate this with the existing data fetching flow after authentication. For example, extend the `/api/account` endpoint (or create it if not exists) to include a `featureFlags` object in its JSON response. This object should map each feature key to a boolean (`true`/`false`) as stored in `account_features`. The blueprint suggests populating this either via a direct Supabase query (with RLS) or as part of a consolidated account fetch.
+
+  * If using Next.js, you might call this API in a `_app.js` initializer, a React context provider, or as part of a server-side rendering step for the dashboard. Ensure the call uses the user’s auth token so that RLS permits reading that account’s flags.
+  * Example result format: `{ featureFlags: { ANALYTICS_DASHBOARD: false, CUSTOM_DOMAIN: true, ... } }`. Confirm that this includes all flags (even those set to false) so the client has a complete picture.
+* [ ] **Implement `useFeature` Hook:** Create a React hook (e.g., `/apps/web/lib/useFeature.ts`) to easily check feature flags in components. The hook should access a React context or global state where the `featureFlags` object is stored and return the boolean value for a given flag key. For instance, `const hasAnalytics = useFeature('ANALYTICS_DASHBOARD');` would return `false` or `true` depending on the current account’s setting.
+
+  * Provide a context (perhaps `FeatureFlagsContext`) at the app level. In the app’s root (e.g., in `_app.tsx` or a layout component), wrap the app with a provider that stores the `featureFlags` object from the initial fetch.
+  * The hook then simply reads from this context. This avoids prop-drilling and makes it convenient to use flags anywhere in the component tree.
+  * TypeScript: define a type for FeatureKeys (union of all known keys) and perhaps a type for the flags object for type-safe access.
+* [ ] **Client-Side Caching:** Once fetched, cache the feature flags on the client for the duration of the user’s session. Since feature flags are not expected to change frequently or without user action, it’s acceptable to keep them in memory. The blueprint notes that if a flag is changed server-side, the user would need to re-login or refresh to get the update. We will follow MVP scope and not implement live updates for flag changes. Document this limitation (e.g., “Changing feature availability requires re-login to see effect”) if needed.
+
+  * If desired, you could implement a Supabase realtime subscription on `account_features` for the user’s account to update flags in real-time, but this is optional and not required by the blueprint (which explicitly says live push of flag changes is not in MVP).
+* [ ] **Conditional UI Rendering:** Use the `useFeature` hook (and the fetched flags) to conditionally render UI elements and routes throughout the application. Audit the app for places where a feature toggle should be applied:
+
+  * Navigation links: e.g., only show the Analytics menu item if `ANALYTICS_DASHBOARD` is true.
+  * Routes or pages: protect entire pages by redirecting or showing 404 if the feature is off. (For example, if a user somehow navigates to `/analytics` but their flag is false, you might redirect them to the dashboard.)
+  * Buttons or functionality: e.g., if `CUSTOM_DOMAIN` is false, disable or hide the UI for adding a custom domain.
+  * This ensures the UI layer reflects the flags (no options visible that the account shouldn’t have).
+  * Additionally, ensure branding-related flags are respected. For instance, the “Powered by Ozza” footer label should only appear for Free-tier accounts and be omitted for higher-tier accounts that have the `WHITE_LABEL` feature enabled. Implement such conditional text or image rendering in the relevant components (e.g. footer component).
+* [ ] **UX and Feedback:** When a feature is disabled, consider providing explanatory text or tooltips so the user knows it’s unavailable due to plan/flag. For example, if a button is present but disabled due to a flag, you might explain “This feature is not enabled for your account.” This is not strictly required by the blueprint, but it can reduce confusion. (Ensure this messaging aligns with the plan descriptions so it nudges upgrades if appropriate.)
+
+  * Verify the app behavior by impersonating or using test accounts with different flag settings. For an account with a feature off, verify the UI element is truly not rendered or disabled.
+
+## Backend Server (API Middleware and Enforcement)
+
+* [ ] **Account Summary API:** Implement or update the Next.js API route that provides account info (likely `/api/account`). Its response should include the account’s feature flags along with other profile details. For example, after the user logs in, the frontend might call `/api/account` to get `{ account: {...}, featureFlags: {...} }`. In the API handler:
+
+  * Verify the user’s identity (e.g., ensure a valid Supabase JWT is present in Authorization header or cookies). Extract the `account_id` from the JWT (Supabase JWT includes it as a custom claim).
+  * Query the database for that account’s flags. You can use the Supabase JS client on the server with the user’s JWT to query `account_features` (RLS will auto-filter to their account), or use the service role with an explicit `.eq('account_id', userAccountId)` filter.
+  * Return the feature flags as a key->boolean object. (This is where you structure the data as the front-end expects, matching the `useFeature` approach.)
+  * Secure the route: only allow authenticated requests. If no valid token or if the token’s account\_id doesn’t match any account, return 401/403.
+* [ ] **Feature Flag Injection Middleware:** Develop a middleware utility for server-side API routes to automatically attach feature flag info to incoming requests. This will help with server-side enforcement of flags. Create a function (e.g., `withFeatureFlags(handler)`) that wraps Next.js API route handlers:
+
+  * In `withFeatureFlags`, parse the request’s JWT (e.g., using Supabase’s JWT decoding or a library with the project’s JWT secret) to get `account_id` (and possibly the `role`).
+  * Fetch the feature flags for that account. This can be done by initializing a Supabase client with the service role and querying `account_features` for that `account_id`, or by using the user token if available and RLS. A simple approach: use the service key and `select('feature_key, enabled')` where `account_id = X`. (This is safe as long as you filter by the specific account\_id from the JWT, and you’re running on the server).
+  * Construct a dictionary of flags (e.g., `features = { FLAG_NAME: true/false, ... }`) from the result.
+  * Attach this to the `req` object, for example `req.featureFlags = features` or as part of `req.user` (if you have a `req.user` from auth middleware). Then call the original `handler(req, res)`.
+  * If the JWT is missing or invalid, this middleware can return an error or redirect (for protected routes, you likely have an auth check already).
+  * **Integration:** Use `withFeatureFlags` on any API route that needs to be aware of feature availability. This could include routes that perform actions related to optional features (e.g., an analytics data export route).
+* [ ] **Server-Side Flag Enforcement:** Update protected API endpoints to honor feature flags, using the data provided by the middleware:
+
+  * For example, if there is an API route `/api/analytics/get-data`, wrap it with `withFeatureFlags`. Inside the handler, check `req.featureFlags.ANALYTICS_DASHBOARD`. If that is `false`, respond with an HTTP 403 Forbidden or an error message, and do not proceed to fetch or return analytics data. This ensures that even if a malicious or out-of-date client tries to access a disabled feature, the server will block it.
+  * Do this for all feature-gated server actions. Another case: a route for uploading a custom logo or setting a custom domain should verify that the account’s `WHITE_LABEL` or `CUSTOM_DOMAIN` is enabled. If not, it can return an error or simply ignore the request.
+  * By double-enforcing on the server, we follow the blueprint’s rule that no feature should be accessible by merely tweaking the client – the backend must validate permissions too.
+* [ ] **Edge Functions Consideration:** Most feature enforcement will occur in Next.js API routes since much of our logic is there. For Supabase Edge Functions (like the Stripe webhook), feature flags primarily affect runtime user-facing features rather than webhook logic, so you may not need to check flags in the webhook. However, if we add any Edge Functions that serve as user-facing endpoints in the future, ensure those functions also retrieve and respect `account_features` as needed. The blueprint notes that Edge Functions run with full DB rights, so it’s on us to manually restrict their actions. For MVP, likely no additional Edge Function needs feature flag checks.
+* [ ] **Testing Server Enforcement:** Write integration tests or unit tests for the middleware and sample routes:
+
+  * Test that an API route wrapped with `withFeatureFlags` receives `req.featureFlags` populated correctly for a user with certain flags. You can simulate a request by providing a valid JWT (perhaps use Supabase’s JWT for a test user) and a known state in the database.
+  * Test that when a feature is disabled, the API returns the expected 403 or error. For example, for an account with `ANALYTICS_DASHBOARD = false`, a request to the analytics API should be denied. Then enable that flag (or test with an account where it’s true) and ensure the same API returns success.
+  * Confirm that our server checks align with the UI. This double-check ensures no discrepancy (e.g., UI hides something but server still allows it, or vice versa). This satisfies the “double enforcement” principle in the blueprint.
+  * Also ensure that RLS rules in the database don’t inadvertently block allowed actions or allow forbidden ones. For instance, even if an API route forgot to check a flag, could a user with a valid JWT directly query data they shouldn’t see? Ideally, sensitive data should also be protected by RLS conditions tied to plan/feature where feasible (though in many cases we rely on app logic for feature gating, RLS is more for data isolation).
+* [ ] **Environment Variables:** Confirm that the server has access to necessary secrets for the above operations:
+
+  * The Supabase URL and anon key (for user-level requests) should already be in the environment (used by the frontend).
+  * The Supabase service role key (`SUPABASE_SERVICE_ROLE_KEY`) should be available to the Next.js API (set it in Vercel or the hosting platform, with proper protection) so that our server middleware can fetch flags or update them when needed. **Do not** expose this to the client-side code.
+  * In local development, update the `.env.local` or equivalent with these keys. In production, ensure the deployment has them configured. This is critical for things like the Stripe webhook function and any admin tasks.
+
+## Tooling & CI (Feature Flag Maintenance)
+
+* [ ] **Admin Flag Management:** Create an internal tool or CLI command to easily toggle feature flags for a given account. While not strictly required by the user-facing app, the blueprint mentions the ability to turn features on/off per account for testing or beta releases. Implement a CLI command such as `ozza-cli feature:set <account_id> <feature_key> <true|false>`:
+
+  * This command will use the Supabase service role to upsert a row in `account_features` for the specified account and feature (or update if it exists). This is effectively an admin override. It should log or print a success message describing the change.
+  * Include basic validation: ensure the `feature_key` exists in the `features` table (prevent typos), and maybe ensure the account\_id is valid (exists in `accounts`).
+  * This CLI will help developers (or the founding team) enable beta features for specific customers without writing a migration each time. It aligns with the blueprint note: “insert account\_features… enabled = true for that account… feature implemented but gated”.
+* [ ] **Seed Script Updates for New Flags:** Whenever a new feature flag is introduced (a new row in `public.features` via a migration), ensure existing accounts get a default entry for it. We can automate this in the seeding or migration process:
+
+  * Update the seed data script (`/packages/db/seed/*` or a special CLI command `ozza-cli seed`) to handle backfilling flags. The seed process should detect any feature in `public.features` that an account doesn’t have in `public.account_features` and insert it with the appropriate default (based on the account’s plan).
+  * For example, if we add a new flag `NEW_FEATURE_X` that defaults to true on Pro and false on Free, and there are 100 existing accounts, the seed script (or a one-off migration) should insert 100 rows (for each account, account\_id plus feature\_key and enabled false/true depending on plan). After running, every account\_features will have `NEW_FEATURE_X` set appropriately.
+  * Use `INSERT ... SELECT` in SQL or a loop in the CLI to do this efficiently. This step prevents missing flags for older accounts and ensures consistency.
+  * Document this: whenever adding a feature flag, developers should run the seed or a similar backfill.
+* [ ] **Quarterly Flag Cleanup Script:** Implement a CI script or job to periodically review feature flags and their usage. In the repository (perhaps under `/apps/cli/scripts`), create a script `cleanup-flags.ts` that:
+
+  * Loads all feature keys from `public.features`.
+  * Scans the codebase for references to these keys. This can be done by reading the repository files (e.g., using `grep` or a Node script to search in `/apps/web` and maybe `/apps` or `/packages` for strings that match feature keys or usage like `useFeature(`). Focus on the front-end and API code where flags would be used.
+  * Identifies any flags that **appear in the database but not in code**, or vice versa (flags used in code but not defined in the `features` table).
+  * Also, optionally, check usage in data: query how many accounts have each flag enabled. A flag that is defined but enabled for no one (and perhaps not even present in any account\_features) might be a candidate for removal if it’s not slated for future use.
+  * The script should then output a report. It could simply `console.log` a list of flags and their status:
+
+    * Flags with no code references.
+    * Flags with no accounts using them.
+    * Flags present in code but missing in DB (this should never happen if we always add to `features` table, but the check is good).
+  * Do **not** automatically delete anything. The blueprint’s goal is to “prompt developers to remove or consolidate stale flags”, so this tool just informs.
+  * Ensure this script is accessible via npm or the CLI (e.g., maybe add a command `ozza-cli flags:cleanup` that runs it).
+* [ ] **CI Integration for Flag Cleanup:** Integrate the above script into the Continuous Integration pipeline so that it runs periodically (quarterly) and alerts the team about flag hygiene. Options:
+
+  * Set up a scheduled GitHub Action (using the `schedule` trigger with a cron expression, e.g., once every 3 months) that checks out the repo and runs `npm run flags:cleanup` (assuming you add an npm script for it).
+  * Alternatively, run it as part of an existing CI job occasionally (perhaps manually triggered or as part of a quarterly review process).
+  * When the job runs, have it output the report. If any stale flags are found, the job can fail or post a message. For example, it could create a GitHub issue listing flags that look unused, or simply fail the build with the report in the logs so that developers see it.
+  * Make sure the CI job has access to the database if it needs to query usage. This might mean adding a step to run the script with the service role key available (store it as a secret in CI). If querying the production database is too risky in CI, you could run the script against a nightly backup or require a developer to run it manually against prod. The blueprint suggests automation, so a safe approach is to run it in CI against a copy or require manual confirmation.
+  * Finally, document this process (maybe in the README or docs): e.g., “Feature Flag Cleanup: Run `ozza-cli flags:cleanup` quarterly to identify flags that can be pruned. Remove flags from `features` table and code after confirming they are truly not needed.” This ensures the team remains aware of this practice and prevents “flag sprawl.”

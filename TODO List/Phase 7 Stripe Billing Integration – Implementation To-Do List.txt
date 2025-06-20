@@ -1,0 +1,216 @@
+Thanks for your patience. I’ll now produce a fully detailed TO DO list for the Stripe Billing Integration including:
+
+* Edge Function (`/stripe-webhook`) scoped to billing tables only.
+* Next.js API routes for checkout and portal session creation.
+* Account updates on webhook triggers (plan\_id, plan\_status, maintenance\_mode).
+
+The steps will follow the exact logic outlined in the blueprint and leave no ambiguity or room for creative assumptions. I’ll get this prepared and share it shortly.
+
+
+# Stripe Billing Integration – Implementation To-Do List
+
+## Setup & Configuration
+
+* **Obtain Stripe API Credentials:** Ensure you have the Stripe **Secret Key**, **Publishable Key**, and create a **webhook endpoint** in Stripe for billing events. Record the **Webhook Signing Secret** provided by Stripe (used to verify event signatures). Never hard-code these secrets; they must be stored in secure environment variables.
+* **Configure Environment Variables:** Set the Stripe credentials and Supabase keys in the environment:
+
+  * In Supabase (Edge Function) config: add `STRIPE_WEBHOOK_SECRET` (the signing secret for verifying webhooks) and the Supabase **Service Role** key (to allow database writes bypassing RLS). Also include the Supabase project URL if required by the client library.
+  * In Next.js environment (e.g., Vercel): add `STRIPE_SECRET_KEY` (for Stripe API calls on the server) and any needed config like `NEXT_PUBLIC_APP_URL` for redirect URLs. Keep the Stripe keys out of the repository – use the hosting platform’s secrets management.
+* **Setup Stripe Products & Prices:** In the Stripe Dashboard, define your subscription products and pricing for each plan (e.g., Free, Pro). Create a price ID for each billable plan (monthly (and annual, if applicable) subscriptions for “Pro”, etc.). Note the Stripe `price_id` for each plan.
+* **Seed Plans in Database:** Populate the `public.plans` table with entries for each plan, including the plan identifier (e.g., `"free"`, `"pro"`), name, pricing details, and the corresponding `stripe_price_id` for the plan. For example, set the Pro plan’s `stripe_price_id` to the ID from Stripe’s dashboard. Include any limit columns (e.g. max\_users) as per the blueprint. The Free plan can have a null or placeholder `stripe_price_id` since it doesn’t involve Stripe billing.
+* **Verify Account Schema:** Ensure the `public.accounts` table has the required fields for billing integration:
+
+  * `plan_id` (foreign key to `plans` table) and `plan_status` (text status like *active*, *past\_due*, *cancelled*),
+  * `stripe_customer_id` (text Stripe Customer ID for the account),
+  * `maintenance_mode` (boolean flag to indicate read-only lock for non-payment or maintenance).
+    If these columns don’t exist, add them via a database migration before proceeding.
+* **Create Billing Events Table:** Implement a `public.billing_events` table to log processed Stripe webhook events. Include columns: `event_id` (text PRIMARY KEY from Stripe event payload), `event_type` (text), `account_id` (UUID, FK to accounts or nullable if event isn’t tied to a specific account), and `processed_at` (timestamp). This table will be used for idempotency to avoid double-processing events.
+* **Set Up Stripe Webhook Endpoint:** Deploy the Supabase Edge Function (to be written below) and note its URL (e.g., `https://<project>.functions.supabase.co/stripe-webhook`). In your Stripe Dashboard, add a **Webhook Endpoint** pointing to this URL for relevant events. Subscribe to events: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`, and others as needed (such as `checkout.session.completed` if using Checkout in sign-up). Assign the webhook the events scope per Stripe’s interface. Copy the webhook’s secret and ensure it’s set as `STRIPE_WEBHOOK_SECRET` in the function environment before deploying.
+* **Dependency Management:** In the Edge Function environment, add the Stripe library. For example, use Stripe’s official Node.js SDK via an ESM import (supported in Deno) to handle webhook signature verification and any API calls. This can be done by importing from esm.sh or adding an entry in `deno.json` for the Stripe package. No separate installation is needed for Next.js (you can use `npm install stripe` in the Next.js project, as it’s a Node environment).
+* **Establish Redirect URLs:** Determine and configure the URLs to which Stripe will redirect after checkout or portal actions. For instance, set a success URL like `https://<your-app-domain>/billing/success?session_id={CHECKOUT_SESSION_ID}` and a cancel URL like `https://<your-app-domain>/billing` (or wherever the user should return on cancellation). These will be used when creating Checkout Sessions and Portal Sessions. Ensure these routes (like a success page) exist or handle the result appropriately (e.g., the success page might simply inform the user that the subscription is being processed and the app will update once the webhook comes in).
+
+## Database Setup & Plan Enforcement
+
+* **Review Row-Level Security (RLS):** Ensure RLS policies on `accounts` and related tables do not prevent our server processes from functioning:
+
+  * The Edge Function will use the service role (bypassing RLS entirely), so it can read/update any account and insert billing events. No RLS changes needed for webhook processing, but confirm the service role has full access.
+  * The Next.js API routes may use either the user’s JWT or a service key. If using the user context, ensure the RLS policy allows the account owner to select their own account and update certain fields like `stripe_customer_id`. If not, plan to use the service role on the server side for those specific updates. Typically, accounts RLS is read-only for the user (except perhaps allowing updates to non-critical fields); since adding a Stripe customer ID is a privileged action, using the service role on the API route is acceptable as long as it’s kept server-side.
+* **Default Plan Assignment:** Confirm that new accounts are created with a default plan (Free) and corresponding feature flags. For example, upon user sign-up, the system should set `accounts.plan_id = 'free'` and `plan_status = 'active'` by default. Implement a seeding or creation step that also inserts default feature flags in `account_features` for the Free plan (e.g., disable premium features like `WHITE_LABEL` for that account). This ensures the account’s capabilities match the Free tier limits initially.
+* **Plan Limits & Features:** Double-check that the `plans` table entries include all relevant limits and flags for each tier (e.g., `max_users`, `max_projects`, `included_ai_credits`, etc.). These values will be used by application logic and potentially by database constraints or triggers to enforce plan restrictions. While not directly part of Stripe integration, they are related (e.g., after an upgrade, the app should allow more users if `max_users` increased).
+* **Integrity Checks:** Add a unique index on `accounts.stripe_customer_id` if not already present. Each Stripe customer should map to at most one account. This will help ensure we don’t mistakenly assign the same Stripe customer to multiple accounts and will speed up lookups by customer ID during webhook handling.
+* **Test Data Preparation:** In a development database, set up a couple of test accounts (one Free, one Pro, etc.) and insert their corresponding plan and feature records. This will help in testing the integration end-to-end. For example, have a test account with `plan_id = 'free'` and no `stripe_customer_id` to simulate an upgrade scenario, and possibly another with `plan_id = 'pro'` and a valid `stripe_customer_id` for testing portal access and cancellation flows.
+
+## Supabase Edge Function: **`/stripe-webhook`**
+
+Implement a serverless function to securely handle incoming Stripe webhook events, update our database, and ensure no duplicate processing:
+
+* **Function Setup:** Create a new Edge Function in the Supabase project named `stripe-webhook`. In the `supabase/functions/stripe-webhook` directory, add the following:
+
+  * **`index.ts`** – the TypeScript code that will handle the request and process Stripe events.
+  * **`supabase.toml`** – configuration file specifying the function name and any special settings (e.g., the runtime or memory). Ensure the function is publicly accessible (no auth required) since Stripe will post to it.
+* **Initialize Stripe and Supabase Clients:** At the top of `index.ts`, import the Stripe SDK and initialize it with your Stripe **Secret Key** (for any API operations, though in this case we might only need it for verification) or use Stripe’s dedicated webhook construct method. Also, initialize a Supabase client with the **Service Role** key so you can perform privileged DB operations. For example: `const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)`. The service key ensures RLS is bypassed for the necessary updates.
+* **Verify Webhook Signature:** Read the raw request body and the `Stripe-Signature` header from the incoming request. Use Stripe’s helper (e.g., `stripe.webhooks.constructEvent(rawBody, signatureHeader, STRIPE_WEBHOOK_SECRET)`) to verify the payload authenticity. **To do this in Deno**, you might need to get the raw body as a Uint8Array or string (Supabase provides the request in the function handler; ensure you don’t JSON-parse it before verification). If signature verification fails, **immediately respond with HTTP 400** (Bad Request) and do not process further. This security step ensures that only Stripe (with the known secret) can trigger our billing updates.
+* **Parse Event Payload:** If the signature is valid, parse the JSON body into a Stripe Event object. This will include fields like `type` (the event type) and `data.object` (the main object, e.g., a subscription or invoice). Extract the relevant information for processing. (Tip: Stripe’s TypeScript definitions or Node library can assist with types here).
+* **Idempotency Check:** Implement an **idempotency guard** using the `billing_events` table. Before acting on the event, do a lookup: `SELECT 1 FROM billing_events WHERE event_id = '<event.id>'`. If a record exists, it means we have already processed this exact event, so log a message (or increment a counter if needed) and return an HTTP 200 response immediately with no further action. This prevents duplicate processing in case Stripe retried an event or sent it twice. If no record exists, we will proceed to handle it and then insert a record.
+* **Handle Event Types:** Use a conditional (if/else or switch) on `event.type` to handle the relevant events:
+
+  * **`customer.subscription.created` / `customer.subscription.updated`:** A user started a new subscription or changed their subscription plan.
+
+    * Extract the subscription object (event.data.object) from the event. From it, get the Stripe `customer ID` (`subscription.customer`) and the new subscription’s price or plan ID (e.g., `subscription.items[0].price.id`).
+    * **Lookup Account:** Using the Supabase client with service role, query the `accounts` table for the record where `stripe_customer_id` equals this customer ID. (This assumes every paying customer in Stripe is linked to one account in our DB. If not found, handle as an error – see Error Handling below.)
+    * **Determine Plan:** Identify our internal plan corresponding to the Stripe price. You can query `plans` where `stripe_price_id` matches the price ID from Stripe. This gives the `plan_id` (e.g., "pro").
+    * **Update Account Plan:** Update the account’s `plan_id` to this new plan and set `plan_status = 'active'` (or `'trialing'` if the subscription is in a trial period – you can read `subscription.status` from Stripe and use that). Also update any billing cycle info if provided (for example, if the subscription object has `current_period_end` and you want to store it for reference, consider adding a column or skip for MVP).
+    * **Enable Plan Features:** If the new plan includes features or higher limits not present before, update the `account_features` and related tables accordingly. For example, if upgrading to Pro should enable the `WHITE_LABEL` feature, insert or update the `account_features` row for that feature to `enabled = true`. Similarly, adjust any limits in memory or cached structures if necessary (the plan’s limits in the DB will now apply for enforcement).
+    * **Logging:** Optionally log that the subscription was created/updated for this account (e.g., console log or database audit log) including old plan -> new plan.
+  * **`invoice.payment_failed`:** A recurring payment attempt failed (e.g. card declined).
+
+    * Extract the `customer ID` from the invoice data (`invoice.customer`) and find the corresponding account in `accounts` (using stripe\_customer\_id as above).
+    * Update that account’s `plan_status` to `'past_due'`. Also set `maintenance_mode = true` on the account. This flags the tenant as suspended for non-payment, which the app will use to restrict access.
+    * (No change to `plan_id` – they still technically have the same plan, but in a delinquent state. They will regain access once payment is made.)
+    * *Note:* Putting the account in maintenance mode means read-only mode. Ensure the frontend knows to allow the Owner to access billing settings even if maintenance\_mode is true (the blueprint notes that the Owner should still be able to update payment info while suspended). This likely means our UI or API will check maintenance\_mode and role, allowing billing-related actions through even when other writes are disallowed.
+    * The Stripe system will likely also mark the subscription as past\_due; when it eventually succeeds or is canceled, additional events will fire which we handle below.
+  * **`customer.subscription.deleted` (or `customer.subscription.cancelled`):** The subscription was cancelled or expired after all attempts.
+
+    * Get the Stripe customer ID from the event (the subscription object may have a `.customer` field, or the event directly provides it) and find the corresponding account in our DB.
+    * **Downgrade or Lock Account:** If our product has a Free tier, **downgrade the account to Free**: set `accounts.plan_id = 'free'` and `plan_status = 'active'` (since a free plan has no outstanding payment issues). Also set `maintenance_mode = false` so they can use the free features normally. Remove or disable any premium features in `account_features` that are not included in Free (for example, if they had White Label enabled under Pro, update that entry to `enabled = false`).
+    * If there is **no Free plan** (i.e. all plans require payment, or cancellation means account should be locked), then mark the account accordingly: you might leave the `plan_id` as is or set it to a special value like `'cancelled'` plan, and set `plan_status = 'cancelled'` (as per blueprint). Also ensure `maintenance_mode = true` to keep the account read-only. Essentially, without a free tier, a cancelled subscription means the user loses access until they resubscribe. (The blueprint suggests for MVP we do have a Free tier, so the primary path is the downgrade scenario.)
+    * In either case, the account’s data remains intact. The user should be able to log in and view data in a limited capacity. You might want to ensure an appropriate message is shown on the frontend like “Your subscription has ended. You have been downgraded to the Free plan.” or if no free plan, “Account locked due to subscription cancellation”.
+  * **Other events:** For events that are not critical to handle in our backend, simply log and acknowledge them. For example, you might receive `checkout.session.completed` if using Stripe Checkout during sign-up or one-time purchases. In many cases, you can ignore this because the subscription events will follow, but if needed you could handle it (e.g., fetch the session to get customer and subscription and process it). Similarly, `customer.updated` (if a customer’s info is updated in Stripe) might be ignored or used to sync email changes – not necessary for MVP. **For any unhandled event type, respond with 200 OK without side effects**, so Stripe knows it’s acknowledged.
+* **Insert Billing Event Log:** After successfully handling an event (for those that required DB changes), insert a record into `public.billing_events` to mark it done. Include the Stripe `event_id`, the event type, the `account_id` it affected (if applicable), and the current timestamp as `processed_at`. This is done *after* all other DB operations succeed, to avoid logging an event that didn’t fully process. In case of a processing error (see below), do not insert the record so that a retry will attempt processing again.
+* **Use Service-Role Privileges Safely:** All database modifications (account updates, feature flips, logging events) should use the Supabase service role client, which bypasses RLS. Ensure your code only touches the intended records and tables. Even though the service role can modify anything, **scope your operations** to the minimal necessary: the single tenant’s `accounts` row, that tenant’s `account_features` entries, and the new `billing_events` record. Do not read or write other tenants’ data beyond what's needed for the given event.
+* **Respond to Stripe:**
+
+  * On successful processing of an event (or if it’s an event you choose to ignore), return an **HTTP 200** response. You can return a JSON like `{"received": true}` in the body for clarity, but the status code 200 is the key part. This tells Stripe that the webhook was handled and it will not retry this event.
+  * If the event type is not relevant and no action is taken, still return 200 (you may simply end the function without error), as per above, to indicate a no-op success.
+  * If verification failed (as noted earlier), return **HTTP 400** immediately and nothing further (Stripe will not retry since the call was not recognized as a valid webhook).
+  * If there was an error during processing (database down, network issue, coding error, etc.), return an **HTTP 500**. This signals to Stripe to retry the event later. Make sure to log the error details to your logs for debugging.
+* **Rate Limiting & Retry Safety:** Although idempotency prevents duplicate effects, be mindful of performance if Stripe retries aggressively. Stripe includes `Retry-Num` and `Retry-Reason` headers on webhook requests. If you notice multiple rapid retries (for example, our function kept returning 500), ensure the code quickly checks the `billing_events` table and exits to avoid heavy repeated DB writes. In practice, if an event is in `billing_events`, you already skip it (as above), so processing is already idempotent and fast on retries. This just prevents unnecessary load if, say, Stripe was misconfigured and sending the same event many times.
+* **Testing the Webhook Function:** Before deploying to production, test the webhook handler thoroughly:
+
+  * Use **Stripe CLI** in test mode to send events to your local or staging endpoint. For example, run `stripe trigger customer.subscription.updated` with a test customer and subscription to simulate an upgrade. Verify that the corresponding account in the database gets updated (`plan_id`, `plan_status`, etc.) as expected.
+  * Simulate an `invoice.payment_failed` via the CLI (`stripe trigger invoice.payment_failed`) and check that `maintenance_mode` becomes true and `plan_status` is `past_due` for the right account.
+  * Simulate a `customer.subscription.deleted` (cancellation) and confirm the account is downgraded to Free in the DB (or marked cancelled if no free plan).
+  * Test the idempotency: send the **same event** (with the same `event_id`) twice in a row (the Stripe CLI can replay a payload, or you can manually call your function endpoint with the same JSON and signature). The first call should process and update the DB, the second should detect the duplicate `event_id` in `billing_events` and **skip** making any changes, responding 200 without error.
+  * Introduce a failure to ensure retries: for instance, temporarily use an incorrect table name or make the DB update command fail in a controlled environment. Trigger a webhook and observe that your function returns a 500. Then restore the correct code and let Stripe retry (or manually resend the event) – it should succeed and update the DB on the second attempt.
+  * Ensure that all secrets (Stripe webhook secret, service key) are correctly loaded in the function environment by testing a valid event; if signature verification fails unexpectedly, double-check the secret value.
+
+## Next.js API Route: **`create-checkout-session`**
+
+Implement a server-side endpoint in the Next.js app to initiate a Stripe Checkout for upgrading a plan:
+
+* **Route Setup:** Create a file for the API route (for example, in Next 13 with the App Router you might use `app/api/billing/create-checkout-session/route.ts`, or with Pages Router `pages/api/billing/create-checkout-session.ts`). This route will accept a request to start a checkout and respond with a Stripe Checkout Session URL.
+* **Authenticate the User:** Only allow logged-in users to call this route. Use Next.js middleware or check the Supabase auth session/JWT in the request. Determine the user's `account_id` (e.g., from the JWT claims or a lookup in your session store) and ensure they have permission to upgrade (typically the **Owner** of the account should perform billing actions). If the user is not authenticated or not authorized, return an error (HTTP 401/403).
+* **Fetch Account Data:** Using the `account_id`, query the database (via Supabase client or your ORM) for the account record. You need at least the current `plan_id` and the `stripe_customer_id`. This ensures we know the context (e.g., are they Free looking to upgrade, or already Pro, etc.).
+* **Plan Selection Validation:** Determine which plan the user intends to purchase. This could come from the request body or query parameters (e.g., `?plan=pro_monthly`). Validate the input: check that the plan exists in our `plans` table and is a higher tier than the current plan if it’s an upgrade scenario. For MVP, likely the only upgrade is Free -> Pro, but still verify the plan string to prevent unexpected values.
+* **Ensure Stripe Customer:** If the account doesn’t yet have a `stripe_customer_id` (common if they are on Free and never entered billing info), create a customer in Stripe:
+
+  * Use the Stripe SDK with our secret key to create a new Customer object. Provide customer details: you can use the account’s name (`account_name`) for the customer’s name, and the owner’s email for the customer’s email field. This will help identify the customer in the Stripe dashboard.
+  * Receive the new `customer.id` (e.g., `cus_ABC123...`) from Stripe. **Save it to the database**: update the `accounts.stripe_customer_id` for this account to the new ID. Use a service-role DB call or ensure the RLS policy allows the owner to update this field. This write is crucial so that the webhook events from Stripe can be matched back to this account. Handle any error here (if the DB update fails, consider aborting the process and returning an error – we don’t want to proceed without linking the customer, as the webhook would then be orphaned).
+* **Retrieve Stripe Price ID:** Lookup the chosen plan in the `plans` table and get its `stripe_price_id` (for the appropriate billing interval). For example, if the user chose "Pro Monthly", retrieve the monthly price ID. This ensures we charge the correct plan. (If offering monthly vs annual, you might have separate plan entries or a flag to decide which price to use. For now, assume one price per plan for simplicity.)
+* **Create Checkout Session:** Initialize the Stripe SDK client in this route (e.g., `const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)`). Use it to create a Checkout Session:
+
+  * Set the `customer` field to the account’s `stripe_customer_id` (just ensured above). This attaches the checkout to the existing Stripe customer, so the resulting subscription will map to our account.
+  * Configure `payment_method_types` if needed (Stripe defaults to card, which is fine for MVP).
+  * Set `mode: 'subscription'` because we are selling a recurring plan.
+  * For `line_items`, provide an array with one item: `{ price: <stripe_price_id>, quantity: 1 }` to subscribe to one unit of that plan.
+  * Specify the `success_url` and `cancel_url` that you configured earlier. The `success_url` should ideally contain a query or route that your app knows to show a post-checkout status (and can use Stripe’s session ID to verify payment if needed). The `cancel_url` can bring the user back to the pricing or account page without changes.
+  * (Optional) You may include `subscription_data` options. For instance, if you want to allow the subscription to be created even if payment fails (status = incomplete), you could set `payment_behavior = 'default_incomplete'` or similar. The blueprint mentioned possibly using `allow_incomplete`. This is an advanced setting – by default, Stripe will handle trial or immediate payment failure gracefully, so not mandatory for MVP.
+  * (Optional) Allow promotion codes/coupons by setting `allow_promotion_codes: true` if you intend to let users apply discounts. Not specifically in blueprint, but a common setting.
+  * Create the session by calling the Stripe API. Handle any exceptions (network issues, invalid parameters) by catching errors from the Stripe library.
+* **Return Checkout URL:** Once the Stripe session is successfully created, retrieve the session’s URL (session.url). Respond to the client with this URL (in JSON, e.g., `{url: "<session_url>"}`) or as a redirect. The blueprint suggests returning the URL and letting the front-end perform the redirect. Ensure the response is structured as your front-end expects (since this is a Next.js API route, a JSON response is typical).
+* **Do Not Change DB on Initiation:** Do not mark the user as upgraded yet. The actual plan switch will occur only after Stripe confirms payment and sends the webhook (`customer.subscription.updated`). The frontend on the success\_url page can be a waiting/confirmation page that polls for the account status or simply informs the user that the upgrade is pending. The **source of truth** for completion is the webhook, so make sure no logic in the API route assumes success until that webhook arrives.
+* **Error Handling:** Implement robust error handling:
+
+  * If the user is unauthorized or if required info is missing, return HTTP 401 or 400 with an error message.
+  * If Stripe customer creation fails (Stripe API error), log the error and return an HTTP 500 to the client with an error message (do not expose internal details). The user can try again or contact support.
+  * If the DB update of `stripe_customer_id` fails, handle that (perhaps retry once, or return an error). You want to avoid proceeding to checkout if you cannot link the customer in the database.
+  * If the Stripe Checkout Session creation fails, catch the exception and return an error response. The user should be informed that something went wrong starting the checkout.
+  * Log errors on the server (to console or an error tracking system) for debugging. **Do not include sensitive info** (like full Stripe secrets or PII) in the logs.
+* **Test the Checkout Route:**
+
+  * In a dev environment, call the API route with a test user. You can simulate this by using a tool like curl or integrating it with your frontend. Use Stripe’s test mode keys. Verify that for a Free-plan user, the route creates a new Stripe customer (check Stripe dashboard for a new customer entry) and returns a URL starting with `https://checkout.stripe.com/`.
+  * Paste the URL in a browser to ensure it leads to the Stripe Checkout page with the correct product name and price. You can complete a test purchase (use Stripe’s test card numbers) to simulate a full flow; after payment, Stripe will redirect to your `success_url`.
+  * You may not see the plan change immediately until the webhook processes – this is expected. If you want, on the success page logic, you can fetch the Stripe session status via Stripe API (using the session\_id in the URL) as a one-time check, but since the blueprint relies on the webhook, you can also simply inform the user to wait a moment for confirmation.
+  * For automated testing, consider stubbing the Stripe SDK: have it return a dummy session object with a fake URL. Then test that your route handler:
+
+    * Creates a customer when none exists (you might stub `stripe.customers.create` and ensure your code attempts to save the returned ID).
+    * Skips customer creation when `stripe_customer_id` is already present.
+    * Calls `stripe.checkout.sessions.create` with the correct parameters (verify that the price ID and customer ID passed are correct).
+    * Returns the session URL properly.
+  * Also test error paths: e.g., force the Stripe API call to throw an error and verify your route returns a 500 with a proper message.
+
+## Next.js API Route: **`create-portal-session`**
+
+Implement a route to allow users to manage billing through Stripe’s customer portal:
+
+* **Route Setup:** Create the API endpoint for the customer portal session (e.g., `/api/billing/create-portal-session`). Like the checkout route, secure this to authenticated users (and likely restrict to Owners). This route will create a Stripe Billing Portal session URL for the user’s account.
+* **Authenticate and Fetch Account:** Verify the user’s identity and get their `account_id` (similar to the checkout session route). Query the `accounts` table to get `stripe_customer_id`. If the account has no `stripe_customer_id` on file, decide how to handle:
+
+  * If the user is on a Free plan and never had a Stripe customer, you could create a customer now so they can enter the portal (though a free customer in portal has no subscriptions to manage – the portal might still allow adding a payment method for future use). Alternatively, you might block portal access until they have a subscription. For completeness, creating a customer is fine: use Stripe API to create a customer (as above) and save the ID to the account.
+* **Create Portal Session:** Use the Stripe SDK with the secret key to create a portal session for the customer:
+
+  * Call `stripe.billingPortal.sessions.create({ customer: <stripe_customer_id>, return_url: "<your-app-return-url>" })`. The `return_url` should be an application page to which the user will return after they are done in the portal (likely your billing or account page).
+  * The Stripe portal will be configured in your Stripe settings (you can set what menu options are shown there, like updating card, cancel subscription, etc.). For MVP, ensure the default configuration is acceptable (it usually allows updating payment methods and canceling subscriptions by default).
+* **Return Portal URL:** Get the URL from the created portal session (e.g., `session.url`). Respond with this URL in a JSON payload (or use Next.js’s `res.redirect` to immediately redirect the user). The typical approach is to return the URL and have the frontend do `window.location = url` on success, so we maintain control in the UI.
+* **Error Handling:**
+
+  * If no valid `stripe_customer_id` and customer creation fails, return an error to the client.
+  * If the user is not authorized, return 401/403.
+  * If Stripe’s portal creation API returns an error (very rare, possibly if the customer ID is invalid), catch it and return a 500 with an error message.
+  * Log errors server-side for debugging.
+* **Test the Portal Route:**
+
+  * For an account with a known Stripe customer (e.g., after upgrading in test, or manually set one), call the route. You should receive a URL starting with `https://billing.stripe.com/` or Stripe’s portal domain.
+  * Visit the URL in a browser: it should show the Stripe customer portal where you can see the subscription, payment methods, etc., for the test customer. Try updating something (like payment method) or even canceling the subscription via the portal to ensure Stripe sends the appropriate webhook (`customer.subscription.deleted`) and that your webhook handler processes it.
+  * If the account had no customer and you allow creating one on the fly, test that scenario as well (it will be similar to the checkout case of creating a customer).
+  * Include this route in your automated tests by stubbing Stripe’s portal creation call. Ensure that given a known `stripe_customer_id`, your code calls the Stripe API and returns the URL. If `stripe_customer_id` is missing, stub the creation of a new customer then a portal session.
+
+## Comprehensive Testing & Validation
+
+* **Stripe Webhook End-to-End Test:** In a staging environment (with Stripe test mode), simulate the full upgrade cycle:
+
+  1. Create or identify a test user account that starts on the Free plan (`plan_id = 'free'`).
+  2. Initiate an upgrade via the application UI, which should call `create-checkout-session` and redirect you to Stripe Checkout. Complete the checkout using a Stripe test card.
+  3. Stripe will redirect to your success page and fire the `customer.subscription.created/updated` webhook. Confirm that:
+
+     * The `/stripe-webhook` function logs the event in `billing_events` and updates the account’s `plan_id` to the new plan (e.g., 'pro'), sets `plan_status = 'active'`, and enables any new features in `account_features`.
+     * The account’s `stripe_customer_id` remains set, and if you stored subscription period info, it’s updated.
+     * The front-end (if listening via real-time or re-fetch) now reflects the upgraded plan: e.g., more allowed users, “Pro” label visible, previously locked features now unlocked (this indicates the feature flags and plan limits are being respected).
+  4. As part of this test, verify that the success URL behavior is correct – e.g., the user sees a confirmation while waiting. If you implemented a polling on the success page, verify it checks the account status until `plan_status` becomes active.
+* **Payment Failure Test:** Still in test mode, simulate a scenario where a payment fails:
+
+  1. Use a Stripe test card number that declines (e.g., `4000 0000 0000 0341` which triggers a failed payment in test mode). You can either change the card on a test subscription to this, or trigger an immediate failure.
+  2. When Stripe attempts to charge and fails, it will send an `invoice.payment_failed` event. Ensure the webhook sets that account’s `plan_status` to `past_due` and `maintenance_mode = true`.
+  3. Verify in the app UI or via API that the user’s account is now in read-only mode: for instance, attempts to create new content are blocked, and a banner or notice is shown (simulate this if the UI is not built yet by checking that maintenance\_mode would cause such behavior). Also check that the account owner can still initiate the billing portal despite maintenance\_mode.
+  4. Next, simulate the user updating their payment method and paying the outstanding invoice. In Stripe, you can do this by using the Stripe Dashboard or portal: mark the invoice as paid or update the card (in test mode, you might use the Stripe CLI: `stripe trigger invoice.payment_succeeded`).
+  5. Stripe will send either an `invoice.payment_succeeded` or another `customer.subscription.updated` event indicating the subscription is active again. Ensure your webhook handles it (you might not have explicit code for payment\_succeeded if not needed, but subscription.updated to active status should cover it). The webhook should set `plan_status = 'active'` and `maintenance_mode = false` on the account, restoring normal access.
+  6. Confirm that after this, the account is unsuspended in the DB and the UI (the banner should disappear and the owner can use the app normally).
+* **Cancellation Test:** Simulate a user cancelling their subscription:
+
+  1. This can be done via the Stripe portal (using the portal session link from your app) or via the Stripe Dashboard/CLI (`stripe trigger customer.subscription.deleted`).
+  2. Ensure the webhook processes the `customer.subscription.deleted` event. Check the account in the DB:
+
+     * If you have a Free plan, confirm `plan_id` is now 'free', `plan_status = 'active'` (or an equivalent status that means “on free tier”).
+     * Verify that `maintenance_mode` is false (the free tier shouldn’t be in maintenance) and that any premium-only features for that account are now disabled in `account_features`.
+     * If the user had more data than the Free plan allows (like too many projects or users), those should remain in the database but the UI should prevent adding new ones. (Ensuring enforcement of limits via triggers or checks would be another task; e.g., you might log warnings or mark some data as needing attention. The blueprint suggests possibly warning the user that some content is above free limits).
+  3. If no Free plan (in an alternate scenario), verify `plan_status` became 'cancelled' and `maintenance_mode` stayed true to lock the account.
+  4. Confirm the front-end reflects the downgrade: features removed, perhaps a message like “You have been downgraded to the Free plan” or “Subscription cancelled” is shown.
+* **Duplicate Event Test:** Using Stripe’s webhook dashboard or CLI, resend an old event (one that is already recorded in `billing_events`). Verify that your function responds with 200 quickly and does not alter any data a second time. This tests the idempotency logic thoroughly.
+* **Security Tests:** Manually send a request to the webhook endpoint with an invalid signature to ensure it returns 400. Also, try sending a well-formed Stripe event JSON with a valid signature (you can get the signing secret and craft the header) but alter the contents (if possible) – the signature check should catch any modifications. This ensures our signature verification is correct.
+* **Error Recovery:** Consider simulating a scenario where the webhook function cannot reach the database (e.g., supabase service role key is wrong or DB is down). Stripe will retry several times over hours. Once your system is back, Stripe should succeed on a retry. Ensure no data inconsistency if, say, the first attempt partially succeeded (our design avoids partial DB commits and logs only after success). This might be hard to fully automate, but keep an eye on logs for any unusual behavior in such cases.
+* **Logging and Monitoring:** Verify that important events are logged. Each processed event should either be recorded in `billing_events` (for business logic) and optionally in an application log for debugging. Ensure that no sensitive info (like full card numbers or Stripe secrets) are logged. Only log high-level info: event type, account ID, result (success/skipped/error).
+* **Deployment Checklist:** When deploying to production, double-check that:
+
+  * The Stripe webhook endpoint in production Stripe account is set to the correct URL and the secret is updated in the function config.
+  * All environment variables (Stripe keys, webhook secret, service role key, etc.) are set in the production environment.
+  * The `plans` table in production has the correct Stripe price IDs (often test and live Stripe have different IDs; ensure you input the live mode price IDs).
+  * Run one final test in production (using Stripe test mode or a trial run) if possible, or monitor closely the first real subscription event.
+* **Documentation & Support:** Document this implementation for future maintainers:
+
+  * List all env vars and their purpose (so new deployments include them).
+  * Document the plan update logic and what each `plan_status` means (for support teams or future devs). E.g., **past\_due** means payment failed and account is restricted, **cancelled** means subscription ended.
+  * Note that all plan changes are triggered by Stripe webhooks (source of truth) – so if something doesn’t update, likely a webhook was missed or failed.
+  * Provide runbooks for common scenarios: e.g., “If a user’s account is stuck in past\_due but they claim they paid, check the billing\_events log for a missed `payment_succeeded` event,” etc.
+* **Maintain Blueprint Alignment:** Finally, ensure the implementation aligns with the blueprint’s rules: no creative deviations. The multi-tenancy and security considerations (RLS, service role usage, idempotency, etc.) we followed are explicitly to satisfy the blueprint’s directives. Any changes to this flow should be vetted against the blueprint to maintain consistency. Testing scenarios above (multiple tenants, role-based access) should also include verifying that one tenant’s billing events cannot affect another’s data, which our design ensures via per-account IDs and service-role isolation.
+
+By following this comprehensive to-do list, the Stripe Billing integration will be implemented with secure webhook handling, proper updating of account status, and robust error/idempotency handling as described in the blueprint. This checklist covers configuration, development, and testing steps to achieve a reliable subscription billing system on the Ozza platform, strictly adhering to the specified business logic and security requirements.

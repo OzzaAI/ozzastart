@@ -1,0 +1,317 @@
+Understood. I’ll generate a comprehensive, step-by-step to-do list for implementing the Custom-Domain Workflow as outlined in the blueprint, covering:
+
+* Domains table UI + CNAME verification wizard
+* Middleware for domain-to-tenant routing
+* SSL provisioning via Vercel/Supabase automation
+
+This will be detailed enough for direct implementation by AI or human engineers without ambiguity or need for interpretation. I’ll notify you when it’s ready.
+
+
+# Custom-Domain Workflow Implementation To-Do List
+
+Below is a comprehensive to-do list for implementing the **Custom-Domain Workflow** on the Ozza platform (GA Version 5), organized by phase. Each task is detailed with sub-tasks, exact file path suggestions, and important considerations (feature flags, security/RLS, etc.), ensuring nothing is ambiguous. This follows the Version 5 GA blueprint guidelines and enforces multi-tenancy, security, and white-label requirements.
+
+## Database (Schema & Policies)
+
+* **Add `public.domains` Table (Migration)** – Create a new table in the **public schema** to map custom domains to tenants. Include columns:
+
+  * `domain` (text **PK**): The custom domain name (unique globally).
+  * `account_id` (UUID **FK** to `public.accounts`): Tenant that owns this domain.
+  * `site_id` (UUID, *nullable FK* to a site in tenant’s schema, if domains can point to specific sites; optional in MVP).
+  * `status` (text or enum): e.g., `"pending"`, `"verified"`, `"error"` – track verification/SSL status.
+  * Timestamps: `created_at`, `verified_at` (timestamp when domain was verified).
+  * Constraints: Enforce uniqueness on `domain` (the PK does this), and foreign key references for `account_id` (and `site_id` if used). This prevents two accounts from claiming the same domain.
+* **Feature Flag Definition** – Ensure the feature flag for custom domains exists:
+
+  * In `public.features` table, have an entry for `CUSTOM_DOMAIN` (if not already). Its default availability should reflect plan tiers (e.g., off for Free, on for Pro accounts).
+  * In `public.account_features`, make sure accounts get a `CUSTOM_DOMAIN` flag on creation according to their plan. For example, the migration/seed script should insert `CUSTOM_DOMAIN: enabled=true` for Pro-tier accounts and `enabled=false` for Free-tier by default.
+* **Row-Level Security (RLS) Policies** – Implement RLS on `public.domains` to restrict access to tenant owners:
+
+  * **Select Policy**: Allow users to see **only domains belonging to their own account**. Condition: `public.domains.account_id = auth.jwt() .account_id`. This ensures no user can read another tenant’s domains.
+  * **Insert/Delete Policy**: Allow insertions and deletions only for authorized users of the tenant. Typically, require `auth.jwt().account_id = new.account_id` (for insert) or `auth.jwt().account_id = old.account_id` (for delete) to match the current account. Further restrict by role if needed (e.g., only Owner or Admin roles can add/remove domains). This can be done via a check against the user’s role in `public.account_members` (possibly using a SECURITY DEFINER function in the policy for role lookup).
+  * **Plan Enforcement (Optional RLS)**: If feasible, add an extra RLS check or DB constraint to enforce plan limits. For example, an INSERT check that `auth.jwt().account_id` has `CUSTOM_DOMAIN` enabled (perhaps via a function that checks `account_features`). This is a defense-in-depth measure; primary enforcement will be in application logic.
+* **Normalize & Validate Domain Data** – Ensure the domain is stored in a canonical format:
+
+  * Decide whether to enforce lowercase domains in the DB (e.g., via a lower() trigger or in code before insert). This avoids case-sensitivity issues.
+  * Optionally, add a CHECK constraint or trigger to disallow obviously invalid domain names (e.g. containing spaces or disallowed characters) at the DB level, though most validation will occur in application code.
+
+## Backend (Middleware & Server Logic)
+
+* **Extend Next.js Middleware** (`/middleware.ts`): Update the edge middleware to handle custom domains:
+
+  * **Hostname Detection**: Read the incoming request’s `Host` header on every request. If the host is the platform’s primary domain or a subdomain of it (e.g. `*.ozza.com`), handle via subdomain logic (see fallback below). If the host is not the primary domain, treat it as a potential custom domain.
+  * **Custom Domain Lookup**: Query the `public.domains` table to find a matching record for the host. This can be done by invoking the Supabase client or a lightweight REST request to Supabase from within middleware (since direct DB access is not available in middleware). For example, perform a fetch to an internal API or Supabase REST endpoint to resolve the domain to an `account_id` (and `site_id` if applicable).
+  * **Inject Tenant Context**: If a matching domain entry is found, inject the tenant’s context into the request. There are a couple of approaches:
+
+    * **Rewrite URL**: Middleware could rewrite the URL to include the account (for example, prepend a path like `/tenant/<account_id>` that the Next.js app knows how to handle). However, a cleaner approach:
+    * **Set a Cookie**: Set a secure, HttpOnly cookie (e.g. `tenant_id`) with the `account_id` so that the Next.js application knows the tenant context. This cookie should be scoped to the custom domain and include the account’s identifier. The Next.js app (and Supabase client) can read this on server-side rendering to filter data.
+    * **Request Header**: Alternatively, set a custom header like `X-Tenant-ID` on the request (if Next allows propagating it). Cookies are more persistent across navigation, so likely preferable.
+  * **Subdomain Fallback**: If no custom domain match is found, check if the host matches the pattern `<tenant>.ozza.com` (the platform’s subdomain format). Parse the subdomain (e.g., “myagency” in `myagency.ozza.com`). Look up the `public.accounts.schema_name` or a dedicated subdomain field to find the account. If found, set the same context (cookie/header) as above. If not found in either custom domains or known subdomains:
+
+    * If host is the primary app domain (e.g. `ozza.com` with no subdomain), this might serve a marketing site or a default app landing – handle accordingly (e.g., continue without tenant context or redirect to a general page).
+    * If host is completely unrecognized, you can return a 404 or redirect to a default domain.
+  * **Maintenance Mode Check**: Also ensure the middleware continues to enforce global maintenance mode if implemented (unrelated to custom domains, but part of `/middleware.ts` responsibilities).
+* **Cookie & Session Handling**: When setting the tenant cookie in middleware, mark it as HttpOnly and Secure. This cookie will be used by the Next.js server (and possibly client via Supabase) to know which account’s data to load. Also consider the cookie’s expiration (maybe session-only) and path (set for the entire domain).
+
+  * **Logout/Domain Change**: If a user logs out or if the host changes (user goes to a different domain), ensure old tenant context is cleared. For example, on logout, clear the tenant cookie. This prevents any cross-tenant confusion if the same browser is used for multiple accounts.
+* **API Route: Add Custom Domain** (`POST /api/domains`): Implement a Next.js API route (e.g., file at `/apps/web/pages/api/domains.ts` or `/api/domains/index.ts`) to handle adding a new domain:
+
+  * **Auth & Feature Check**: Require an authenticated user. Extract the user’s `account_id` from the access token (Supabase JWT) and verify the `CUSTOM_DOMAIN` feature flag is enabled for that account. If the feature is not enabled (e.g., user is on a plan that doesn’t support custom domains), respond with HTTP 403 or 402 (Payment Required). Also ensure the user has proper role (likely only Account Owner or admins can add domains).
+  * **Validate Input**: Accept the domain name (e.g., JSON body `{domain: "example.com"}`) and validate it:
+
+    * Strip protocol if included (users might accidentally prepend `http://`).
+    * Ensure it’s a valid hostname format and not the platform’s own domain or subdomain (e.g., reject domains ending in `.ozza.com` to avoid conflicts).
+    * Lowercase the domain for consistency.
+  * **DB Preliminary Insert**: (Optional) Insert a new row in `public.domains` with `domain`, `account_id`, `site_id` (if provided or null), and status = `"pending"`. This reserves the domain for the account and prevents others from taking it during verification. Alternatively, you can wait to insert until after verification, but inserting now allows us to track status.
+  * **Vercel API Call**: Use the Vercel REST API to register the domain to the project:
+
+    * Call **Add Domain to Project** endpoint with the domain name and project identifier. The Vercel API will attempt to add/associate the domain with the Ozza front-end project. The response will indicate if further DNS verification is needed (usually `verified: false` with a `verification` challenge if the domain isn’t already pointing to Vercel)【12†L100-108】.
+    * Parse the response. If it’s immediately verified (unlikely unless DNS was pre-pointed), you can mark status as verified. Otherwise, capture the required verification info.
+    * Typically, Vercel will provide a DNS **challenge** in the response (e.g., a random subdomain and value for a TXT or CNAME record) if the domain is not yet validated【12†L100-108】. Save this info (you might store it in memory for the response, or consider adding columns in `public.domains` for verification token/type if needed).
+  * **Respond to Client**: Return a JSON response to the front-end wizard with instructions:
+
+    * Indicate success/failure. On success, include whether verification is needed and the details for DNS:
+
+      * Example: `{ success: true, needsVerification: true, verification: { type: "CNAME", hostname: "<random>.example.com", value: "cname.vercel-dns.com" } }` or for TXT, relevant info.
+    * The front-end will use this to show the user what DNS record to add.
+  * **Feature Flag Edge**: If somehow a user without the flag reaches this endpoint, return an error as noted (the UI should prevent it, but we double-enforce on backend).
+* **API Route: Verify Domain DNS** (`POST /api/domains/verify` or maybe `PATCH /api/domains/{domain}`): Implement an endpoint to check DNS and update domain status:
+
+  * **Auth**: Require authentication and ownership similar to above.
+  * **Input**: Identify which domain to verify (could be part of URL or in body). Use the `account_id` from auth to ensure the domain belongs to this account.
+  * **DNS Check (Stub)**: For the initial implementation, **stub out** the actual DNS lookup. Instead, pretend the verification is done once the user indicates they’ve added the record. For example, simply call the Vercel verify API immediately (which will likely still fail if DNS not set) or skip calling and assume success for now. In either case, update the `public.domains.status` to `"verified"` without a real check, to allow the flow to continue. Include a **TODO** comment in code to implement actual DNS verification later (either by performing a DNS query server-side or using Vercel’s `verify` endpoint once the records exist).
+  * **(Future) Real Verification**: Note in the to-do that later, this should call Vercel’s **Verify Domain** endpoint (or perform a DNS lookup for the expected challenge record) to conclusively verify. If the verification fails (e.g., DNS not propagated), the API should respond with an error so the UI can display “still not configured” to the user.
+  * **Post-Verification**: If verification is (stub) successful, update the domain record: set `status='verified'` and `verified_at = now()`. If using a stub, we may mark it verified immediately. If doing real, only mark verified on actual success. For now, simulate immediate success (or perhaps introduce a short delay/poll if desired).
+  * **SSL Certificate**: A few minutes after verification, Vercel will automatically provision an SSL certificate for the domain. No separate action is needed besides verification. However, it’s good to provide feedback. The verify endpoint (or a separate status-check endpoint) could fetch domain info from Vercel to see if the certificate is issued. In MVP, we might skip this live check; instead, assume SSL will be ready and let the user simply try the domain after some time.
+  * **Respond**: Return success or failure. On success, front-end will update the domain’s status in the UI to “Verified/Active”. On failure, include a message that the DNS check failed so the user can re-check their settings.
+* **API Route: Remove Custom Domain** (`DELETE /api/domains/{domain}`): Allow tenants to remove a previously added custom domain.
+
+  * **Auth & Validation**: Require Owner/Admin auth and confirm the domain belongs to the user’s account (via the URL or body and checking against `public.domains`). If not, return 404 or 403.
+  * **Vercel API Call**: Call the **Remove Domain from Project** endpoint to detach the domain from the Vercel project (this frees it so it can be used elsewhere or added by another account in the future). Use the project ID/name and domain name in the request. If Vercel responds with success or domain not found (maybe already removed), treat as success.
+  * **DB Update**: Delete the domain entry from `public.domains` (or mark it as removed if keeping historical records). The deletion will automatically be blocked by RLS if the domain isn’t the user’s, adding safety.
+  * **Respond**: Return success or error. On success, the front-end should update to remove the domain from the list.
+* **Integrations & Utilities**:
+
+  * **Supabase Service Role**: If the API routes use a service-role key to perform DB operations (bypassing RLS), be **extra careful** to enforce authorization in code. Use the JWT’s account\_id and role to check that the operation is allowed. Never trust user-supplied `account_id` – always derive from the JWT.
+  * **Vercel API Config**: In the Next.js backend, include a small helper (e.g., `/apps/web/lib/vercelClient.ts`) to call Vercel API. This should use environment variables: `VERCEL_API_TOKEN`, `VERCEL_PROJECT_ID`, and optionally `VERCEL_TEAM_ID` if needed. Handle HTTP calls to:
+
+    * Add domain to project (`POST /projects/:id/domains`),
+    * Verify domain (`POST /projects/:id/domains/:domain/verify`),
+    * Remove domain (`DELETE /projects/:id/domains/:domain`).
+      Parse responses and surface relevant info or errors (e.g., domain already exists error, verification challenges, rate limits).
+  * **Security**: Ensure that any external call errors (like Vercel API failures or timeouts) are handled gracefully and do not expose sensitive info. Also, log these events for debugging.
+  * **Prevent Abuse**: Consider rate-limiting the add/verify API endpoints per account to avoid abuse (users repeatedly adding/removing domains or hammering the verify check).
+* **Edge Cases & Hardening**:
+
+  * If a domain is already in use (DB insert fails unique constraint), return a clear error like “Domain is already connected to an account.” The UI should catch and display this.
+  * If the user tries to add a domain that is a subdomain of the platform’s own domain (e.g., `something.ozza.com`), decide on behavior: likely disallow it in the custom domain flow (those are reserved for the subdomain feature).
+  * Handle internationalized domains (IDN) if needed (probably out of MVP scope, but you could note to convert Unicode to punycode in validation if ever needed).
+  * Verify that removing a domain and then re-adding it (or adding a different domain) works as expected, including the Vercel side.
+  * Consider what happens if multiple domains point to the same account (the system should support multiple custom domains per account, unless limited by plan). Our design and DB allow it; just ensure the middleware picks up whichever domain and maps to the same account.
+
+## Frontend (UI & Client-Side)
+
+* **Expose Custom Domains in Settings UI**: In the agency owner’s settings area, create a new section for **“Custom Domains”**. This could be a new page or a tab/panel within an existing Settings page:
+
+  * **Navigation**: Add a menu item or tab for “Domains” under Settings for users with the feature. For example, route `/settings/domains` rendering a `<DomainsSettingsPage/>`.
+  * **Component Structure**: Create React components such as:
+
+    * `/apps/web/components/settings/DomainList.tsx` – to display the list of domains and actions.
+    * `/apps/web/components/settings/CustomDomainWizard.tsx` – the modal or step-by-step wizard for adding a new domain.
+    * Integrate these into the page at `/apps/web/pages/settings/domains.tsx` (if using Pages Router) or an equivalent in the App Router (e.g., `/app/(authenticated)/settings/domains/page.tsx`).
+* **Feature Flag Gating (UI)**: Only show the Custom Domains section if the current account’s `CUSTOM_DOMAIN` feature flag is true.
+
+  * On page load, fetch the current account’s features (likely already loaded in context when the user logged in). If `CUSTOM_DOMAIN` is false, you can either:
+
+    * Hide or disable the Domains option entirely (preferred for simplicity).
+    * Or show it as disabled with a lock icon and an upgrade tooltip (e.g., “Available on Pro plan”) to entice upgrade.
+  * Also consider plan status: if account is not active (e.g., past\_due or cancelled), you might disable adding new domains (similar to how other settings become read-only).
+* **Domain List UI** (`DomainList` component): Display a table or list of existing custom domains for the account:
+
+  * Columns: **Domain**, **Status**, and **Actions**.
+
+    * **Domain**: the domain name (e.g., `portal.myagency.com`).
+    * **Status**: show current status – e.g., “Pending Verification”, “Verified”, or “Error”. Use visual indicators (icons or badges: a clock for pending, a checkmark for verified, warning for error).
+
+      * If status is pending or error, consider a tooltip or info icon that explains what’s wrong (e.g., “DNS not configured yet”).
+      * If verified, maybe show “SSL Active” if we know the cert is issued, or just “Active”.
+    * **Actions**: Provide a **Remove** button (trash can icon). Possibly also a **Retry** or **Verify now** button if pending (so user can manually trigger the verify check).
+  * The list should be fetched from the database. You can use the Supabase JS client on the front-end to query `public.domains` where `account_id = user’s account_id`. Thanks to RLS, this will return only that account’s domains. Alternatively, have an authenticated API call that returns the domains (the same API route for listing, or reuse the context that was set).
+  * Ensure the list updates in real-time after adding or removing a domain. (Use SWR or a similar data hook to revalidate the list on changes, or update state optimistically.)
+* **Add Domain Workflow (Wizard)**: Implement a guided multi-step wizard for adding a new domain:
+
+  1. **Step 1 – Enter Domain**: Form where user types the domain name they want to connect.
+
+     * Use an `<input>` for the domain and client-side validate basic format (you can regex for a simple domain pattern).
+     * When user submits, call the `POST /api/domains` endpoint via fetch/Axios. Show a loading state on submission.
+     * Handle errors from the API: e.g., domain already in use, invalid domain, or feature not allowed (the API might return 402/403 if plan disallowed – if the UI gating worked, this shouldn’t happen, but handle it just in case with an error message).
+     * On success, proceed to Step 2.
+  2. **Step 2 – DNS Configuration Instructions**: The API response will likely indicate that DNS setup is required (in MVP stub, we’ll assume it is). Show the user clear instructions on how to add a CNAME (or A/TXT) record:
+
+     * For example: “Add the following DNS record at your domain’s DNS provider:” and then show a formatted instruction:
+
+       * **Type**: CNAME
+       * **Hostname (Name)**: `portal` (or whatever subdomain part they entered; if they entered a root/apex domain, instructions might differ since CNAME at apex isn’t allowed – could instruct an A record to Vercel’s IPs or using ALIAS if their DNS supports it).
+       * **Value (Target)**: something like `cname.vercel-dns.com` or a specific alias provided by Vercel. (In a stub scenario, we might have a static target like `ozza.app` or similar if we pre-decide one).
+     * Also include general tips: “It may take several minutes for DNS changes to propagate. You can proceed to verify once the record is added. [Learn more](#) about adding DNS records.”
+     * Provide a “Continue” or “Verify Now” button once they’ve added the record.
+  3. **Step 3 – Verification**: When the user clicks “Verify”:
+
+     * Call the `POST /api/domains/verify` endpoint. Since our initial implementation doesn’t truly check DNS, this will likely return success immediately (stubbed) and mark the domain verified.
+     * Show a loading spinner or state “Verifying your domain…” while waiting for the response.
+     * On success, update the UI: mark the domain as verified in the list (and possibly show “SSL certificate is being issued, this can take a minute...” message).
+     * On failure (if we simulated one or if the stub decides to return failure to mimic a real scenario), show an error message: “We couldn’t verify the domain yet. Please ensure your DNS record is correct and try again.” Offer a retry.
+  4. **Step 4 – Completion**: Once verified, the wizard can display a success message: “Domain verified and connected! Your custom domain is now active. It may take a few minutes for the HTTPS certificate to be fully enabled. You can now access your site at https\://<your domain>.” Then close the wizard.
+
+  * **Wizard UX**: Make this a modal or in-page card that guides the user. Clearly show which step they are on (maybe a progress indicator or step titles). Provide a cancel option to abort adding a domain at any time.
+  * If the user cancels mid-way (or if verification fails and they close the wizard), ensure partial data is handled. We likely already inserted the domain in the DB on Step 1. That’s fine – it will remain in “pending” state. The user can re-open the wizard to retry verification later. Alternatively, we might choose to only insert in DB after verification succeeds; but that complicates showing it in the list. MVP approach: insert early, show pending in list.
+* **Remove Domain (UI)**: For each domain in the list, implement the remove action:
+
+  * When clicking remove, prompt the user with a confirmation: e.g., “Are you sure you want to remove this custom domain? Your site will no longer be accessible at this address.” The user confirms.
+  * Call the `DELETE /api/domains/{domain}` endpoint. On success, update the local state to remove that domain from the list. If the API returns an error, show it (e.g., “Failed to remove, please try again”).
+  * This removal should also trigger the Vercel removal via the backend; from the UI perspective just update on success.
+* **Reflecting Domain Status**: The UI should reflect the real-time status as much as possible:
+
+  * After initial addition, show “Pending Verification” with maybe a link or button to “Verify DNS” (which re-opens the wizard to the verify step or directly triggers verify).
+  * Once verified, show “Verified” or “Active”. Possibly also indicate if SSL is not yet ready. We could call a backend status check to see if the certificate is issued. If not doing that in MVP, at least mention in the UI that it might take a few minutes for HTTPS to work.
+  * If we had an “error” state (e.g., Vercel couldn’t issue cert due to DNS misconfiguration like a CAA record issue), we’d show “Error” and perhaps details or a link to troubleshooting. (These details might come from Vercel API or be out of MVP scope.)
+* **Branding & Tenant Context on Client**:
+
+  * Ensure that when the app is loaded on a custom domain, it still knows which tenant it is. The middleware’s cookie or rewrite provides the server-side context, but the client-side Supabase initialization might need that as well.
+
+    * For example, if using Supabase JS for data fetching, it uses the JWT which contains `account_id`. That JWT is obtained after login. But what about public pages or the login page? We may need a way for the client to know the tenant before login.
+    * One approach: have the Next.js page receive the tenant info via server-side props or context (set by middleware). E.g., a global `<TenantContext.Provider>` wrapping the app, populated on each request with the tenant’s ID (and maybe branding info) from the cookie.
+  * **Login Page Branding**: Verify that the login page, when accessed via a custom domain, shows the correct branding (logo, colors, etc. for that tenant). Since at that point user isn’t authenticated, the app should fetch the tenant’s branding by domain. This could be done by looking up `public.accounts` or `public.account_settings` using the domain (which we can allow in a safe way, perhaps via a public endpoint or expanding the middleware to provide branding info).
+  * We might add an unauthenticated endpoint or use the domain lookup to also fetch the account’s name/logo for display on the login screen. (Mark this as a sub-task if not already handled by existing logic.)
+* **Permissions & Visibility**:
+
+  * Double-check that only appropriate roles see the Domains UI. If a user is a Coach or Member (with no admin rights in the agency), they probably should not see or manage domains. Use the user’s role from context to conditionally render the section.
+  * If a non-owner somehow navigates to the domains page (deep link), the page should either not allow actions or redirect away. The backend APIs will anyway forbid them, but the UX should reflect their lack of permission (e.g., “You must be an admin to access this”).
+* **UX and Copy**:
+
+  * Use clear language for DNS instructions. Assume the user might not be very technical, so include hints (e.g., “This CNAME is usually added in your domain provider’s DNS settings. It may be called ‘Alias’ or ‘CNAME record’. Use your provider’s help docs if unsure.”).
+  * Provide help for common pitfalls: for instance, if the user is trying to use a root domain (apex domain) like `myagency.com` rather than a subdomain:
+
+    * Vercel typically requires an A record and a TXT for root domain verification. We might encourage using a subdomain (like `portal.myagency.com`) for simplicity. If they insist on apex, we should at least mention additional steps (this could be out-of-scope for MVP).
+  * Ensure error messages from backend are presented nicely. For example, if the API returns 409 conflict (domain taken), translate that to “That domain is already in use by another account. If you believe this is an error, contact support.”
+  * Confirm the flow with product/design: The sequence of steps and wording should match the expected user experience for GA.
+* **Testing Hooks in UI**: Implement any needed hooks or test-IDs to facilitate testing (for example, data-testid attributes on input fields, etc., if using an automated testing tool).
+* **Accessibility**: Make sure the wizard and settings page are accessible (labels on inputs, ability to navigate wizard via keyboard, etc.). This is part of general best practice, but listing to ensure the modal isn’t a blocker for users who rely on screen readers.
+* **Future Consideration (not MVP)**: Plan how the UI would handle multiple sites with different domains if that becomes a feature (e.g., an agency could map one custom domain to their main portal and another custom domain to a specific client site). The current design assumes one list of domains possibly all pointing to the same portal. For now, maybe hide `site_id` complexity, but keep the code flexible to adapt (like the DB is already capable of storing site\_id).
+
+## Deployment (Config & Release Steps)
+
+* **Apply Database Migrations**: Run the new migration SQL to create `public.domains` and update RLS policies in the Supabase database. This must be done **before** deploying the updated app code (to avoid runtime errors). Use the Supabase CLI or migration scripts as per project practice. After applying, verify the table and policies exist in dev/staging.
+* **Update Supabase Security**: After deploying the RLS for `public.domains`, test that the policies are in effect. You might need to adjust Postgres roles or ensure the JWT contains the necessary claims (`account_id` and maybe role) to satisfy the policies. Supabase JWT should already have `account_id` claim from our auth trigger (as per existing setup).
+* **Environment Variables**: Configure necessary environment variables on Vercel and any relevant platform:
+
+  * `VERCEL_API_TOKEN` – A token with permission to manage domains for the project. Store this in Vercel project settings (as it’s needed for our Next.js API calls).
+  * `VERCEL_PROJECT_ID` or `VERCEL_PROJECT_NAME` – Identify the Vercel project to which domains should be added. If using a team, also set:
+  * `VERCEL_TEAM_ID` (if applicable) – to ensure API calls are scoped to the correct team.
+  * (Optionally) `OZZA_MAIN_DOMAIN` – the primary domain (e.g., `"ozza.com"`) to recognize and handle subdomain logic. Also possibly `OZZA_APP_URL` (the base URL of the app) if used in constructing redirect URLs or instructions.
+  * Ensure these are kept secure. **Do not** expose the Vercel token to client side.
+* **Vercel Project Setup**: Adjust Vercel configuration if needed:
+
+  * In the Vercel dashboard, confirm that the project allows adding custom domains. (By default it should, but ensure no setting is blocking external domains.)
+  * If using wildcard subdomains for the platform domain (e.g., to support `*.ozza.com` for the free tier subdomains), add a wildcard domain in Vercel. For instance, add `*.ozza.com` in the Domains section of the project (this will generate a wildcard SSL certificate via DNS-01 since presumably Ozza’s domain DNS can be configured). Verify that `*.ozza.com` DNS is configured (likely a CNAME or A records to Vercel) so that any `<tenant>.ozza.com` will route correctly.
+  * If the platform’s primary domain (ozza.com) is not intended for the app (maybe it’s marketing site), ensure the app is deployed under a subdomain (like app.ozza.com) and adjust middleware logic accordingly. (This is more architectural – just verify the domain strategy is consistent.)
+* **Initial Feature Flagging**: Before enabling to all customers, control the rollout:
+
+  * Use the `account_features` table to enable `CUSTOM_DOMAIN` for a few test accounts or only Pro/Enterprise plans as intended. If plans are in `plans` table, ensure those plans include this feature and that new signups on those plans get the flag.
+  * Double-check that in the seed or initial data, Free plan accounts do **not** inadvertently have the flag. The blueprint suggests seeding this properly.
+  * If using a feature flag system in code (like checking `if(featureEnabled('CUSTOM_DOMAIN'))`), ensure that is hooked up to the `account_features` data (likely via a context or an API call on login).
+  * You might keep the feature behind a **feature flag** at the code level too (e.g., a constant or environment `ENABLE_CUSTOM_DOMAIN`) in case you need to quickly disable the UI globally. But since we have DB-driven flags per account, that might suffice.
+* **Deployment Order**:
+
+  1. Deploy database changes (domains table, RLS) to production database via migration.
+  2. Deploy the Next.js application changes (middleware, API routes, UI). Vercel deployment will pick up the new code.
+  3. Immediately after deploying, test in production (with a controlled account) if possible: Since this involves DNS, you might use a staging environment or a dummy domain first.
+  4. Monitor the logs for any middleware errors. The new middleware runs on every request; ensure it’s not throwing because, for example, the domain lookup can’t happen. (One way to monitor is using Vercel’s function logs or adding a temporary logging to the middleware that outputs the host and result for a request.)
+* **Testing in Production (low-risk)**: Do a live test with an internal account:
+
+  * Take an unused domain you own (e.g., `test.mycompany.com`), and try adding it via the UI on a prod account (enabled for custom domains). Follow the instructions, update DNS, verify the flow. This will confirm that everything works with real DNS and Vercel issuing the cert. Coordinate timing because DNS propagation could take a bit.
+  * If successful, you should be able to log into that account via the new domain and see the app with SSL.
+  * Remove the test domain afterward if not needed.
+* **Monitor SSL Issuance**: Vercel auto-generates certificates via Let’s Encrypt for each domain. Usually this is seamless, but if any domain has DNS issues or CAA records blocking Let’s Encrypt, the certificate might fail. Keep an eye on the Vercel dashboard or logs for any such failures. (This might not be automated yet, so part of deployment vigilance.)
+* **Documentation & Support**: As part of releasing the feature, prepare any internal or external documentation:
+
+  * Update the settings guide or tooltips in the app explaining how Custom Domains work.
+  * Ensure support team knows that initially DNS verification is manual (stubbed) and that they might need to help customers with DNS setup.
+  * Plan a follow-up to replace the stub verification with a live check (noting this in your tracker so it isn’t forgotten before GA launch).
+* **Cleanup Feature Flags**: If this feature was behind a global flag or an environment toggle for testing, and now it’s GA for certain plans, make sure it’s enabled accordingly and remove any dead code paths for the disabled state (except what’s needed for Free plan gating). The blueprint emphasizes cleaning up feature flags as they roll out.
+
+## Testing (Verification & QA)
+
+* **Unit Tests**:
+
+  * Write unit tests for utility functions: e.g., a function that normalizes domain names (input variations to expected output), and one that validates domain format. Test edge cases like international domains, trailing dots, uppercase letters, etc.
+  * If using a custom middleware function for parsing host, unit test it by simulating various `Host` header values and ensuring the function returns the correct `account_id` or action. Cases: an exact custom domain match, a subdomain of primary domain, primary domain itself, unknown domain.
+  * Test the feature flag logic: a function or component that checks `CUSTOM_DOMAIN` flag. Simulate accounts with flag on/off and ensure the UI element (or API guard) behaves correctly.
+* **Integration Tests** (in a staging or local environment):
+
+  * **Domain Routing**: Set up two test accounts (e.g., Account A and Account B). Give Account A a custom domain (or use hosts file to simulate) and ensure Account B does not have that domain.
+
+    * Access the app via Account A’s custom domain. Verify you reach Account A’s login page or content, not Account B.
+    * Then access via Account B’s domain (or subdomain). Ensure no leakage – each domain shows only its own data/branding. This confirms isolation.
+  * **Add Domain Flow**: In staging, run through the entire wizard:
+
+    * Use a real subdomain if possible. For example, buy or use an existing domain like `ozza-test.com` and delegate a subdomain for testing. Add that in the UI, follow instructions, set the DNS record to point to the staging app (or Vercel’s provided alias).
+    * Since our verify step might be stubbed, you can simulate DNS propagation by actually adding the CNAME, then calling verify. Even if stubbed, ensure the flow doesn’t hang. If you decide to test with the actual Vercel verify call, you can do that here to see it working (this might require adjusting code temporarily).
+    * Verify that after “verification”, the domain appears as verified in the UI and you can navigate the app at that domain.
+  * **Remove Domain**: After verifying, try removing the domain via the UI. Ensure it disappears from the list and that you can no longer access the app on that domain (Vercel should stop serving it shortly after removal).
+  * **Plan Restriction**: Change the test account’s plan to one that doesn’t allow custom domains (or flip the feature flag off for that account). Confirm that:
+
+    * The Domains section no longer appears in the UI for that account.
+    * If you attempt to directly POST to the API (e.g., via an HTTP client) with that account’s token, you get a 402/403 response.
+  * **Multiple Domains (if supported)**: Add two different domains to the same account (if the plan allows multiple). Ensure both show up and route correctly. (If plan is supposed to limit to one domain, test that the UI or API enforces that limit by rejecting a second domain addition – this could be via a simple check based on plan settings.)
+* **RLS & Security Testing**:
+
+  * Use Supabase’s API or psql to attempt cross-tenant data access:
+
+    * As a logged-in user of Account A, try to read Account B’s domain row (e.g., call Supabase REST `/domains?domain=accountB.com`). It should return nothing or 403 due to RLS.
+    * Try inserting a domain via Supabase client with a different account\_id than your JWT’s – RLS should prevent it. These tests ensure our RLS is correctly set.
+  * Ensure that the middleware does not allow a user to spoof a different account:
+
+    * For instance, if someone maliciously sets a cookie `tenant_id` for another account on their domain, does our server trust it? It shouldn’t – the middleware should always overwrite `tenant_id` cookie on each request with the value derived from Host, so there’s no way to hijack context. (We can manually test by editing cookies in the browser dev tools to see if it has any effect – it should not, because the middleware runs first.)
+  * Test login/logout flows on custom domains:
+
+    * Sign up or log in to an account via the custom domain. Ensure the Supabase auth callbacks (if any) and redirect URLs work. Supabase auth may need the site URL configured; if login or magic link redirects might fail on an unrecognized domain, adjust Supabase settings to allow it. For example, check the Supabase Auth “Redirect URLs” configuration to include your custom domain patterns.
+    * After logging in on the custom domain, ensure the JWT is properly stored (likely in localStorage, domain-specific) and subsequent API calls have the right auth context. Also test logging out clears the session and perhaps redirects appropriately (maybe to the login page of that domain).
+* **End-to-End (E2E) Testing**:
+
+  * Using a tool like Cypress or Playwright, script a full scenario:
+
+    1. Programmatically create a new account on a Pro plan (via API or DB seed).
+    2. Log in as that account’s owner.
+    3. Navigate to Settings -> Custom Domains (assert that it’s visible).
+    4. Go through the “Add Domain” wizard:
+
+       * Fill in a domain (maybe use a dummy like `test.example.com`).
+       * Intercept the API call and stub a response if you don’t actually have DNS control in this test.
+       * Verify the UI shows the instructions. Then simulate clicking verify, stub the verify API call to succeed.
+       * Confirm the success state in UI.
+    5. Verify that the domain now appears in the list with status “Verified”.
+    6. Simulate visiting the app at that domain (this is tricky in an automated test without a real domain; you might skip actual navigation, but at least check that the front-end state is aware of the domain).
+    7. Remove the domain using the UI, confirm it’s gone.
+  * This ensures the UI flow works from a user perspective.
+* **Performance Considerations**:
+
+  * The middleware’s lookup adds a bit of overhead. With few domains it’s negligible, but test with, say, 1000 domains in the table (you can script-insert dummy domains) and see if the lookup via Supabase REST is still quick. If it’s too slow, consider caching the domains in memory or using Vercel Edge Config for domain->account mapping. For GA, this likely won’t be an issue unless hundreds of custom domains are active, but keep an eye on it.
+  * Also test page load time on a custom domain versus the default domain. Should be nearly identical. If the first request after adding a domain is slow (maybe due to cold SSL start or DNS resolution), note it but it’s mostly external factors (DNS/SSL handshake).
+* **Monitoring & Logging**:
+
+  * Add logging for critical points:
+
+    * When a domain is added or removed (log the account and domain, maybe to an audit table or at least server logs).
+    * Middleware misses: if a Host header doesn’t match any account, log that host – it might indicate someone misconfigured their DNS or is using an old domain.
+    * Verification failures: if our verify logic (in the future) fails due to DNS, log details (expected vs actual DNS record) to help support troubleshoot.
+    * These logs will help in the immediate post-deployment period to catch configuration issues.
+  * Use monitoring tools to ensure the new endpoints (add/verify/remove) are not erroring.
+  * Also test that normal app functions are unaffected when accessed via custom domain: navigate through some pages, ensure API calls still work with the domain context (the JWT’s `account_id` should protect data scope). If any API route or Edge Function wasn’t expecting multiple domains, ensure CORS or cookies aren’t broken. (For example, if an Edge Function uses a cookie, it might be tied to the primary domain only – but our use of JWT in auth header should avoid that.)
+* **Final Verification**:
+
+  * Once everything is deemed working in staging and tests, enable the feature for a beta client or two. Have them add a domain and report success. This real-world usage is the best test. Ensure they can’t break anything.
+  * Confirm that switching between tenants by using their respective custom domains in one browser session properly changes context and isolates data (perhaps as a developer, manually set up two accounts each with a domain, log into both in separate sessions, etc., and ensure no cross-talk).
+  * The GA blueprint emphasizes testing with different tenant domains to ensure completely isolated experience – make sure to include this in your test plan.
+
+By following this checklist, the Custom-Domain workflow will be implemented with clear UI guidance, robust backend support for domain routing and SSL, and strict security isolation in line with Ozza’s multi-tenancy principles. Each step above ties back to the blueprint’s directives on white-labeling, modular design, and security, ensuring a smooth rollout of custom domains to the platform.

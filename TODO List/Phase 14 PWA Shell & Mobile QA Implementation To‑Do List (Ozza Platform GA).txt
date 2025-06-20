@@ -1,0 +1,87 @@
+Got it. I’ll build a complete to-do list for implementing the mobile-friendly PWA shell and responsive card-list editor under 640 px, ensuring it strictly aligns with the blueprint (v5 GA Edition), so that no creative or ambiguous decisions are left to AI or devs. I’ll break it down into precise, ordered steps covering design, implementation, and verification.
+
+I’ll let you know as soon as the detailed list is ready.
+
+
+# PWA Shell & Mobile QA Implementation To‑Do List (Ozza Platform GA)
+
+Below is a comprehensive, step-by-step to-do list to implement the two targeted GA enhancements: **(1) Responsive Card-List Editor layout for mobile** and **(2) Full PWA compliance (Lighthouse PWA audit green)**. Tasks are grouped by area (Frontend, Backend, QA) for clarity. Each step is explicit and deterministic, following Blueprint v5 guidelines with no added scope beyond what’s specified.
+
+## Frontend Implementation
+
+**Responsive Card-List Editor Layout (Mobile <640px):**
+
+* [ ] **Identify Affected Components/Pages:** Pinpoint the card-list editor UI in the Next.js app (e.g. the page or component that renders the list of content “cards” for editing). This could be a page in the `/pages` directory (if using the Pages Router) or a React component in `/components` (Blueprint v5 allows either Pages or App Router structure).
+* [ ] **Apply Mobile-First CSS Layout:** Refactor the card-list editor’s JSX/CSS for mobile-first design. Use Tailwind CSS responsive classes to optimize layout below 640px width:
+
+  * Ensure cards stack vertically in a single column on small screens (e.g. default to `flex flex-col` or `grid grid-cols-1` for mobile). For larger screens (min-width ≥640px), add classes like `sm:grid-cols-2` or `sm:flex-row` as appropriate so multiple cards display side by side on desktop.
+  * Make each card full-width on mobile: use utility classes (e.g. `w-full`, `max-w-full`) so cards shrink to fit small screens without horizontal scrolling. Remove or override any fixed widths/heights that break smaller layouts.
+  * Adjust spacing and font sizes for mobile: use Tailwind responsive modifiers (e.g. `p-4 sm:p-6` for padding) to provide adequate touch spacing on small screens. Ensure text is readable on mobile (use classes like `text-base sm:text-lg` if needed).
+* [ ] **Responsive Menu/Controls:** If the editor has sidebars or multi-column controls, adapt these for mobile: for example, collapse a sidebar into an accordion or top menu. Use `hidden sm:block` on desktop-only elements and a mobile-friendly toggle (e.g. a hamburger menu) with `block sm:hidden` for mobile if needed. Ensure all buttons or inputs are accessible and not cut off on smaller widths.
+* [ ] **Tailwind Config Check:** Confirm Tailwind’s default breakpoints (sm = 640px) align with this plan. No custom breakpoint needed since 640px is exactly the “sm” breakpoint by default. Mobile-first means styles without a prefix target mobile, and `sm:` prefixes apply to ≥640px. This matches the requirement to optimize under 640px.
+* [ ] **No Supabase Query Changes (unless needed):** The data loading for the card-list editor remains the same. We do **not** modify Supabase queries purely for responsiveness, since the backend should be agnostic to viewport. (Blueprint v5 does not specify any special mobile data handling, so we assume the existing queries are efficient enough.) Only if performance on mobile networks is an issue, consider limiting query payload (e.g. lazy-load images or use pagination), but this is outside the scope of the defined quick win.
+
+**PWA Manifest & Shell (Lighthouse Compliance):**
+
+* [ ] **Add Web App Manifest:** Create a `public/manifest.json` in the Next.js app with required PWA fields:
+
+  * `name` and `short_name` for the app (e.g. **“Ozza Platform”** or a white-label neutral name).
+  * `start_url`: “/” (or the appropriate root path) with `display` set to `standalone`, and `orientation` as needed.
+  * `background_color` and `theme_color` matching the app’s theme (to control splash screen and address bar color).
+  * An array of `icons` in recommended sizes (e.g. 192x192, 512x512 PNG). Reference the icon files in `/public`.
+  * Ensure the manifest does **not** hard-code any tenant-specific branding unless we implement dynamic manifest generation. For GA, a generic app name is acceptable, given that full white-label PWA per tenant is not explicitly detailed in Blueprint v5. (We will document this as a potential enhancement, to align with the “fully white-label” directive.)
+* [ ] **Include Manifest in HTML:** Link the manifest in the app’s `<head>` so Lighthouse can detect it. For Pages Router, add a `<link rel="manifest" href="/manifest.json" />` tag in the `_document.js` or `_app.js` head section. For App Router, include it in the `head` export of the root layout (`layout.tsx`). Also include `<meta name="theme-color" content="#XXXXXX"/>` with the same value used in manifest.
+* [ ] **Provide App Icons:** Add PNG icon files in `/public` (e.g. `/public/icon-192.png`, `/public/icon-512.png`). Ensure these paths match the manifest entries. Use a neutral or Ozza-branded icon (e.g. the default platform logo) for now. (If a tenant uploads a custom logo, we are **not** yet swapping the manifest icons per tenant – that requires additional dynamic handling beyond this quick win.)
+* [ ] **Implement Service Worker for Offline:** Set up a service worker to cache key assets and enable offline access (required for Lighthouse PWA compliance). We will use Next.js-friendly approaches:
+
+  * Install and configure **`next-pwa`** (a well-known Next.js PWA plugin) or alternatively use Workbox. Configure it in `next.config.js` to generate `sw.js` at build time. Include runtime caching for static assets and the main offline page.
+  * If using `next-pwa`: set `dest: "public"` so the service worker script is output to `/public/sw.js`. Enable precaching of the start URL ("/") and important routes/resources.
+  * Register the service worker on the client. For Pages Router, add a `<script>` in `_app.js` or a custom hook to register `/sw.js` after the page loads. For App Router, use a `useEffect` in a root layout or a dedicated component to register the SW.
+  * Ensure the service worker is restricted to the app’s scope (e.g. if the app is at root `/`, that’s fine).
+* [ ] **Offline Fallback Page:** Create a simple offline fallback page (e.g. `/offline.html` in public) that the service worker can serve when the user is offline and requests pages not in cache. The page can be a basic HTML with a message like “You are offline. Please reconnect.” Link this in the service worker configuration (e.g. Workbox `navigationFallback` to `/offline.html`). This ensures Lighthouse sees a valid offline experience for navigations.
+* [ ] **HTTPS Enforcement:** Verify the app is always served over HTTPS in production. (PWA requires a secure context.) Ozza is deployed on Vercel or similar which provides HTTPS, and custom domains are configured with SSL. No additional code changes needed, but we confirm that any new asset (manifest, SW, icons) is served via HTTPS in all environments. (For local development, `localhost` is allowed for service worker testing.)
+* [ ] **Mobile Responsiveness Check:** Confirm that beyond the card-list editor, the overall app has responsive meta tags and layout. Ensure `<meta name="viewport" content="width=device-width, initial-scale=1">` is present (usually by default in Next.js). This, combined with our new responsive design improvements, satisfies the Lighthouse requirement for a responsive design.
+
+## Backend / Server Implementation
+
+* [ ] **No Backend Schema Changes:** The mobile layout and PWA features do not require any database or schema changes. (These enhancements are purely front-end and config.) We verify that no Supabase migration is needed for this scope, per Blueprint v5’s additive-only rule (no changes since none specified).
+* [ ] **Edge Functions Not Required:** No Supabase Edge Function changes are necessary for PWA or responsive UI. (Edge Functions handle auth, Stripe webhooks, etc., unrelated to front-end display.) Offline capability will be handled by the service worker caching, not by server-side logic.
+* [ ] **Ensure Multi-Tenancy Integrity:** Double-check that introducing a manifest and service worker doesn’t violate multi-tenant isolation. The service worker should operate within each tenant’s domain scope. Each custom domain or subdomain will serve the same `manifest.json` and `sw.js`, which is fine for this generic implementation. (In the future, if we personalize manifest per tenant, we’ll route those by domain, but not now.) All domain routing middleware remains unchanged.
+
+## QA & Testing
+
+**Mobile Layout Testing:**
+
+* [ ] **Dev Tools & Device Testing:** Use Chrome/Firefox responsive design mode to simulate widths < 640px (e.g. 375px iPhone width). Navigate to the card-list editor page and verify:
+
+  * Cards stack in one column, no horizontal scroll.
+  * Text, buttons, and inputs are legible and tappable (no tiny or cut-off elements).
+  * Any toggle or menu for mobile (if implemented) works correctly (e.g. open/close).
+  * No UI overlaps or Tailwind classes misbehaving. Adjust CSS if any issue is found.
+* [ ] **Real Device Check:** If possible, open the app on an actual smartphone or emulator. Ensure the editor layout is user-friendly on small screens (scrolling is smooth, touch interactions like drag-and-drop or swiping on cards – if applicable – function with touch events).
+* [ ] **Cross-Browser Verification:** Test the responsive layout in at least two mobile browsers (e.g. Mobile Chrome, Safari on iOS) to catch any quirks. The layout should remain consistent.
+
+**PWA Functionality Testing:**
+
+* [ ] **Lighthouse Audit – PWA:** Run a Lighthouse audit (in Chrome DevTools) on the production build or preview. Check the **PWA** category. All items should be green:
+
+  * **Web App manifest**: Lighthouse should detect the manifest and no missing fields.
+  * **Service worker**: It should report a registered service worker controlling the page.
+  * **Offline**: Test by going offline (in DevTools or using Lighthouse’s offline audit) – the app’s start URL and navigations should still respond (either with cached content or the offline fallback). Lighthouse should indicate the start URL is cached.
+  * **Icons and Installability**: Ensure no errors about missing icons or `<meta theme-color>`. The app should be “installable” (Chrome’s PWA install prompt available).
+* [ ] **Manual Offline Test:** In a browser, load the app, then turn off network and try navigating to a few pages:
+
+  * If those pages were cached by the service worker, they should load from cache.
+  * If not cached, the offline fallback page should appear.
+  * Verify the app doesn’t throw uncaught errors when offline.
+* [ ] **PWA Install Test:** Use Chrome or Edge to “Add to Homescreen” or install the PWA. Once installed, launch it:
+
+  * Confirm it launches in standalone mode (no browser URL bar).
+  * Check that the app’s name and icon are correct (match the manifest). (They will reflect the generic manifest we provided. We note that this is acceptable for now, but ensure it’s not confusing or in conflict with any tenant branding.)
+  * Ensure basic navigation works inside the PWA window.
+* [ ] **Regression Testing:** Verify that existing functionality is unaffected:
+
+  * Normal web usage on desktop and mobile still works (service worker should not interfere with API calls or auth flows).
+  * Multi-tenant domain switching still works with the service worker. For example, log into two different tenant domains and confirm both can install/use the PWA separately without data leakage (the service worker should treat them as separate scope by domain).
+  * The card-list editor still works on desktop as before (no layout regressions at >640px).
+* [ ] **Document and Close:** Record these changes in the worklog/changelog as required by the blueprint, noting that the mobile editor layout and PWA support have been implemented. Mark the tasks as completed once the Lighthouse PWA audit is fully green and mobile UI passes all tests. Ensure all code changes are committed via the normal CI process (feature branch → PR with review) according to the blueprint’s CI/CD guidelines. After deployment, run one more live check on production to guarantee everything is functioning as expected.

@@ -1,0 +1,3 @@
+[functions.stripe-webhook]
+  runtime = "deno"
+  handler = "index.ts" 

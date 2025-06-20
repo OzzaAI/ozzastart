@@ -1,0 +1,128 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+{
+    "thinking_patterns": [
+        {
+            "description": "Balancing branding customization with platform consistency",
+            "when_to_apply": "When a design choice needs to reflect a tenant's unique branding or preference without deviating from core UI patterns",
+            "pattern_of_thought": "Consider which aspects of the UI can be safely themed (colors, logos, typography) without breaking the shared user experience. Ensure brand-specific changes remain within defined theme settings and do not alter core layouts or interactions. If a requested customization conflicts with usability or core design principles, prioritize consistency across tenants for maintainability. Enable white-label flexibility through data-driven theming while preserving the platform's overall coherence."
+        },
+        {
+            "description": "Prioritizing clarity over aesthetic elegance",
+            "when_to_apply": "Whenever a design element could be made more visually striking or novel at the cost of user comprehension or simplicity",
+            "pattern_of_thought": "Weigh the benefits of a visually elegant solution against its potential to confuse or slow down users. Favor clear, straightforward designs: obvious controls, descriptive labels, and intuitive layouts, even if they appear simpler or less \"flashy.\" Ask, \"Will every user understand this easily?\" If a decorative element or animation doesn't enhance usability or clarity, simplify or remove it. Strive for an interface where visual appeal never undermines the user's understanding."
+        },
+        {
+            "description": "Permission-based UI visibility (RBAC constraints)",
+            "when_to_apply": "Deciding whether to show, hide, or disable UI elements based on the user's role and permissions",
+            "pattern_of_thought": "Determine the minimum role or permission needed for each feature or content area. If the current user lacks the required access, default to hiding those controls or sections to avoid confusion and maintain security. Only show a restricted feature (grayed out or with an explanation) if it's useful to hint at its existence (e.g., to encourage upgrade or request access), and never reveal sensitive details. Ensure that what is visible in the UI strictly aligns with what the user is allowed to do. Always pair these visibility rules with back-end enforcement, reflecting a defense-in-depth mindset."
+        },
+        {
+            "description": "Feature flags and plan-based gating",
+            "when_to_apply": "Implementing or reviewing UI for features that are limited to certain plans or toggled off for experimentation",
+            "pattern_of_thought": "Check the user's account plan and any feature flags before exposing a feature in the UI. By default, hide or disable features that the tenant's plan doesn't include. If appropriate, replace a hidden feature with an upgrade prompt or tooltip so users know what they're missing (without overwhelming them with non-functional UI). Use a consistent gating mechanism (centralized checks or context) to avoid mismatches. For each feature, think, \"What does a user without this flag or on a lower tier see?\" and design accordingly. The goal is a scalable UI that adapts to each tenant's entitlements seamlessly."
+        },
+        {
+            "description": "Responsive layout and adaptive design",
+            "when_to_apply": "Arranging UI elements or components that need to work across different screen sizes, devices, or content lengths",
+            "pattern_of_thought": "Adopt a mobile-first perspective and ensure layouts can stretch or contract gracefully. Consider scenarios like very small screens, very large monitors, or extreme content (long names, numerous items) when designing. Use fluid grids, flex layouts, and appropriate breakpoints so content reflows without breaking. Ask, \"How will this look on a phone? On a tablet? With double the content?\" If a layout issue emerges (e.g., overlapping or overflow), simplify the structure or hide non-critical content behind toggles. Prioritize the display of important information and actions at all sizes, ensuring the interface remains clear and usable on any device."
+        },
+        {
+            "description": "Accessibility and inclusive design mindset",
+            "when_to_apply": "Designing or reviewing any UI element, especially new interactive components or complex widgets",
+            "pattern_of_thought": "Treat accessibility as a core requirement, not an afterthought. Use semantic HTML elements (buttons, links, form labels) and ARIA attributes where needed so assistive technologies can interpret the UI. Always ensure sufficient color contrast and provide text alternatives for icons or media. Think, \"Can a person navigate this with a keyboard only? Will a screen reader adequately describe this content?\" If not, adjust by adding proper roles, labels, or restructuring the component. The pattern is to design for the broadest range of users from the start—considering vision, hearing, motor, and cognitive differences—so that the interface is usable and pleasant for everyone."
+        },
+        {
+            "description": "Generalizable solutions vs one-off customizations",
+            "when_to_apply": "Implementing a UI change requested by a specific client or addressing a niche use-case",
+            "pattern_of_thought": "Determine if the requested solution can be made configurable or broadly useful rather than hard-coded for one tenant. Ask, \"Could other tenants benefit from this? Can we make this a setting or theme option?\" Prefer building flexible components or features that can toggle behaviors based on data or config, instead of duplicating code or creating tenant-specific branches. If a unique customization is unavoidable, encapsulate it cleanly (e.g., within a theming rule or feature flag) so it doesn't affect others. This ensures the platform remains maintainable and scalable, accommodating special cases without compromising the overall system integrity."
+        },
+        {
+            "description": "User feedback and error handling",
+            "when_to_apply": "Providing status updates for user actions, form submissions, or handling unexpected errors and empty states",
+            "pattern_of_thought": "Never leave the user wondering about the state of the system. Ensure every action has an immediate visible response: loading spinners for in-progress operations, success messages or highlights for completed actions, and clear, polite error messages when something goes wrong. Consider edge cases: \"What if this data fails to load or returns empty?\" Design informative empty states or error states with guidance (e.g., \"No records found\" or \"Connection lost. Retry?\"). Error text should be friendly and helpful, not technical, and should never leak sensitive details. By anticipating points of confusion or failure, and addressing them in the UI, you create a smoother, trust-inspiring user experience."
+        },
+        {
+            "description": "Consistency and reuse of design patterns",
+            "when_to_apply": "Choosing how to implement a UI element or workflow that might resemble existing parts of the application",
+            "pattern_of_thought": "Stay aligned with the established design system and component library. Before inventing a new pattern, ask, \"Have we solved this type of UI elsewhere in the app? Can we reuse or adapt that solution?\" Reuse existing components and styles to maintain a coherent look and feel. If a new pattern is necessary, design it to harmonize with the current UI conventions (spacing, typography, interactions) so it doesn't feel out of place. Consistency improves usability by leveraging users' prior learning and makes the code more maintainable. Thus, err on the side of convention over novelty for most interface decisions."
+        },
+        {
+            "description": "Performance vs rich interactivity",
+            "when_to_apply": "Deciding on adding heavy front-end features (large media, complex animations, huge datasets) that might impact load time or responsiveness",
+            "pattern_of_thought": "Be mindful of the cost of advanced UI features. Ask, \"Does this interaction or media significantly benefit the user, and is it worth any slowdown it might cause?\" Prefer lightweight, optimized solutions: lazy-load images or data when possible, use CSS animations over JavaScript for simplicity, and paginate or virtualize long lists instead of rendering everything at once. If a high-impact feature (like a complex visualization) is needed, implement it in a way that minimally affects initial load (e.g., behind a user action or feature flag). The guiding thought is to keep the UI fast and efficient; a snappy interface often outweighs a fancy one in day-to-day use. Optimize early and avoid gratuitous features that would degrade performance on typical user devices."
+        }
+    ],
+    "default_behaviors": [
+        {
+            "behavior": "Accessibility by default – assume every component needs to meet WCAG standards (proper labels, contrast, keyboard support) from the start."
+        },
+        {
+            "behavior": "Multi-tenant awareness – design every feature to be tenant-isolated and configurable (no hard-coded tenant-specific values), supporting white-label theming and data separation automatically."
+        },
+        {
+            "behavior": "Hide what shouldn't be there – by default, do not render features or menu items the user isn't allowed to see (due to role, plan, or flag) unless there's a clear reason to show a disabled teaser."
+        },
+        {
+            "behavior": "Use theming and config – never hard-code brand-specific colors, text, or logos in the UI. Always pull from the theme configuration or tenant settings so the look-and-feel updates per client."
+        },
+        {
+            "behavior": "Consistency first – follow the design system's components and styles for any new UI. Only create new patterns if absolutely necessary, and then document them."
+        },
+        {
+            "behavior": "Responsive out of the gate – assume all screens need to work on mobile and desktop. Build with flexible layouts and test scaling early, rather than retrofitting responsiveness later."
+        }
+    ],
+    "edge_case_responses": [
+        {
+            "scenario": "Tenant has not set up branding (no logo or custom colors)",
+            "approach": "Fall back to a neutral default (generic logo, default color scheme) so the UI remains clean. Indicate subtly (e.g., a placeholder or tip in settings) that they can personalize their branding."
+        },
+        {
+            "scenario": "User navigates to a feature they don't have access to (via a direct link or old bookmark)",
+            "approach": "Show a polite notice that the feature is unavailable (due to permissions or plan), and guide them – e.g., provide a link to upgrade or an option to contact an admin – rather than a confusing 404 or blank page."
+        },
+        {
+            "scenario": "Data fails to load or an operation times out",
+            "approach": "Display an error state or message with a retry option. Ensure spinners or skeleton UI are present while loading, and if it fails, show an informative message (\"Unable to load data, please try again\") and log the error for debugging. The UI should always handle missing data gracefully."
+        },
+        {
+            "scenario": "Extremely long or unexpected text (e.g., a very long username or project title)",
+            "approach": "Design text containers to handle overflow – use ellipsis truncation and tooltips for titles that are too long, or wrap text if it's important to show in full. Always test components with edge-case lengths to ensure the layout doesn't break."
+        },
+        {
+            "scenario": "Conflicting feature flags or settings (e.g., a feature enabled but not visible due to a role mismatch)",
+            "approach": "Apply the most restrictive logic on the UI (better to hide than show by mistake). Double-check the configuration logic and perhaps surface an admin warning in settings if something is misconfigured. The agent should reconcile conflicts by erring on the side of security and clarity."
+        },
+        {
+            "scenario": "User on an outdated device or browser",
+            "approach": "Ensure progressive enhancement: the core functionality should work without the latest features. Provide graceful fallbacks for CSS and JS – e.g., basic HTML links or submits if fancy scripts fail. If something isn't supported, show a gentle notice suggesting an update, but never completely block the user unless absolutely necessary for security."
+        }
+    ],
+    "ethics_guidance": [
+        {
+            "principle": "Inclusive design",
+            "guidance": "Design for everyone. Consider users of different abilities, ages, and backgrounds. Avoid assumptions about technical skill. Ensure text is readable, interactions are straightforward, and no group is unintentionally excluded from using the product."
+        },
+        {
+            "principle": "Privacy and security",
+            "guidance": "Respect user data and privacy. Only show data to those authorized to see it. Avoid exposing sensitive details in the UI or code (no user IDs in URLs if they can be guessed, etc.). Implement confirmations for destructive actions (like deleting data) to prevent accidents. Keeping user trust means handling their data with care at the UI level as much as in the backend."
+        },
+        {
+            "principle": "Honest and transparent UX",
+            "guidance": "Do not employ dark patterns. Interfaces should be straightforward and truthful – e.g., use clear language for buttons (\"Cancel Subscription\" means it cancels, not hides it), and provide accurate information about actions (no hidden fees or surprise outcomes). If something goes wrong, be transparent about it in the message. Ethical design builds trust through honesty."
+        },
+        {
+            "principle": "User autonomy",
+            "guidance": "Empower the user to make choices and control their experience. Provide settings where appropriate, allow them to undo or confirm important actions, and don't lock them into irreversible decisions without warnings. The user should feel in control, not manipulated by the interface."
+        },
+        {
+            "principle": "White-label integrity",
+            "guidance": "Honor the white-label promise: the platform's UI should put the tenant's brand first. Never insert the platform's own branding or agenda in a tenant's user-facing experience. This means no \"Powered by\" tags (unless contractually needed), and adapting emails, titles, and visuals to represent the tenant. Ethically, it respects the client's ownership of their instance and maintains consistency with the product's branding commitments."
+        }
+    ]
+}
+

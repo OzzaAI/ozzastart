@@ -1,0 +1,173 @@
+Great. I will generate a complete and unambiguous to-do list to implement Branding & White-Label Hooks for the Ozza platform based strictly on the Version 5 blueprint. This will cover database schema updates, UI logic for injecting CSS variables and tenant logos, runtime branding enforcement, and handling the WHITE\_LABEL feature flag. I'll ensure every step is fully specified to eliminate any ambiguity for AI or human developers.
+
+I’ll let you know as soon as it's ready for your review.
+
+
+# Branding & White‑Label Implementation To‑Do List
+
+Implement the following tasks to add **Branding & White-Label Hooks** to the Ozza platform (GA Edition Blueprint v5). The list is organized by module/component, with precise steps to avoid ambiguity.
+
+## Database (Schema & RLS) Changes
+
+* [ ] **Add Branding Fields to Accounts**: Extend the `public.accounts` table with two new columns for branding:
+
+  * `logo_url` (Text/Varchar) – URL of the tenant’s logo image.
+  * `primary_color` (Text/Varchar) – Primary theme color (e.g. a hex code like `#RRGGBB`).
+    Define default values for both: set `logo_url` to the platform’s default logo (Ozza’s logo URL or a placeholder image) and `primary_color` to the default Ozza theme color. This ensures new accounts start with a default branding. Use an **additive** migration (no destructive changes) to create these columns.
+
+* [ ] **Data Migration for Existing Accounts**: Write a SQL migration script to backfill existing records with default branding. For all current rows in `public.accounts`, update `logo_url` to the Ozza default logo URL and `primary_color` to the standard Ozza color palette value (so that free-tier tenants initially show Ozza branding). Ensure this default is the same as what the front-end expects for a non-branded state.
+
+* [ ] **Apply Row-Level Security Policies**: Update or create RLS policies on `public.accounts` so that tenants can only read and write their own branding data. Specifically:
+
+  * **SELECT policy**: allow a user (with JWT claim `account_id`) to select *only* the row of `accounts` where `accounts.id = auth.jwt().account_id`. This ensures no tenant can see another tenant’s `logo_url` or color (maintaining isolation).
+  * **UPDATE policy**: allow updates to `logo_url` and `primary_color` only for users authorized to modify that account (e.g. the account owner/admin role of that tenant). This prevents cross-tenant or unauthorized changes.
+    Confirm that these policies align with existing multi-tenant RLS rules (the blueprint mandates strict data isolation on shared tables).
+
+* [ ] **Default Branding Constraints** (Optional/Enhancement): Consider adding a CHECK constraint or using a trigger to enforce valid data, e.g. ensuring `primary_color` is a valid color code format. This is not strictly required but can prevent invalid data. Document the default color format (e.g. “must be a 7-character string like `#FFFFFF`”).
+
+## Feature Flag: WHITE\_LABEL
+
+* [ ] **Register WHITE\_LABEL in Features Table**: Insert a new feature flag entry in the `public.features` reference table for `"WHITE_LABEL"`. Include a descriptive name (e.g. “White Label Branding”) and a note that it controls removal of Ozza branding for that account. This ensures the flag is recognized by the system as a toggleable feature.
+
+* [ ] **Account Feature Defaults**: Determine plan-based defaults for WHITE\_LABEL and seed the `public.account_features` table accordingly. For example: on the Free plan, `WHITE_LABEL` should default to false; on Pro (or higher) plans, it should default to true (if the Pro plan includes white-labeling). Implement this either by:
+
+  * Inserting a `public.account_features` record for each existing account reflecting its current plan (e.g. for all Free accounts, set `WHITE_LABEL = false`) – or by using a rule in code that treats missing flag as false by default. For consistency, prefer to **explicitly insert** the flag setting for each account in a migration or on account creation.
+  * Updating the account provisioning logic: when a new account is created on a given plan, automatically populate its `account_features` (e.g. Free tier accounts get WHITE\_LABEL = false).
+
+* [ ] **Plan Upgrade/Downgrade Hooks**: Integrate WHITE\_LABEL toggling into the billing/plan change workflow. For instance, when an account upgrades to a plan that includes white-labeling, set that account’s WHITE\_LABEL flag to `true` in `account_features`. Conversely, if an account downgrades or loses access to white-label (e.g. moving from Pro to Free), update the flag to `false`. This can be done in the Stripe webhook handler or a database trigger that fires on `accounts.plan_id` changes. Ensure this is done **immediately** upon plan change so the front-end reflects the correct state as soon as possible.
+
+* [ ] **Front-End Flag Access**: Ensure the front-end knows about the WHITE\_LABEL flag for the logged-in tenant. Include `WHITE_LABEL` in the data fetched on login (e.g., as part of the `/api/account` response or via a Supabase query from `account_features`). The feature flag data can be structured as an object (e.g., `featureFlags.WHITE_LABEL: true/false`) for easy use in conditional rendering. Apply RLS on `public.account_features` similar to accounts, so that each tenant’s users can only read flags for their own account (this should already exist as a shared table policy).
+
+* [ ] **Conditional UI Behavior**: Implement logic to conditionally show or hide Ozza branding based on the WHITE\_LABEL flag. Specifically: if `WHITE_LABEL` is **false** (white-label not enabled for this tenant), the UI **must display** a "Powered by Ozza" attribution (and any other default Ozza branding elements as defined). If `WHITE_LABEL` is **true**, the UI **must omit** any "Powered by Ozza" text or Ozza logos, giving a fully white-labeled appearance. (The actual rendering of this text is handled in the UI section below, but ensure the feature flag’s value is respected everywhere in the app.)
+
+* [ ] **Prevent Unauthorized Branding Changes**: On the server side, enforce that tenants without the WHITE\_LABEL feature cannot circumvent branding restrictions. For example, if a Free-tier account (WHITE\_LABEL=false) tries to call an API to update their `logo_url` or remove the Ozza footer, the request should be rejected. Implement this check in the API route or database layer (e.g., a trigger): verify the flag or plan before allowing updates to branding-related fields. Return an HTTP 402 (Payment Required) or 403 (Forbidden) with a clear message if violation is attempted. This double-enforces the rule (UI already hides the option, but this catch prevents any sneaky attempts).
+
+## Frontend: Branding Data Injection & Theming
+
+* [ ] **Fetch Tenant Branding on Load**: Modify the Next.js front-end to retrieve the current tenant’s branding info (`logo_url`, `primary_color`, etc.) as early as possible when the app initializes. Use one of two approaches per the blueprint:
+  **a. Next.js API Route** – Create or update an API endpoint (e.g. `/api/account`) that, when called (with the user’s auth context), returns the account’s branding fields and feature flags in JSON. Call this endpoint on client-side load (or via server-side rendering) to get the data.
+  **b. Supabase direct query** – Use the Supabase JS client on the front-end to query the `public.accounts` (and `account_features`) table for the current account’s info. Ensure RLS is in effect so this returns only that tenant’s row.
+  The returned data should include at least: `logo_url`, `primary_color`, and the `WHITE_LABEL` flag (plus any other branding fields or flags needed). This call should happen immediately after user login and also on app start (if the user is already logged in with a persisted session).
+
+* [ ] **Global Branding Context/Provider**: Set up a global context or state to store the fetched branding data and make it accessible to all components. For example, create a React Context `BrandingContext` that holds `logoUrl`, `primaryColor`, and `featureFlags` for the current tenant. Initialize this context in a top-level component: if using Next.js Pages Router, do it in `_app.tsx` (wrapping the app), or if using the App Router, in a layout component that encompasses all pages. Ensure that this provider is populated **once** on initial load with the data from the step above, and that it updates if the user’s account context changes. By having a central context, child components (like headers, footers, etc.) can consume the branding info easily.
+
+* [ ] **Inject CSS Variables for Theme**: Use the `primary_color` value to dynamically theme the application via CSS. For example, when the branding data is loaded, inject a `<style>` tag into the document head or use a style attribute on the root element (`:root`) to define a CSS custom property for the primary color. E.g.:
+
+  ```jsx
+  <style>{`:root { --primary-color: ${primaryColor}; }`}</style>
+  ```
+
+  Ensure that your global CSS (or styled-components/theme if applicable) uses `var(--primary-color)` for key themable elements (buttons, links, header background, etc.). This will instantly apply the tenant’s color scheme across the app. Also consider secondary or accent colors if those will be introduced (the blueprint mentions an `accent_color` field in the future) – but for now, focus on primary color theming.
+
+* [ ] **Dynamic Logo Rendering**: Update the header/navigation component to display the tenant’s logo instead of a hardcoded Ozza logo. Remove any static `<img src="/ozza-logo.png">` (or similar) references. In its place, use an `<img>` or Next.js `<Image>` component whose `src` is the `logo_url` from the branding context. Provide an appropriate `alt` text (e.g., `"Company Logo"` or the tenant’s name) and ensure sizing/CSS matches the layout. Include a fallback: if `logo_url` is empty or fails to load, display a default logo (which could be the Ozza logo or a generic placeholder) so the UI isn’t broken. This might be achieved by checking `if (!logoUrl) use defaultLogoUrl`. By doing this, each tenant sees *their* logo in the app header as intended.
+
+* [ ] **Apply Branding on Initial Render (avoid FOUC)**: Make sure the branding info is applied **before or at the moment of first contentful paint** to avoid any flash of the wrong branding (e.g., showing Ozza blue then switching to the tenant’s green). If using server-side rendering, fetch the branding in a `getServerSideProps` or as part of the Next.js App Router data fetching so that the initial HTML/CSS already has the correct color and logo. If that’s not feasible and you must fetch on the client, consider showing a brief loading state or using a preloading strategy: for instance, you could inline a small script in `<head>` that injects the CSS variable with a stored value (if you have it cached from a previous session) while the fetch is happening. The goal is to **minimize flicker** and ensure the user always sees the correct theme for their organization from the start.
+
+* [ ] **Multi-Tenant Domain Awareness**: If your app uses the domain/subdomain to determine the tenant (as described in the blueprint), integrate that logic with branding fetch. For example, if `agency1.ozza.com` or `portal.agency1.com` is tied to Account A, ensure that when a request comes from that host, the app knows to load Account A’s branding. This might involve Next.js Middleware or an initial server check of the `Host` header to identify the account before rendering. In development, you might simulate this with an environment variable or a manual switch. The key is to **always pull the correct account’s branding data** corresponding to the user’s context and never mix them up (each tenant’s branding and data should remain isolated).
+
+* [ ] **Login Page Branding** (If applicable): If the login page is served in a tenant-specific context (for example, users go to their own subdomain to log in), consider applying the branding there as well. This might mean if the login page can detect the tenant (via domain or query param), it should show the tenant’s logo and colors. (If all tenants share a common login page on a generic domain, this may not be feasible without redesign, so use discretion.) Document this behavior: login might remain Ozza-branded in MVP if customization is not easily done there.
+
+## Frontend UI: "Powered by Ozza" Attribution
+
+* [ ] **Build the Powered-By Component**: Create a React component (e.g., `components/PoweredByOzza.tsx`) that renders a small footer/banner text: **“Powered by Ozza”**. Style it to be subtle and non-intrusive: for example, a smaller font size, a lighter color, and perhaps right-aligned at the bottom of the page or fixed at the bottom of a sidebar. If available, include a tiny Ozza logo icon next to the text; if not, plain text is fine. Make sure it doesn’t take up much space or distract from the tenant’s own branding (the intent is a tasteful attribution). You could also make the text a link to the Ozza website (opening in a new tab) if desired – but clear this with product requirements (not explicitly stated in blueprint, so optional).
+
+* [ ] **Integrate into Layout**: Insert the `<PoweredByOzza>` component into the common layout of the app so that it appears on all relevant pages when enabled. For instance, if you have a main `<Layout>` or `_app.tsx`, include it at the bottom of the page structure (below all content). Ensure it is always rendered in a consistent location (e.g., bottom of the sidebar or footer area) so users notice it but it doesn't break any layout. Test on different page sizes to confirm it doesn’t overlap content or cause scrolling issues.
+
+* [ ] **Conditional Rendering Based on Flag**: Wrap the rendering of `<PoweredByOzza>` in a condition that checks the WHITE\_LABEL feature flag. If `featureFlags.WHITE_LABEL` is `true` (meaning the tenant has paid for white-label and should not show platform branding), **do not render** the component at all. If `WHITE_LABEL` is `false` (tenant is on free/basic plan), **render** the "Powered by Ozza" component. This logic ensures that Pro accounts have no Ozza attribution visible, while free accounts fulfill the founder’s requirement of showing the powered-by label. Implement this check at a high level (in the layout or context consumer) so it consistently applies to all pages.
+
+* [ ] **No Branding on White-Label**: Double-check that when WHITE\_LABEL is true, absolutely no Ozza branding is present. The `<PoweredByOzza>` component should be completely omitted from the DOM in that case (not just hidden via CSS, but not rendered at all). This prevents someone from inspecting the page and seeing hidden Ozza text. Conversely, when WHITE\_LABEL is false, ensure the component is visible and the text is readable (you might choose a slightly muted style but it should still be legible). This on/off behavior should sync with the feature flag toggling (covered in testing).
+
+* [ ] **Fallback for Missing Flag**: In the unlikely case the feature flag data hasn’t loaded yet when rendering (race condition on initial load), decide on a safe default. Likely default to showing "Powered by Ozza" until confirmed otherwise (since by default new accounts are free tier). Document this behavior. Once the flag data is in, the component can update accordingly (e.g., hide if needed). This prevents a scenario where a free-tier user briefly doesn’t see the attribution due to delayed flag fetch.
+
+## Remove Hardcoded "Ozza" References
+
+* [ ] **Audit the Codebase**: Perform a thorough search of the entire codebase (front-end and back-end) for any hardcoded instances of the string "Ozza" or other Ozza-specific branding. This includes:
+
+  * UI text in React components (e.g., headings, dialogs, tooltips that mention "Ozza").
+  * Static assets and filenames (e.g., `ozza-logo.png`, `favicon.ico`).
+  * Metadata in the HTML `<head>` (such as `<title>Ozza - ...</title>` or meta tags content).
+  * Default emails or system messages.
+  * Comments and documentation (for completeness, though these don’t affect runtime, it’s good to update any that might confuse future devs about branding).
+    Make a list of all these occurrences so you can methodically replace them. The goal is that the product’s UI should not display the word "Ozza" to end users except where intended (like the powered-by for free tier).
+
+* [ ] **Parameterize or Remove Text References**: For each hardcoded text string that includes "Ozza", decide the appropriate replacement:
+
+  * If it’s part of user-facing UI and meant to refer to the platform name, consider if it should be dynamic. Since the platform is white-labeled, you might simply remove the name. For example, a welcome message “Welcome to Ozza” could just be “Welcome” or “Welcome to the platform” instead. In some cases, you might use the tenant’s name (e.g., “Welcome to \[Agency Name] Portal”) if that makes sense and if you have the agency name available. Be careful not to accidentally reveal one tenant’s name to another. If unsure, lean towards neutral wording.
+  * For page `<title>` tags, it might be good to use the account’s `name` or a new field like `portal_title` if available. If no such field, a generic title like “Client Portal” or “Dashboard” can be used instead of “Ozza”. This ensures browser tabs and shared links don’t show "Ozza".
+  * Anywhere the term "Ozza" is part of a sentence or label, evaluate if it’s needed. For instance, a label “Ozza Coach Scorecard” (if it existed) could be just “Coach Scorecard”. The platform should feel like it’s the tenant’s own software. Remove any internal code-name mentions that slip into UI.
+
+* [ ] **Replace Logo/Icon Assets**: Remove or replace static assets that are Ozza-branded:
+
+  * **Main Logo**: Already handled by dynamic `logo_url` in the header. Ensure the old Ozza logo file isn’t inadvertently used anywhere else (e.g., in a login screen or an error page). If a default image is needed, use a neutral image or explicitly reference the Ozza logo only via the default `logo_url` from the DB (so it’s still data-driven).
+  * **Favicon**: Check the `public/favicon.ico` or any `<link rel="icon">` references. Likely it’s an Ozza logo. Ideally, we allow tenants to have a custom favicon, but since we have no field for that yet, you might leave the favicon as-is (Ozza logo) for now but note this as a limitation. If keeping Ozza’s favicon, you may want to remove any title attribute or alt text that says “Ozza Favicon”. Optionally, use a neutral favicon (like a generic globe or briefcase icon) if having Ozza’s icon is a concern. Document that full favicon customization is not implemented.
+  * **Other images**: If there are any illustrations or graphics that contain the word “Ozza” or Ozza-specific imagery, treat those similarly – remove or replace with neutral ones.
+
+* [ ] **Verify No Visible Ozza Branding**: After making the above changes, run the app as a **paid white-label tenant** and confirm that the UI has zero visible occurrences of "Ozza" or Ozza logos. This includes checking: page titles, headings, footer, and any emails or PDFs if applicable. The only exception should be internal admin interfaces (if any, not client-facing) or the code repository itself. For a **free plan tenant**, verify that the only Ozza reference is the intended "Powered by Ozza" component and possibly the favicon or minor references as allowed. There should be no other stray "Ozza" mentions. One way is to open the page in a browser and use the Inspector or search the DOM text for "Ozza".
+
+* [ ] **Update Documentation/Scripts**: If there are any setup scripts, readme, or config files that assumed "Ozza" as a brand, update them if needed to reflect the new branding approach. For example, instructions to replace logos, or environment variables for default branding. Also, communicate to the team that going forward, any new UI text must be brand-agnostic or configurable – no hardcoded product name in user-facing strings.
+
+## Email Template Considerations
+
+* [ ] **Review Supabase Auth Emails**: Supabase handles certain emails (user invites, password reset, magic link, etc.). Check what branding appears in those emails by default. Typically, the sender name might be set to your project name (which could be "Ozza" currently) and the email body might contain the project name. Identify all instances where "Ozza" or Ozza’s branding might appear: sender address (likely something like [no-reply@ozza.com](mailto:no-reply@ozza.com)), email subject lines, email content or footer. Obtain the templates if possible (Supabase may allow editing email templates in the dashboard or via API).
+
+* [ ] **Global Template Configuration**: If Supabase allows a global project name or logo for emails, set these to neutral values as much as possible. For example, if you can set the “Company Name” in the email template settings, consider using a generic name like “Client Portal” or just not referencing the name. However, since all tenants share the same Supabase project, you cannot personalize these per tenant. Thus, aim for **generic branding** that doesn’t confuse the end user: the email should not heavily feature "Ozza". Perhaps the email could say, “You have been invited to the client portal by \[Agency Name]” – see if the agency name can be inserted (this might require customizing the invite flow to send custom emails). If dynamic insertion isn’t possible, keep it very generic (“You have been invited to the portal. Please sign up to continue.”) to avoid highlighting Ozza.
+
+* [ ] **Document Email Limitations**: Acknowledge in documentation (and to stakeholders) that **fully white-labeling emails is not entirely solved in MVP**. For instance, an invite email might still come from an "@ozza.com" address or mention Ozza in a footer due to platform limitations. Note that while the application UI will be white-labeled, emails and some automated communications are global. This is in line with the blueprint’s note that Supabase’s templates might show Ozza and that removing those traces is a goal but may not be fully implemented initially. By documenting this, support and sales can set correct expectations with agencies (they might choose to manually invite users via their own email if this is a concern).
+
+* [ ] **Minimize Direct Client Emails**: As a partial workaround, consider reducing the platform’s use of automated emails to end-users (SMBs) where possible. If, for example, client approvals or notifications can be handled in-app or via the agency’s own communication, prefer that, so the white-label illusion isn’t broken by an email from Ozza. The blueprint suggests that in MVP, “we minimize direct communication to SMBs from the platform”. Implement this philosophy by reviewing any planned outgoing emails: only send those that are absolutely necessary. Any unavoidable emails, ensure they use the generic templates as configured.
+
+* [ ] **Custom Email Option (Future)**: (Note for future consideration – no immediate action) The ideal solution is per-tenant email branding (sending on behalf of the agency’s domain), but that’s non-trivial (requires SMTP setup for each, or a service like SendGrid with dynamic templates). This is out of scope for now. However, design the system such that in future we could intercept Supabase emails or use webhooks to send our own. For now, stick to documenting the limitation and perhaps provide guidance to agencies: e.g., “If you invite users via the system, the email will come from Ozza and have minimal branding. If you prefer a fully branded invite, you can manually send them an invite link using your own email.” This gives a manual white-label workaround until the feature is improved.
+
+## Testing & QA
+
+* [ ] **Setup Test Tenants**: Create at least two test tenant accounts in the database to cover different scenarios:
+
+  * Tenant **A**: with custom branding (set `logo_url` to a test image URL and `primary_color` to a distinctive color, e.g. red) and **WHITE\_LABEL enabled** (simulating a Pro plan agency).
+  * Tenant **B**: with a different branding (`logo_url` to another image, `primary_color` blue, for example) and **WHITE\_LABEL disabled** (Free plan).
+    Also prepare test user accounts under each tenant to log in. This will be used to verify isolation and conditional behavior.
+
+* [ ] **Branding Isolation Test**: Log in as a user of Tenant A and ensure the UI shows Tenant A’s branding everywhere: the header should show A’s logo, and the overall color scheme should reflect A’s primary color. Log out and log in as a user of Tenant B, and verify the UI now shows B’s logo and color scheme (completely different look from A). There should be no bleed-over of data or styling between tenants – each appears as a distinct “product” to the user. This confirms that domain/tenant detection and branding application are working and isolated.
+
+* [ ] **White-Label Flag UI Test**: For Tenant A (WHITE\_LABEL=true), inspect the UI for any Ozza references. **Expected**: No "Ozza" text or logos visible (the "Powered by Ozza" footer should NOT render). For Tenant B (WHITE\_LABEL=false), confirm that the "Powered by Ozza" component **is visible** in the UI (e.g., at the footer). It should contain the correct text and styling. This validates the conditional rendering. Try toggling the feature flag for one of these tenants: e.g., set Tenant A’s WHITE\_LABEL to false (simulate downgrading them) and refresh the app – "Powered by Ozza" should now appear for Tenant A; set it back to true and it disappears on next load. The UI should respond appropriately to flag changes.
+
+* [ ] **Branding Application Timing**: Test that the custom branding loads without a noticeable flash of default style. Using Tenant B (with a non-default color), refresh the page and watch the initial load. The primary color (e.g. blue) should be applied from the first paint; you should *not* see the default Ozza color (e.g. orange) flash before it turns blue. If you do see a flash, note it as a bug: the branding injection might be happening too late. In such a case, improve the implementation (e.g., ensure the CSS variable is set in SSR or as early as possible). This is important for a polished white-label experience.
+
+* [ ] **Fallback Behavior Test**: Simulate missing branding assets to ensure graceful degradation:
+
+  * Remove or blank out `logo_url` for Tenant B (simulate no custom logo). When Tenant B’s user loads the app, the header should show the default logo (likely Ozza’s) and not a broken image link. The "Powered by Ozza" label would still show (since they’re free) – which is acceptable.
+  * Remove or set `primary_color` to `NULL` for Tenant B (simulate no custom color chosen). The app should fall back to a default color (could be a built-in CSS default or the same Ozza blue). Verify that the UI is still styled consistently (no missing CSS). These tests ensure that even if data is missing or not set, the app doesn’t crash and the visuals remain OK. Defaults seeded in the DB should cover most cases, but it’s good to test.
+
+* [ ] **Attempt Unauthorized Branding Change**: As a final security test, verify that a Free-plan tenant cannot change branding:
+
+  * In the UI, ensure that Tenant B (WHITE\_LABEL false) has no option in the settings to upload a new logo or change color (those UI controls should be hidden or disabled).
+  * Try to directly call the API or Supabase to update Tenant B’s `logo_url` (e.g., via a REST client or `supabase.from('accounts').update({logo_url: '...'}).eq('id', B)`). This should be prevented. Expect an error response or no permission, thanks to either RLS or the server check. If the update goes through when it shouldn’t, that’s a bug – fix the policy or API check accordingly.
+  * Conversely, for Tenant A (WHITE\_LABEL true), test that they **can** update their branding: use the UI or a direct call to change `logo_url` to a new value and confirm it updates successfully (and only affects Tenant A). This ensures the feature works as intended for those who have it.
+
+* [ ] **Cross-Tenant Data Safety**: Create a scenario to test that one tenant cannot see another’s branding data. For example, use the Supabase JS client with Tenant A’s auth and attempt to query `public.accounts` without filtering (which under RLS should only return A’s row). Confirm that you only get Account A’s data and not B’s. Try a malicious query (if possible) by account ID: `supabase.from('accounts').select('logo_url').eq('id', <B's id>)` as Tenant A – it should return nothing due to RLS. Also ensure feature flags (`account_features`) are similarly protected per account. These tests double-check that our RLS policies on accounts and account\_features are correctly enforced. *(Note: In a properly configured system, the JWT’s `account_id` claim and RLS will automatically restrict these, so this is just validation.)*
+
+* [ ] **Multi-Domain Manual Test** (if applicable): If using custom domains or subdomains for tenants, perform a manual test in a real browser environment: set up two domains pointing to your app for Tenant A and B. Visit each domain and verify you get the correct branding for that domain consistently. Also test going to the generic Ozza domain (if that still exists) and see how it behaves (it might default to a marketing site or require a tenant context parameter). The experience should be seamless: agency users on their agency domain see their branding; if they accidentally go to the wrong domain, ensure they can’t see another agency’s data (likely they won’t be logged in there anyway). This aligns with the requirement to test different tenant domains yielding different appearances and data.
+
+## CI/CD & Linting Compliance
+
+* [ ] **Enforce No Hardcoded Branding in Code**: Add automated checks to the development pipeline to prevent any re-introduction of hardcoded "Ozza" strings in user-facing code. For example:
+
+  * Implement an ESLint rule or plugin that scans for forbidden words (like `"Ozza"`). This rule can ignore test files or explicitly allowed files, but should flag any JSX/TSX where "Ozza" appears in plaintext.
+  * Alternatively, add a simple grep step in the CI pipeline (or a Git pre-commit hook) that searches for "Ozza" in the `apps/web` directory, excluding known exceptions (maybe the README or this blueprint file). If found, it fails the build with a message.
+    This ensures that all branding remains data-driven and no developer accidentally hardcodes a reference, adhering to the founder’s directive that **all branding/theming is from the DB, not in code**.
+
+* [ ] **Test Coverage for Branding**: Expand automated tests to cover branding scenarios. In the unit/integration test suite, add cases such as:
+
+  * Rendering the app with a mock account context that has specific `logo_url` and `primary_color`, then asserting that the DOM includes those (e.g., an element with `src=logo_url` is present, a CSS style tag contains the primary color).
+  * Verifying that toggling WHITE\_LABEL in a test (perhaps by simulating the account\_features for a dummy account) causes the "Powered by Ozza" component to either render or not render. This could be as simple as a Jest test that shallow-renders the layout with a flag context true/false and expects or not expects the text.
+  * Ensuring that if no branding is provided, the defaults are used (test a context with logo\_url undefined and see that a default logo element is rendered).
+    These tests will guard against regressions in the branding system.
+
+* [ ] **Multi-Tenant End-to-End Test**: If you have end-to-end tests (Playwright/Cypress), create a scenario for two tenants similar to the manual test: Tenant A and Tenant B with different branding. Script a login as each (or stub the data) and take screenshots or check CSS to ensure the color and logos differ. Also verify via the E2E test that Tenant B (free) shows "Powered by Ozza" on a page and Tenant A (paid) does not. This can even be part of a post-deployment smoke test to ensure that in production no white-labeled customer accidentally sees the Ozza branding.
+
+* [ ] **CI Pipeline Integration**: Make sure the migration for the new DB changes is added to the project’s migrations and that applying it is part of the deploy process (the CI should run migrations in staging, etc.). A pre-deployment check could verify that the `accounts` table indeed has the new columns (preventing a scenario where front-end assumes they exist but DB isn’t migrated). Leverage the existing CLI or migration system to enforce this.
+
+* [ ] **Coding Guidelines Update**: Update the developer handbook or contributing guide to highlight the new white-label requirements: **no hardcoded product name or styling** in feature code. Any time a developer wants to add something that might be branded, they need to add a field or configuration. Mention that the CI lint rule for "Ozza" is in place. This aligns with the blueprint’s stance of strict consistency and no deviations without approval.
+
+* [ ] **Flag/Config Audits**: Institute a periodic review (perhaps quarterly) of feature flags and branding configurations, as noted in the blueprint’s feature-flag hygiene section. Make sure WHITE\_LABEL (and any other flags like CUSTOM\_DOMAIN, etc.) are documented and still in use. Remove or retire flags that become permanently enabled. While this is more of an operational task, adding a reminder or script in the repo can help. For instance, a script that lists all feature flags in `features` table and checks code usage could be part of the repo. This ensures the config doesn’t become stale. (WHITE\_LABEL is likely long-term, so it will stay, but this is a general practice.)
+
+By completing all the above tasks, the platform will support per-tenant branding and white-labeling as specified in the GA Edition Blueprint. Each item is precise to eliminate guesswork, ensuring developers can implement exactly what’s described with full alignment to the founder’s vision and the blueprint’s guidelines.

@@ -1,0 +1,247 @@
+Understood. I’ll generate a comprehensive, unambiguous TO DO checklist for Phase 0 (Repo & Toolchain Bootstrap) that aligns exactly with the Ozza blueprint and your provided repo.
+
+This list will assume pnpm workspaces, Supabase CLI, and use of Supabase SQL MCP editor tooling. It will cover:
+
+* Monorepo structure
+* Linting/formatting configuration
+* Husky Git hooks
+* GitHub Actions setup
+* Toolchain versions and installation
+
+I’ll get started and let you know when it’s ready for review.
+
+
+# Phase 0: Repo & Toolchain Bootstrap Implementation Checklist
+
+Below is a comprehensive step-by-step checklist to bootstrap the Ozza monorepo repository and development toolchain (Phase 0), strictly following **Blueprint V4** and expert guidelines. Execute these tasks in order, from a fresh clone of the `ozzastart` template to a passing CI build:
+
+1. **Initialize the Repository & Node Toolchain:**
+
+   * Clone the `ozzastart` repository template (or initialize a new git repo) as the starting codebase. Ensure the repository is marked **private** (monorepo is not intended for publication).
+   * Set the Node.js version to **v18** for all developers and CI. Add an `.nvmrc` file specifying `18` (Node 18 LTS) and update the root `package.json` “engines” field to require Node 18+. This guarantees consistency in runtime across the team and CI.
+   * Confirm that PNPM is the package manager. If not already done by the template, enable PNPM for the workspace (e.g. by running `corepack enable` for PNPM) so that all installs use PNPM v7+.
+
+2. **Define the Monorepo Workspace with PNPM:**
+
+   * Create a `pnpm-workspace.yaml` at the repository root. Include glob patterns for the workspace subfolders: e.g.:
+
+     ```yaml
+     packages:
+       - "apps/*"
+       - "packages/*"
+     ```
+
+     This ensures PNPM treats all subdirectories under `/apps` and `/packages` as part of one monorepo workspace. The monorepo will contain multiple apps and shared packages as specified (Next.js app, CLI, Edge Functions, DB schema, etc.).
+   * Mark the root `package.json` with `"private": true` and add a descriptive `"name"` (e.g. `"ozza-monorepo"`). This prevents accidental publishing of the monorepo root and aligns with a **clean modular monorepo** structure (with `/app`, `/db`, `/shared`, `/cli`, `/functions` sub-modules).
+
+3. **Set Up Base Repository Config Files:**
+
+   * Add a root **`.gitignore`** file to prevent committing build artifacts and local environment files. Include standard Node and PNPM ignores:
+
+     * `node_modules/` (for all workspaces)
+     * `.env` and any environment-specific files (e.g. `.env.local`)
+     * `.turbo/`, `.next/` (if using Turborepo or Next build output)
+     * `supabase/.temp/` (Supabase local temp data) and any Supabase keys or generated config files
+     * `dist/`, `out/`, `coverage/` (build outputs or test coverage)
+       This ensures only relevant source files are tracked, and sensitive or bulky files are excluded.
+   * Add a root **`.editorconfig`** to enforce consistent editor settings. For example: set indent style (spaces, 2 spaces), end-of-line (LF), charset (UTF-8), and newline at end of file. This helps maintain uniform code style across different IDEs.
+   * *(If not already present)* Add a **README.md** outlining the project and any setup instructions (including Node 18 and PNPM requirements), so new developers can quickly get started. (Optional but recommended as part of repository setup.)
+
+4. **Create the Required Directory Structure:**
+
+   * Follow the Blueprint’s modular structure by creating these top-level folders:
+
+     * **`/apps`** – for application code. Under this, create:
+
+       * **`/apps/web`** – Next.js 13 app (main web portal for agencies/coaches). Inside, scaffold typical Next.js directories: `components/`, `pages/` (or `app/` for the App Router), `styles/`, `lib/`, `public/`, etc., as placeholders. Include a `middleware.ts` stub in `web` (for domain-based routing and maintenance mode logic). Also add a minimal `next.config.js` if needed to appease Next.js tooling (can be empty or default export).
+       * **`/apps/cli`** – Node.js CLI tool for devops tasks. Create a stub `index.ts` (entry point for the CLI) in this folder. Also create an empty `scripts/` subdirectory to hold automation scripts (e.g., seeding, migration, linting scripts). This will later include scripts like a DB migration runner or SQL linter.
+       * **`/apps/functions`** – Supabase Edge Functions (Deno runtime). Inside, create one folder per function:
+
+         * **`/apps/functions/stripe-webhook`** – contains `index.ts` (stub handler for Stripe webhooks) and a `supabase.toml` config file for this function (with basic fields like `name = "stripe-webhook"`, runtime, etc.). This Edge Function will handle Stripe billing events in production.
+         * **`/apps/functions/auth-token-hook`** – contains `index.ts` (stub for an auth JWT claim function) and `supabase.toml` (if this function is configured). *Note:* This auth token function is optional/not used in MVP, but we include the folder and config stub for completeness so the structure matches Blueprint V4.
+         * (Leave other function folders empty for now – future Edge Functions can be added similarly.)
+     * **`/packages`** – for shared packages (database and utilities). Under this, create:
+
+       * **`/packages/db`** – database schema and migration files. Inside, add:
+
+         * `/packages/db/migrations` – an empty directory for SQL migration files (with timestamped filenames). We will generate migrations here via Supabase CLI; this folder is our single source of truth for DB schema. (All schema changes must be done via files here – **never** via ad-hoc DB edits.)
+         * `/packages/db/seed` – a folder for database seed data or seed scripts (SQL or Node). Add a placeholder README or script (e.g., `seed.sql` or `seed.ts`) to be filled with initial data seeding logic later.
+         * *(Optional:* If using an ORM or query builder in the future, e.g. Prisma, this is where its schema file or generated client would reside. For MVP we skip this since we use raw SQL, so **do not** include a `schema.prisma` or ORM setup now.)
+       * **`/packages/shared`** – shared utilities and types for use across frontend, backend, and functions. Inside, create:
+
+         * `/packages/shared/types` – an empty directory (with an `index.ts` placeholder) for shared TypeScript type definitions (e.g. interfaces for DB rows, JWT payload, etc.). We will populate this with actual types as we define the schema and API, ensuring consistent types across client and server.
+         * (You can add other subfolders here in future for shared logic, but keep this package narrowly focused on pure, framework-agnostic code. For example, **do not** put any Next.js or React-specific code here to avoid improper coupling.)
+     * **`/config`** – a central config directory for configuration files (if we choose not to keep them as dotfiles in root). Here we will place config files like ESLint, Prettier, etc., to keep the root clean. Create the folder now; specific config files will be added in the next steps. *(Note: placing configs in `/config` is per blueprint convention; tools will be pointed to these files as needed.)*
+   * Ensure all directories and file names use **lowercase**, with `kebab-case` for multi-word names, and no spaces or uppercase letters, per founder guidelines. For example, files like `MyComponent.tsx` or folders with capital letters should be renamed to conform to `my-component.tsx` style. This naming rule will be enforced via linting.
+
+5. **Install Development Dependencies (Toolchain):**
+
+   * Using PNPM, add all required dev tools to the root workspace. Install the latest versions (as devDependencies) of:
+
+     * **TypeScript** (for typing and compilation)
+     * **ESLint** (for linting, plus plugins/configs for TypeScript and Next.js)
+     * **Prettier** (for code formatting)
+     * **Husky** (for Git hook management)
+     * **Vitest** (for testing, a lightweight alternative to Jest – per assumptions, we use Vitest for unit tests)
+     * **Supabase CLI** (optional – only if you plan to use it via npm; often it’s used via a global binary. Ensure the team has the Supabase CLI available for local DB work as assumed)
+   * Example: run `pnpm add -D typescript eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-config-next prettier husky vitest`. *(Adjust exact package names as needed for desired ESLint configs or other plugins.)* This will update the root `package.json` with the devDependencies. Having these in place allows us to configure linting, formatting, and testing in the next steps.
+
+6. **Configure TypeScript Project:**
+
+   * Create a **`tsconfig.json`** in the repository root. This will be the base TS configuration for the monorepo. Set it up to target modern JavaScript suitable for Node 18 / Next.js:
+
+     * For example, use `"target": "ES2020"` or later, `"module": "ESNext"` (to support Next.js 13 and ESM), and `"moduleResolution": "node"`.
+     * Enable strict type checking (`"strict": true`) and useful compiler options like `"forceConsistentCasingInFileNames": true`, `"skipLibCheck": true`, etc. Include source maps if needed (`"sourceMap": true` for easier debugging).
+     * Set `"rootDir": "."` and `"baseUrl": "."` to support absolute imports within the monorepo (or configure path aliases as needed for packages).
+     * Use `"include"` to encompass all workspace folders (e.g. `["apps/**/*", "packages/**/*"]`) and `"exclude"` to omit `node_modules` and build output.
+   * If different TS settings are needed per package (e.g., Next.js might generate its own tsconfig), you can create additional tsconfig files in subdirectories that extend the base one. For simplicity in Phase 0, one root tsconfig is sufficient to type-check all code.
+   * Verify the TypeScript setup by running `pnpm exec tsc --noEmit` at the root. This should exit with no errors (currently there is minimal code, so mainly it’s checking the config). We will integrate this command into our checks. Add a convenience NPM script `"type-check": "tsc --noEmit"` in the root package.json to run type checking easily (used in CI and hooks).
+
+7. **Set Up ESLint for Linting:**
+
+   * Create an **ESLint config** file (for example, `/config/eslintrc.json` or an `eslint.config.js` in the root). In this configuration:
+
+     * Extend recommended ESLint rulesets for TypeScript and Next.js. For instance, use `"extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended", "plugin:react/recommended", "next/core-web-vitals"]` to cover basic JS/TS and React/Next best practices.
+     * Set the parser to `@typescript-eslint/parser` and include the `@typescript-eslint` plugin for TS-specific rules.
+     * Configure environment settings appropriate to each context: e.g. `{ "env": { "browser": true, "node": true, "es6": true } }` globally, and override if needed (for example, the Next.js app code will run in both browser and Node (SSR), the CLI is Node-only, and Supabase functions are Deno – treat them as Node for linting purposes). You may use ESLint **overrides** section to apply specific settings or rule tweaks for certain directories (like no browser globals in CLI code, etc.).
+     * **Enforce naming conventions:** Add a custom rule to ensure filenames and folder names remain lowercase/kebab-case with no spaces. You can use an existing ESLint plugin (e.g. `eslint-plugin-filenames` or Unicorn’s `filename-case` rule) or a custom rule script. For example, require that `^[a-z0-9\-]+$` is the pattern for filenames. This will catch any accidental uppercase or camelCase file names in code review and CI, enforcing the founder’s naming policy.
+     * **Disallow forbidden imports or patterns:** In line with the security guidelines, set up placeholder rules to ban certain code patterns. For instance, ensure no usage of dangerous APIs or restricted modules in client-side code (as an example, you might forbid importing server-only modules in the Next.js client bundle). Blueprint mentions no “banned imports” should slip in. One concrete rule could be to forbid importing the Supabase service-role key or admin SDK in front-end code. We will refine specific banned patterns later, but the ESLint config should be ready to include such rules.
+     * Integrate Prettier with ESLint to avoid conflicts: include `prettier` in `extends` (using `eslint-config-prettier`) so that ESLint ignores formatting issues that Prettier handles. Also add `plugin:prettier/recommended` if using that approach. This way, running `eslint --fix` will also apply Prettier formatting.
+   * Install any additional ESLint plugins needed (for example, if using `eslint-plugin-unicorn` for filename rules or `eslint-plugin-import` for import order checks). These should have been included in the dev dependencies step if planned.
+   * Add an NPM script `"lint": "eslint . --ext .ts,.tsx --max-warnings=0"` at the root. This will run ESLint on all files in the repository (excluding ignored files) and treat any warning as an error (ensuring 100% lint compliance). The `--ext` option covers TS/TSX files (and JS if any). We will use this script in both git hooks and CI.
+
+8. **Configure Prettier for Code Formatting:**
+
+   * Create a **Prettier configuration** (e.g. `/config/prettier.config.js` or a `.prettierrc` in JSON) to define code style rules. The project can adopt standard Prettier defaults (2-space indentation, 80-120 char print width, semicolons, etc.) unless the founder specified particular style tweaks. For clarity, you might set options like:
+
+     ```json
+     {
+       "printWidth": 100,
+       "tabWidth": 2,
+       "singleQuote": true,
+       "trailingComma": "all",
+       "arrowParens": "always"
+     }
+     ```
+
+     (These are typical preferences; adjust if needed.)
+   * Ensure Prettier ignores the appropriate files. Create a `.prettierignore` if necessary (often not needed if `.gitignore` covers it) to exclude things like `node_modules`, build output, and generated files from formatting.
+   * Although we won’t run Prettier in CI explicitly (unless desired), developers should be encouraged to format code. Optionally, add a **format script** (`"format": "prettier --write ."` to format all files) and/or a `"format:check": "prettier --check ."` script to verify formatting. This can be run locally or in CI to ensure no unformatted code sneaks in. (In Phase 0, this is optional; ESLint will catch most style issues if integrated with Prettier.)
+
+9. **Set Up Vitest for Testing:**
+
+   * Ensure **Vitest** is installed (from step 4). No separate config file is required yet; Vitest can work out-of-the-box. (If needed later, we might add a `vitest.config.ts` to handle things like alias paths or jsdom environment, especially when testing React components, but for now default config suffices.)
+   * Add a test script in the root `package.json`. For example:
+
+     ```json
+     "scripts": {
+       "test": "vitest run --passWithNoTests"
+     }
+     ```
+
+     The `--passWithNoTests` flag tells Vitest to exit successfully even if no test files are found (so our CI doesn’t fail before tests are written). This is important in the bootstrap phase when we have no actual tests yet. As we add tests in later phases, this flag can be removed or kept based on preference. The script will run all tests in CI’s headless mode.
+   * Verify that running `pnpm test` prints a Vitest banner with 0 tests (passing due to the flag). This confirms the test runner is wired up. We’ll include this in CI to ensure the testing pipeline is ready for future test cases.
+
+10. **Implement SQL Migration Guard Script:**
+
+    * To enforce the **additive-only migrations** rule, create a script to scan SQL files for destructive commands. In the CLI package (e.g., `apps/cli/scripts`), add a script file `lint-sql.ts` (or `.js`). This script should:
+
+      * Read all `.sql` files in `packages/db/migrations/`.
+      * Fail (exit with non-zero code) if any prohibited statements are found, such as `DROP TABLE`, `DROP COLUMN`, `TRUNCATE`, or other destructive DDL. You can search the file contents for the substring "`drop`" or "`truncate`" (case-insensitive), ignoring if it appears in comments. This will **codify the additive-only migration rule** by preventing accidental destructive SQL.
+      * Print an error message listing any offending files/lines if it finds a violation, so the developer can fix it. If no forbidden commands are present, exit with success.
+    * This can be a simple Node script or integrated as a command in the CLI tool (e.g., `ozza-cli lint-sql`). According to the blueprint, the CLI is intended to house such utility scripts, so implementing it here aligns with that design (e.g., later we might incorporate this into the CLI’s command set). For now, a standalone script is fine.
+    * Add an NPM script entry to invoke this check easily. In the root `package.json`, add for example:
+
+      ```json
+      "lint:sql": "ts-node apps/cli/scripts/lint-sql.ts"
+      ```
+
+      (Alternatively, compile the script to JS and run with `node` if not using ts-node. The goal is to be able to run `pnpm run lint:sql` to perform the scan.) This script will be used in the git hook and CI to block disallowed SQL.
+
+11. **Configure Git Hooks with Husky:**
+
+    * Initialize Husky for the repo. Run `pnpm dlx husky-init --shell` (if using husky-init) or manually add Husky:
+
+      * Ensure the root `package.json` has a `"prepare": "husky install"` script (husky-init will add this automatically). Running `pnpm install` will then set up the `.husky/` directory and Git hooks.
+      * If husky-init was used, remove any default sample hooks (like a pre-commit that runs tests) unless needed. We will add our custom hook.
+    * Create a **pre-push hook** by running `npx husky add .husky/pre-push "pnpm run prepush:check"` (or manually create the file `.husky/pre-push`). In this hook script, configure it to run our checks before allowing a push:
+
+      * Call the lint script: `pnpm run lint`
+      * Call the TypeScript check: `pnpm run type-check`
+      * Call the SQL linter: `pnpm run lint:sql`
+      * *(If tests were to be run locally as well, we could include `pnpm run test` here, but given no tests yet and for speed, we only run tests in CI for now.)*
+        An example `.husky/pre-push` content might be:
+
+      ```sh
+      #!/bin/sh
+      . "$(dirname "$0")/_/husky.sh"
+      pnpm run lint && pnpm run type-check && pnpm run lint:sql
+      ```
+
+      This ensures that **no code can be pushed** unless it passes ESLint and TS compilation, and contains no forbidden SQL commands. Husky will exit with an error and abort the push if any of those scripts fail (protecting the repo from bad commits).
+    * Test the hook by attempting a git push (or running `.husky/pre-push` manually). Intentionally introduce a lint error or a `DROP TABLE` in a migration to verify that Husky blocks the push. Then remove/fix the issues. This local guardrail enforces the blueprint’s “additive-only” migration policy and coding standards at commit time.
+
+12. **Set Up GitHub Actions CI Pipeline:**
+
+    * Create a CI workflow file at **`.github/workflows/ci.yml`** (name it “CI” or similar). This workflow should run on every push and pull request to the main branch (and optionally other branches). Include the following in the YAML:
+
+      * Use the official Node setup action to get Node 18:
+
+        ```yaml
+        jobs:
+          build:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/checkout@v3
+              - uses: actions/setup-node@v3
+                with:
+                  node-version: 18
+                  cache: "pnpm"
+        ```
+
+        (Caching PNPM dependencies is optional but speeds up installs. The above uses built-in caching for `pnpm`.)
+      * Install dependencies using PNPM: e.g., `- run: corepack enable && pnpm install`. This will respect our lockfile and install all workspace packages.
+      * **Lint & Type-Check Stage:** After install, add a step to run the linter and TS checks, just like the pre-push does. For example:
+
+        ```yaml
+        - name: Lint code and run type checks
+          run: pnpm run lint && pnpm run type-check
+        ```
+
+        This will fail the build if either ESLint or TypeScript finds an error, catching any issues early. (We combine them in one step for brevity; they could be split for clarity.)
+      * **SQL Migration Scan:** Add a step to run the SQL linter as well:
+
+        ```yaml
+        - name: Check migrations for forbidden SQL
+          run: pnpm run lint:sql
+        ```
+
+        This acts as a safety net on the CI side, ensuring that even if someone bypassed the Husky hook, the CI will catch a disallowed `DROP/TRUNCATE` and fail the build. This double-check guarantees **“additive-only”** migrations policy is enforced in all cases.
+      * **Tests Stage:** Finally, add a step (or separate job) to run the test suite:
+
+        ```yaml
+        - name: Run unit tests
+          run: pnpm run test
+        ```
+
+        Since we included `--passWithNoTests`, this will succeed even if there are no tests yet. In the future, as tests are added, this will execute them. We isolate tests in their own step (or job) to clearly separate them from linting. You can configure a matrix or separate job named “tests” if desired, but at minimum ensure tests run in CI on each push/PR.
+      * Configure the workflow to **trigger on pull requests and pushes** to relevant branches (e.g., `main`). For example:
+
+        ```yaml
+        on:
+          push:
+            branches: [ main ]
+          pull_request:
+            branches: [ main ]
+        ```
+
+        This aligns with the blueprint’s requirement that every change is validated by CI before merge. The `main` branch should be protected to require this CI to pass before allowing a merge.
+    * Enable status checks: In the repository settings on GitHub, mark the new CI workflow (and its jobs) as “required” for merging into main (this enforces that all code meets our checks). Now, our CI pipeline will automatically gatekeep: it lints code, type-checks, and runs tests on every push, preventing any rule violations from slipping in.
+
+13. **Finalize and Verify Bootstrap:**
+
+    * Double-check all configuration files into source control: `pnpm-lock.yaml` (the lockfile generated by PNPM) **must** be committed to ensure consistent installs in CI and on other machines. This lockfile guarantees the same dependency versions across environments.
+    * Review ignore files to make sure no sensitive or unnecessary files will be committed. For example, if the Supabase CLI generated a `supabase/.env` with service role keys during setup, confirm that’s in `.gitignore`. Our policies require no secrets in repo, so verify nothing like that is left unignored.
+    * Run the full suite locally one more time: `pnpm install`, then `pnpm run lint && pnpm run type-check && pnpm run lint:sql && pnpm run test`. All should pass (with no output or minimal output) on a clean repo. This simulates what CI will do.
+    * Commit all the new files (`git add .`) and push to GitHub. The Husky **pre-push** hook will execute the lint/type-check/SQL checks one last time locally – ensure it passes (fix any issues if not). Once pushed, open the GitHub Actions console to watch the **CI workflow** run. It should go through the **lint/type-check stage** and **test stage** successfully, resulting in a green check for the commit. This confirms our Phase 0 setup is correct and nothing is ambiguous – any deviation would have been caught by the automated checks.
+    * With a passing CI and all baseline files in place, the **Repo & Toolchain bootstrap is complete**. The codebase now has a robust foundation: a clear structure, consistent coding standards, and enforced guardrails (both locally and in CI) per Blueprint V4. Developers (or the AI) can confidently proceed to Phase 1, knowing that any violation of the blueprint (e.g. destructive migration or lint error) will be immediately flagged by our setup.

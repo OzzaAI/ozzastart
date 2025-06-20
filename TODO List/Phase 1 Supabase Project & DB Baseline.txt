@@ -1,0 +1,382 @@
+Thanks for confirming. I’ll now create a detailed, deterministic TO DO list for Phase 1 – 'Supabase Project & DB Baseline'.
+
+This checklist will assume:
+
+* A Supabase project already exists.
+* SQL work will be done via the SQL MCP editor (no CLI migrations yet).
+* RLS enforcement and policies will be implemented and verified through SQL alone, with optional notes for future test coverage.
+
+I'll get started and let you know as soon as it's ready.
+
+
+# Phase 1 – Supabase DB Baseline Implementation Checklist
+
+## Preliminary Setup
+
+1. **Access Supabase & Open SQL Editor:** Ensure you have access to the Supabase project (already created) and open the SQL Editor (Web UI) for the project. All changes will be executed via this editor (no CLI migrations in this phase, per assumptions).
+
+2. **Enable Required Extensions:** Activate any necessary Postgres extensions before creating the schema objects. In particular, enable the **`pgcrypto`** extension for UUID generation, since the schema will use `gen_random_uuid()` for primary keys. Run:
+
+   ```sql
+   CREATE EXTENSION IF NOT EXISTS pgcrypto;
+   ```
+
+   This is an additive, idempotent operation (safe to run even if the extension is already installed). Verify it succeeds by running a test query (e.g. `SELECT gen_random_uuid();` returns a UUID).
+
+3. **Confirm Naming Conventions:** All database identifiers (table names, column names, etc.) should be lowercase and use `snake_case` as per founder guidelines. No camelCase or uppercase names. For example, use `account_members` **not** `AccountMembers`. Before creating tables, double-check your planned names follow this convention to avoid later refactoring.
+
+## Create Core Tables in `public` Schema
+
+4. **Create `accounts` Table:** This table stores one row per tenant (agency account). In the SQL editor, create the table with the exact schema outlined in the blueprint using additive commands:
+
+   ```sql
+   CREATE TABLE IF NOT EXISTS public.accounts (
+     id              UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
+     schema_name     TEXT    NOT NULL UNIQUE,
+     account_name    TEXT    NOT NULL,
+     plan_id         TEXT    NOT NULL REFERENCES public.plans(plan_id),
+     plan_status     TEXT    NOT NULL,            -- e.g. 'active', 'past_due', etc.
+     stripe_customer_id TEXT,                     -- Stripe customer ID (nullable)
+     maintenance_mode  BOOLEAN NOT NULL DEFAULT FALSE,
+     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     -- (optional: fields like current_period_end TIMESTAMPTZ, cancel_at_period_end BOOLEAN,
+     -- logo_url TEXT, primary_color TEXT, custom_domain TEXT, subdomain TEXT can be added if specified; 
+     -- blueprint mentions them as possible, but not mandatory for MVP)
+   );
+   ```
+
+   * **Fields Reference:** Ensure all fields match the blueprint: `id` is a UUID PK, `schema_name` is a unique identifier for the tenant’s schema, `account_name` is the human name, `plan_id` links to a plan, `plan_status` tracks billing state, `stripe_customer_id` and `maintenance_mode` are newly added in V4, and `created_at` is the timestamp of account creation. All columns and the table itself should be under the `public` schema (explicitly specify `public.accounts`).
+   * **Constraints:** The `schema_name` must be unique (the `UNIQUE` constraint above enforces this) since each tenant gets a distinct schema name. The `plan_id` references the `plans` table (we will create that next), but use a **foreign key** only if the `plans` table is created beforehand or create `plans` first; ensure to include `REFERENCES public.plans(plan_id)` so that the link is enforced once `plans` exists.
+   * **Additive Only:** Use `CREATE TABLE IF NOT EXISTS` and add new columns with `IF NOT EXISTS` (as shown for new fields) to adhere to the additive-only migration policy. **Do not drop or rename any columns** – only add missing ones. (In a fresh project there’s nothing to drop, but this pattern prevents accidental destructive changes.)
+   * **Verify Table Creation:** After running the SQL, check the **Table Editor** in Supabase or run `SELECT * FROM public.accounts LIMIT 0;` to confirm the table exists with the correct columns. No actual data will be present yet.
+
+5. **Create `account_members` Table:** This table links users to accounts and defines roles, implementing multi-tenancy for user access. Create it with all necessary fields and constraints:
+
+   ```sql
+   CREATE TABLE IF NOT EXISTS public.account_members (
+     account_id UUID    NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+     user_id    UUID    NOT NULL,  -- references auth.users (Supabase) user ID
+     role       TEXT    NOT NULL,  -- e.g. 'Owner', 'Admin', 'Member', 'Coach'
+     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     PRIMARY KEY (account_id, user_id)
+   );
+   ```
+
+   * **Composite PK:** Define a composite primary key on `(account_id, user_id)` to ensure a given user can appear only once in a given account. This enforces uniqueness of membership per account (one row per user per account). Alternatively, a unique index on `(account_id, user_id)` can be used if you prefer a surrogate PK, but composite PK is straightforward and as per schema design.
+   * **Role Values:** The `role` field will store values like *Owner*, *Admin*, *Member*, *Coach*. For data integrity, you may add a CHECK constraint to restrict `role` to these allowed values (or use an enum type). While the blueprint enumerates these roles, it doesn’t explicitly require a constraint – adding one is a **best practice** to prevent invalid roles. (Example: `CHECK (role IN ('Owner','Admin','Member','Coach'))`).
+   * **Foreign Keys:** `account_id` references `public.accounts(id)` with `ON DELETE CASCADE` so that if an account is deleted, all its memberships are automatically removed (prevent orphan rows). The `user_id` should reference the Supabase Auth users table. Supabase’s auth users are in schema `auth`, table `users` (primary key `id`). You **cannot** add a traditional FK to `auth.users` from the `public` schema (Supabase doesn’t allow direct FK to the auth schema in the migration), but logically note that `user_id` corresponds to `auth.users.id`. (If needed, you can enforce this via application logic or later with a trigger).
+   * **Indexes:** Create an index on `user_id` for efficient lookup by user. This is important for login flows – e.g. when constructing JWTs, we query `account_members` by `user_id` to find the user’s account/role. In SQL: `CREATE INDEX IF NOT EXISTS account_members_user_idx ON public.account_members(user_id);`. The composite PK already indexes `(account_id, user_id)` which covers queries by account. The additional index on `user_id` optimizes queries that filter by user alone (such as finding all accounts a user belongs to, or the primary account in case of multi-tenancy).
+   * **Run & Verify:** Execute the `CREATE TABLE` and index statements. Verify the table appears with the correct columns. Confirm the composite PK is in place (Supabase UI will show the primary key on the two columns). No data yet – that’s expected.
+
+6. **Create `plans` Table:** This table defines subscription plans (Free, Pro, etc.) and their properties. Create it as a reference table:
+
+   ```sql
+   CREATE TABLE IF NOT EXISTS public.plans (
+     plan_id        TEXT    PRIMARY KEY,   -- e.g. 'free', 'pro', 'enterprise'
+     name           TEXT    NOT NULL,      -- human-friendly name
+     monthly_price  INTEGER,              -- monthly cost in cents (for reference)
+     annual_price   INTEGER,              -- annual cost in cents, if applicable
+     stripe_price_id   TEXT,              -- Stripe Price ID for monthly subscription
+     stripe_product_id TEXT,              -- Stripe Product ID (if used)
+     max_sites      INTEGER,             -- numeric limits per plan (from blueprint)
+     max_users      INTEGER
+   );
+   ```
+
+   * **Fields:** The blueprint calls for storing key limits in this table for simplicity. Include columns like `max_sites` (max number of websites allowed on this plan) and `max_users` (max team members) as integers. The pricing fields (`monthly_price`, `annual_price`) and Stripe IDs (`stripe_price_id`, etc.) are for integration with Stripe and are included for completeness. All fields can be nullable except the primary key and name; fill in actual values via seeding. Use `TEXT` for IDs/names, and `INTEGER` for currency in cents and limits. (Optionally, you can default numeric limits to 0 or some sentinel, but not required if you will insert explicit values for each plan.)
+   * **Plan IDs:** Use short textual identifiers like `'free'`, `'pro'`, etc., as the primary key. This makes it easy to refer to plans in code and seed data. (Alternatively, could use a UUID or numeric, but the blueprint suggests human-readable IDs).
+   * **No RLS (Read-Only Table):** Do **not** enable RLS on `plans`. This table is shared reference data with no tenant-specific rows (all tenants will query the same plans). Instead, we will **grant read access** to this table for all authenticated users. Immediately after creation, run:
+
+     ```sql
+     GRANT SELECT ON public.plans TO authenticated;
+     ```
+
+     This allows any logged-in user to read the plans (needed because RLS won’t be used here). The blueprint notes that the `plans` table doesn’t contain sensitive info and can be globally readable. Granting SELECT also allows our later trigger functions (which run as authenticated role) to join on `plans` for enforcing limits.
+   * **Seed Plan Data:** After table creation, insert the initial plans. For MVP, **Free** and **Pro** plans are expected. Use an additive seed approach:
+
+     ```sql
+     INSERT INTO public.plans(plan_id, name, monthly_price, annual_price, stripe_price_id, stripe_product_id, max_sites, max_users)
+     VALUES 
+       ('free', 'Free Plan', 0, 0, 'price_123_free', 'prod_123_free', 1, 1),
+       ('pro', 'Pro Plan', 2000, 20000, 'price_456_pro', 'prod_456_pro', 5, 5)
+     ON CONFLICT (plan_id) DO NOTHING;
+     ```
+
+     The actual values for Stripe IDs and limits should come from the blueprint or business decisions (example above: Free allows 1 site and 1 user; Pro allows 5 of each, and has pricing in cents). The `ON CONFLICT DO NOTHING` ensures you can run this multiple times without duplicating data. Seeding can also be done later via a separate script, but it’s convenient to include basic plans now. Verify by querying `SELECT * FROM public.plans;` – you should see the plan entries.
+
+7. **Create `features` Table:** This table enumerates all feature flags (configurable features or toggles in the system). Define it as follows:
+
+   ```sql
+   CREATE TABLE IF NOT EXISTS public.features (
+     feature_key   TEXT PRIMARY KEY,   -- e.g. 'CUSTOM_DOMAIN', 'WHITE_LABEL'
+     description   TEXT NOT NULL
+     -- (optionally, default_value BOOLEAN or plan_tier TEXT if needed to note default state)
+   );
+   ```
+
+   * **Purpose:** The `features` table simply lists each possible feature toggle by a key and a human-readable description. For example, feature keys might include `CUSTOM_DOMAIN` (enabling custom domains feature), `WHITE_LABEL` (hide "Powered by" branding), `ANALYTICS_DASHBOARD`, `AI_CONTENT_ASSISTANT`, etc.. This table does **not** indicate which account has which feature (that’s what `account_features` will do); it’s a global registry of features available in the platform.
+   * **Optional Columns:** In MVP, we keep it simple with just a key and description. The blueprint mentions possibly a `default_value` or indicating which plan(s) include the feature by default. We will handle plan-based defaults via seeding in `account_features`, so a `default_value` column is optional. If desired, you could add `default_enabled BOOLEAN NOT NULL DEFAULT FALSE` to mark if the feature is globally enabled by default, but since plan-specific enabling is handled separately, this isn’t strictly needed.
+   * **No RLS (Read Access):** Like `plans`, this is reference data. You can grant read access:
+
+     ```sql
+     GRANT SELECT ON public.features TO authenticated;
+     ```
+
+     This lets clients or functions read feature definitions if needed. (Often the client might not need to load all features; toggles are usually checked via `account_features`. But granting SELECT is harmless and aligns with open read of non-sensitive reference tables.)
+   * **Seed Feature Data:** Insert all known features as initial data. For example:
+
+     ```sql
+     INSERT INTO public.features(feature_key, description) VALUES 
+       ('CUSTOM_DOMAIN', 'Enable custom domains for agency sites'),
+       ('WHITE_LABEL', 'White-label option to remove Ozza branding'),
+       ('ANALYTICS_DASHBOARD', 'Access to analytics dashboard feature'),
+       ('AI_CONTENT_ASSISTANT', 'AI content assistant tool for site builder')
+     ON CONFLICT (feature_key) DO NOTHING;
+     ```
+
+     (Include any feature flags mentioned in the blueprint’s feature list.) Confirm by selecting from the table. These will be used to seed per-account feature settings next.
+
+8. **Create `account_features` Table:** This join table ties the above two tables, specifying which features are enabled or disabled for each account (tenant). Create it as:
+
+   ```sql
+   CREATE TABLE IF NOT EXISTS public.account_features (
+     account_id   UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+     feature_key  TEXT NOT NULL REFERENCES public.features(feature_key) ON DELETE CASCADE,
+     enabled      BOOLEAN NOT NULL,
+     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     PRIMARY KEY (account_id, feature_key)
+   );
+   ```
+
+   * **Usage:** Each row in `account_features` indicates whether a given `feature_key` is enabled (`TRUE`) or disabled (`FALSE`) for a particular account. This allows feature flags to be toggled per tenant. For example, if Pro plan normally has `CUSTOM_DOMAIN`, then Pro accounts will have an entry (`feature_key='CUSTOM_DOMAIN', enabled=true`), whereas Free accounts might have the same feature key set to `false`. If a feature is experimental or individually controlled, this table is how we turn it on or off for specific tenants.
+   * **Primary Key:** Use `(account_id, feature_key)` as a composite PK to prevent duplicate entries for the same account-feature combination. This also inherently creates an index for queries by account or feature.
+   * **Foreign Keys:** Reference `public.accounts` and `public.features` for data integrity. Use `ON DELETE CASCADE` on both, so that if an account is removed, all its feature toggles are removed; if a feature is deleted (unlikely in practice), all accounts’ entries for it are cleaned up. (Note: cross-schema FK between a tenant schema and `public.features` is not needed because `account_features` itself lives in `public`.)
+   * **Initial Data:** When onboarding a new account, you will insert rows here reflecting that account’s plan defaults. For the baseline, you might pre-populate some default toggles for a development account or template accounts:
+
+     * *Example:* If you have a dev/test tenant (say account `dev_account`), insert feature flags for it: iterate over all features and set `enabled` based on what a Free plan should have (as blueprint suggests, Free: `CUSTOM_DOMAIN=false`, Pro: `CUSTOM_DOMAIN=true`, etc.). You can script this or do manual inserts. This seeding ensures no feature is ambiguous (even if the code could infer from plan, we seed to be explicit).
+   * **No direct client writes (for now):** Typically, end-users won’t modify `account_features` via the client. Changes come from plan upgrades or admin toggling a feature flag. We will protect this table with RLS (so one tenant cannot read another’s flags), and generally not provide insert/update policies to regular users (only service-role or admin can change them). The default RLS deny will suffice for writes. Users will just `SELECT` (read) to know their feature status.
+
+9. **Create `domains` Table:** This table maps custom domains (hostnames) to a tenant’s site, enabling the platform’s custom domain feature. Since domains are global (each custom domain must be unique across the platform), we keep this in `public`. Create it with the structure from the blueprint (as refined by expert recommendations):
+
+   ```sql
+   CREATE TABLE IF NOT EXISTS public.domains (
+     id          UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
+     account_id  UUID    NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+     host        TEXT    NOT NULL UNIQUE,    -- the custom domain (FQDN)
+     site_id     UUID,                       -- site identifier in tenant schema (no FK cross-schema)
+     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   );
+   CREATE INDEX IF NOT EXISTS domains_host_idx ON public.domains(host);
+   COMMENT ON TABLE public.domains IS 'Maps custom domain hostnames to tenant sites';
+   ```
+
+   * **Fields:** The `host` (domain name) is unique across all accounts. We generate a UUID `id` as primary key for internal reference (this allows easier referencing in any logs or future relationships, rather than using the text domain as PK). The `account_id` ties the domain to an owning tenant (with cascade delete to clean up domains if an account is removed). `site_id` is a reference to the site within the tenant’s schema that this domain points to – since we cannot enforce a foreign key to a table in another schema, we include it as informational (it would match an ID in `<tenant>.sites`). `created_at` and `updated_at` track timestamps.
+   * **Additive Patterns:** We use `IF NOT EXISTS` for table and index creation. No destructive ops. The `updated_at` has a default, but we want it to auto-update on row changes (next step).
+   * **Trigger for `updated_at`:** Create a reusable trigger function to keep `updated_at` in sync on updates, and then attach it to this table. For example:
+
+     ```sql
+     CREATE OR REPLACE FUNCTION public.touch_updated_at()
+     RETURNS TRIGGER AS $$
+     BEGIN
+       NEW.updated_at := NOW();
+       RETURN NEW;
+     END;
+     $$ LANGUAGE plpgsql;
+     CREATE TRIGGER trigger_domains_updated
+       BEFORE UPDATE ON public.domains
+       FOR EACH ROW
+       EXECUTE PROCEDURE public.touch_updated_at();
+     ```
+
+     This PL/pgSQL function simply sets the `NEW.updated_at` to the current timestamp on any update. The trigger ensures that whenever a domain record is modified (e.g., maybe the `site_id` or `host` changed), the `updated_at` gets bumped to `NOW()` automatically. (We use a `BEFORE UPDATE` trigger so that the modification is in place before writing.) **Ensure** the trigger is created in the `public` schema and attached to `public.domains` as shown. This function can be reused for any table with an `updated_at` field (you can attach it to others like `settings` if desired).
+   * **Verify Domain Setup:** After running the above, the `public.domains` table should exist with the columns and an index on `host`. Check that the trigger is in place: in the Supabase table editor, you should see a trigger listed for domains. You can also test by inserting a dummy domain row and then updating it to see if `updated_at` changes (though this may be more easily tested later with actual data). Remember to cite the function and trigger creation in version control (if any) as part of the migration for traceability.
+
+10. **Create `settings` Table:** This table stores global key-value settings for the platform (not tenant-specific). Create it in the public schema:
+
+    ```sql
+    CREATE TABLE IF NOT EXISTS public.settings (
+      key         TEXT    PRIMARY KEY,
+      value       JSONB   NOT NULL,
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    ```
+
+    * **Usage:** Use this for application-wide flags such as `maintenance_all` (a boolean that, when true, puts the entire platform into maintenance mode), or other global toggles like “disable new signups” etc. Each setting is a single row identified by a unique `key`. The value is stored as JSONB to allow flexibility (could be Boolean, string, object, etc. – JSONB can hold any of those). The `updated_at` helps track when a setting was last changed.
+    * **No RLS – Restrict Access:** Regular users should **not** be allowed to read or write `settings` at all, since these are admin/system controls. We will *not* enable RLS here (since we want even reads blocked for non-admins). Instead, explicitly revoke all default privileges from non-admin roles:
+
+      ```sql
+      REVOKE ALL ON public.settings FROM authenticated, anon;
+      ```
+
+      This ensures that neither the `authenticated` (logged-in users) nor `anon` (unauthenticated) roles can select, insert, or update this table. Effectively, only the Supabase service role (used by our backend functions) or a custom admin role will be able to access it. By not enabling RLS, we rely on these grants – with no grants, the table is completely off-limits to normal users. (If desired, you could also add RLS and a policy that `FALSE` (never true) for all normal users, but the revoke accomplishes the goal simply.)
+    * **Seed Settings:** Insert initial settings if any. A likely entry is the maintenance mode flag. For example:
+
+      ```sql
+      INSERT INTO public.settings(key, value) 
+      VALUES ('maintenance_all', 'false') 
+      ON CONFLICT (key) DO NOTHING;
+      ```
+
+      This represents that the platform-wide maintenance mode is off by default. Store booleans as JSON booleans (`'false'` as shown will be cast to JSONB false). Verify by selecting from `settings` as the service role (in the SQL editor you are an admin, so `SELECT * FROM public.settings;` should show the row). As a further check, try selecting as an `authenticated` user (if you have a client connection handy) – it should be denied.
+
+11. **Create `billing_events` Table:** This table logs Stripe webhook events that have been processed, to prevent duplicate processing and to provide a history of billing-related events. Create it as follows:
+
+    ```sql
+    CREATE TABLE IF NOT EXISTS public.billing_events (
+      id           TEXT    PRIMARY KEY,    -- Stripe Event ID (unique globally)
+      event_type   TEXT    NOT NULL,
+      account_id   UUID    REFERENCES public.accounts(id) ON DELETE CASCADE,
+      raw          JSONB   NOT NULL,       -- raw event payload from Stripe
+      processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS billing_events_account_idx ON public.billing_events(account_id);
+    ```
+
+    * **Fields:** The `id` is the Stripe Event ID (a string) – this is unique and serves as a natural primary key (Stripe guarantees event IDs are unique). `event_type` is a short string like `invoice.paid`, `customer.subscription.updated`, etc., which we may use for filtering. `account_id` ties the event to a tenant account (for events that pertain to a specific tenant – some events might not have one, e.g., a global event, in which case this could be NULL, but in our design we expect most billing events map to an account). `raw` stores the full JSON payload from Stripe for record-keeping. `processed_at` is when we handled the event (defaults to now).
+    * **Index:** We add an index on `account_id` to quickly query events per account (e.g., to list billing events for a specific tenant).
+    * **Additive & Safe:** Use `IF NOT EXISTS` for creation and index. No destructive statements.
+    * **No direct user writes:** Only the Stripe webhook integration (running with service role privileges) will insert into this table. End users might be allowed to read their own billing events (for a UI showing billing history), so we will protect it with RLS such that they can only see their events. We will add RLS policies next, but **do not grant open SELECT** on this table, since it contains potentially sensitive billing info (and is tenant-specific).
+    * **Verify Creation:** Execute the create statements. Check the table structure in Supabase. There’s no data until webhooks are processed, but you can manually insert a test row if desired to ensure all columns accept data (then delete it). The index on `account_id` should be present (view indexes to confirm).
+
+At this stage, all core tables under the `public` schema (accounts, account\_members, plans, features, account\_features, domains, settings, billing\_events) are created. We next configure **Row-Level Security (RLS)** on the relevant tables and set up policies to enforce tenant isolation.
+
+## Enable Row-Level Security and Define Policies
+
+12. **Enable RLS on Multi-Tenant Tables:** For each table that contains tenant-specific data, enable row level security. This ensures that, by default, no rows can be accessed until policies are in place (default deny). The tables requiring RLS enabled are: `accounts`, `account_members`, `account_features`, `domains`, and `billing_events`. Execute:
+
+    ```sql
+    ALTER TABLE public.accounts        ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE public.account_members ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE public.account_features ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE public.domains         ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE public.billing_events  ENABLE ROW LEVEL SECURITY;
+    ```
+
+    Do **not** enable RLS on `plans` or `features` (those are global reference tables shared by all tenants) – we have instead handled access via grants. Also, `settings` remains without RLS (we revoked access entirely for non-admin roles). Enabling RLS on the above tables flips them into secure mode where each SELECT/INSERT/UPDATE/DELETE is subject to policy checks. Verify RLS is enabled: in the Supabase UI, each of these tables should show a green RLS “on” indicator after this step, or run a query on `pg_tables`/`pg_policy` to confirm.
+
+13. **Define RLS Policies for Tenant Isolation:** Now create RLS policies that permit tenants to access only their own data. We follow a consistent **“per-account-id isolation”** pattern for all these tables. In each policy, we use the user’s JWT **`account_id` claim** (set by our auth system) to match against the row’s `account_id` (or `id` in the case of the accounts table). We also use default-deny (no permissive catch-all policy) so any access not explicitly allowed will be blocked. The policies to add:
+
+* **`accounts` table policy:** Allow a logged-in user to SELECT their **own** account record, and nothing else. We use the account’s primary key `id` for matching. For example:
+
+  ```sql
+  CREATE POLICY accounts_select_self ON public.accounts
+    FOR SELECT
+    USING ( id::text = current_setting('request.jwt', true)::jsonb ->> 'account_id' );
+  ```
+
+  This policy returns the row only if the account’s `id` matches the `account_id` claim in the user’s JWT. In practice, that means users see at most one row (their account). They cannot see other tenants’ account info. We do not create any INSERT policy on `accounts` (accounts are created by a backend process using an admin role) and no general UPDATE policy (to avoid tenants changing critical fields). If in the future you allow, say, an owner to update their `account_name` or branding, you would add an UPDATE policy with a similar `USING/WITH CHECK (id::text = current_setting('request.jwt', true)::jsonb ->> 'account_id')` condition (possibly plus a role check for owner). For baseline, keep it simple: accounts are read-only to tenants, except via privileged actions. The above SELECT policy is sufficient for the app to fetch account details (name, plan, etc.) for the logged-in user. By default, without an insert/update policy, those operations are denied (which is what we want).
+
+* **`account_members` table policy:** Allow users to see membership rows for their account. We match on `account_id`. For example:
+
+  ```sql
+  CREATE POLICY members_select_team ON public.account_members
+    FOR SELECT
+    USING ( account_id::text = current_setting('request.jwt', true)::jsonb ->> 'account_id' );
+  ```
+
+  This policy allows selecting all members that belong to the same account as the user. In effect, if I’m user U1 in account A, any `account_members` row with `account_id = A` satisfies the condition, so I can see it. This means team members can list the other team members (“who is on my team”) which is an intended feature. They still cannot see membership of any other account. We also usually want to allow each user to at least see their own membership row – this policy already covers that (their row has their account\_id). If there was a need to allow a user to see only themselves and not others, we’d require a different policy using `user_id = auth.uid()`, but here the blueprint explicitly wants team visibility within the tenant.
+
+  We do **not** add an INSERT policy for `account_members` in baseline, because invitations will be handled by our backend (or potentially by an RPC call). By default, without an insert policy, if a regular user tries to insert into this table, it will be denied. Only our service role (or an admin) can add members, which is safer (prevents anyone but an Owner from adding themselves to accounts arbitrarily). Similarly, no DELETE policy for now (if removing members is implemented via UI, we might add a DELETE policy restricted to owners later, or handle removal in a function). The absence of those policies yields a default-deny for writes, which is fine at this stage.
+
+* **`account_features` table policy:** Allow each tenant to read **their own** feature flag settings. Use account match:
+
+  ```sql
+  CREATE POLICY account_features_select ON public.account_features
+    FOR SELECT
+    USING ( account_id::text = current_setting('request.jwt', true)::jsonb ->> 'account_id' );
+  ```
+
+  With this, an account’s users can query which features are enabled for them (the application may do this to conditionally show UI elements). No tenant can see another account’s feature flags, as those rows have a different account\_id. We again do not allow inserts/updates from regular users here (no such policies), since toggling feature flags is an admin or system action. This means by default if a user tried to `UPDATE account_features SET enabled=true` it would fail – which is what we want. If in the future, certain feature flags become user-configurable (opt-in features), you could introduce an update policy restricted to that feature or user role. For now, baseline is locked down: read-only to tenants, writes by admin only.
+
+* **`domains` table policies:** Enable tenants to manage their custom domains, but only within their account. We add two policies as shown in the expert migration snippet:
+
+  ```sql
+  CREATE POLICY domains_isolate ON public.domains
+    FOR SELECT USING ( account_id::text = current_setting('request.jwt', true)::jsonb ->> 'account_id' );
+  CREATE POLICY domains_self_insert ON public.domains
+    FOR INSERT WITH CHECK ( account_id::text = current_setting('request.jwt', true)::jsonb ->> 'account_id' );
+  ```
+
+  The SELECT policy (`domains_isolate`) restricts read access to only those rows where the `account_id` matches the user’s account claim. This ensures a tenant can only see their own domains in any query (for example, if listing domains in a settings page). The INSERT policy (`WITH CHECK`) ensures that when a user attempts to insert a new domain, the `account_id` of the new row must match their JWT’s account\_id. In other words, they can only add domains for *their* account, not sneak one into another account. We similarly would add a `WITH CHECK` for UPDATE if domain records could be reassigned or changed – typically we won’t allow changing the `account_id` of a domain (and by not granting update permission on account\_id column, it won’t happen), but if we wanted to be safe:
+
+  ```sql
+  CREATE POLICY domains_update ON public.domains
+    FOR UPDATE USING ( account_id::text = current_setting('request.jwt', true)::jsonb ->> 'account_id' )
+    WITH CHECK ( account_id::text = current_setting('request.jwt', true)::jsonb ->> 'account_id' );
+  ```
+
+  This would ensure updates also cannot alter the account\_id to another value. (You can implement this if you plan to allow updates to other fields like `host` or `site_id` via the client.) With these in place, the default is still deny for anything not covered. We have allowed SELECT and INSERT (and possibly UPDATE if added) only for matching-account contexts. **Note:** The blueprint mentions that custom domains might only be allowed on certain plans (e.g., Pro). RLS alone doesn’t enforce plan rules, so **be cautious**: as-is, a Free plan user could attempt to insert a domain (they would pass the RLS check since account matches). We rely on higher-level logic (either in the app or a future constraint) to block this if needed. For MVP, the UI will hide this for Free, and we could add a trigger or later a policy that also checks the account’s plan before allowing the insert. For now, our RLS focuses on tenant isolation (not plan gating). Keep this in mind as a **warning**: RLS policies should remain simple (tenant isolating) for performance, while business logic like plan enforcement can be done in triggers or application code.
+
+* **`billing_events` table policies:** Similar pattern as domains – tenants can read their own billing events. Add:
+
+  ```sql
+  CREATE POLICY billing_events_isolate ON public.billing_events
+    FOR SELECT USING ( account_id::text = current_setting('request.jwt', true)::jsonb ->> 'account_id' );
+  CREATE POLICY billing_events_self_insert ON public.billing_events
+    FOR INSERT WITH CHECK ( account_id::text = current_setting('request.jwt', true)::jsonb ->> 'account_id' );
+  ```
+
+  The SELECT policy ensures a tenant’s users can see rows only where `account_id` matches their JWT. If you ever expose a “billing history” page to end-users, this would allow them to read their relevant events. The INSERT policy with check is mostly there for completeness – in practice, normal users won’t be inserting Stripe events. Our Stripe webhook (running with service role) bypasses RLS anyway. However, if for some reason an authenticated user tried to insert (or if we had a client simulator), this policy would require they can only insert events for their own account, which is a sane restriction. (We likely could omit the insert policy entirely, forcing all inserts to require service role – adding it doesn’t harm, it just won’t be used much except possibly in tests). No update or delete policies are provided, as we don’t expect users to modify or remove billing log entries. Those operations are admin/internal only.
+
+* **Summary of RLS:** At this point, every relevant table has RLS turned on and at least one policy restricting access by `account_id`. We followed a consistent pattern: **default deny** (RLS on with no "ALLOW ALL" policy) and **allow only same-account access** via the JWT claim. This achieves strict tenant isolation: even if two tenants’ users have the same role, they cannot see each other’s data because the `account_id` filter in each policy blocks it. We did not incorporate the `role` claim into policies for now, except implicitly in the `settings` table where we blocked non-service roles entirely. The JWT `role` (like 'Owner', etc.) could be used for finer control (e.g., only owners can delete members), but such policies would be additional and can be introduced as needed. The blueprint emphasizes RLS primarily for tenant isolation, and role-based differences are often enforced at the application logic level or via dedicated functions.
+
+* **Verify Policies in System Catalog:** You can verify that policies are in place by running a query:
+
+  ```sql
+  SELECT policyname, tablename, permissive, roles, using_expression, with_check 
+  FROM pg_policies 
+  WHERE schemaname='public';
+  ```
+
+  This will list all policies and their conditions. You should see entries for each policy we created above. Confirm that each condition uses `current_setting('request.jwt', true)::jsonb ->> 'account_id'` = account\_id (or id) as we intended. This syntax is pulling the JWT claims Supabase embeds – the `request.jwt` setting is provided by Supabase for RLS checks. (We rely on Supabase’s custom JWT which will include the user’s `account_id` claim; ensure your auth is configured to supply that, typically via a trigger function or `auth.jwt()` which we will set up in code. The expert migration note even provided a sample `auth.jwt()` function to populate `account_id` and `role`. Make sure such a function or equivalent JWT configuration is in place so that RLS has the data it needs.)
+
+14. **Test RLS Functionality (Development):** It’s crucial to verify the RLS policies are working as intended. In a dev environment or using Supabase’s API with a test user, perform these checks:
+
+    * **Cross-Account Data Inaccessible:** Create or simulate two accounts (tenants) and two users, each associated with one account. Attempt to read data from one account while authenticated as a user from another – every query should return 0 rows. For example, if User A (account\_id = A) tries `SELECT * FROM public.account_members WHERE account_id = 'B'`, they should get nothing (RLS prevents it). If they try a broad query like `SELECT * FROM public.accounts;`, they should only see their account row, not all accounts.
+    * **Own Data Accessible:** The same user should be able to query their own account data. e.g. User A querying `SELECT * FROM public.account_members;` (with no filter) will have the RLS policy transparently applied, so it should return only members of account A. Similarly, `SELECT * FROM public.domains;` returns only domains for account A, etc. This ensures the `USING (account_id = ...)` policies are functioning.
+    * **Blocked Operations:** Try an operation that should be disallowed. For instance, as a normal user, attempt to insert a new account or update the plan\_id in `public.accounts` – it should error out (no policy permits it). Try inserting a domain with someone else’s account\_id – the `WITH CHECK` on insert should reject it. If you have a Free plan user, try inserting into `domains` (if you haven’t added a plan check, RLS will allow the attempt since account matches; you might simulate the plan check by expecting the app to prevent it, but pure RLS won’t stop it – this is okay for now, but note it as a potential improvement).
+    * **Global Table Access:** Ensure that global tables are readable: run `SELECT * FROM public.plans;` as an authenticated user – you should get all plan rows (since we granted select to authenticated). Run `SELECT * FROM public.features;` – likewise, you should see all feature rows. Conversely, `SELECT * FROM public.settings;` as a non-admin should fail with a permission error (due to the REVOKE we applied).
+    * **Service-role Operations:** (This might be hard to test directly without the Supabase service key, but conceptually) The service role (used by edge functions and internal processes) bypasses RLS by default. That’s how our Stripe webhook will insert into `billing_events` and update `accounts.plan_status` etc. To verify our design: ensure that your Supabase configuration has the service\_role key and it’s used appropriately in backend contexts. You don’t create policies for the service role; just know that RLS does not apply to it (by Postgres design). All our policies target the `authenticated` role usage.
+
+If any of these tests show issues, adjust the policies accordingly. For example, if a user can see another account’s data, the policy condition might be wrong. Or if a legitimate action is blocked (e.g., owners should remove a member but no policy exists), you’d add a policy (like a DELETE policy on account\_members with a role check). At baseline, our policies are strict and minimal, which is aligned with default-deny philosophy – we’ll open up more only when explicitly needed.
+
+## Final Checks and Best Practices
+
+15. **Adhere to Additive-Only Changes:** Double-check that **no destructive SQL** was used. All schema changes should have been additive (create or alter…add) per the project rules. Ensure you did **not** use any `DROP TABLE`, `DROP COLUMN`, `TRUNCATE`, or similar commands – those are prohibited. Our steps used `IF NOT EXISTS` and avoided modifications that remove data or objects. This guarantees that running these migrations on a fresh DB adds the schema, and running them on an existing DB (that perhaps already has some tables) won’t accidentally break anything. If you accidentally wrote a destructive statement, remove or rewrite it now. The presence of only additive operations means no schema drift or loss of data will occur when applying this baseline to any environment.
+
+16. **Review Schema Against Blueprint:** The resulting schema should exactly match the Blueprint V4 specification for the initial state. It’s useful to **verify column names, types, and constraints one by one**:
+
+    * Compare each table’s structure with the blueprint’s outlined fields (we’ve cited them above). For instance, ensure `public.accounts` has all fields (`stripe_customer_id` and `maintenance_mode` were new in v4 and should be present now) and that `schema_name` is unique, etc.
+    * Check that every table we created is under the `public` schema (and not mistakenly in some other schema).
+    * Verify primary keys and foreign keys are correctly set (e.g., `account_members.account_id` → `accounts.id` exists, `account_features.feature_key` → `features.feature_key` exists, etc.). No cross-schema foreign keys should be present (we intentionally did not link tenant tables like `<tenant>.sites` via FK).
+    * Look at default values (e.g., `created_at` defaults, boolean defaults) to ensure they match what was intended (Blueprint called for `maintenance_mode` default false, etc.).
+    * If possible, generate a schema diagram or run `\d` commands (in psql) to visually confirm. There should be **no extra or missing columns**. This baseline will serve as the foundation, so it must be accurate.
+
+17. **Check RLS and Permissions:** Make sure every table that needs RLS has it enabled and has the appropriate policies:
+
+    * `accounts`, `account_members`, `account_features`, `domains`, `billing_events` → RLS = ON, with policies as listed (match by account\_id).
+    * `plans`, `features` → RLS = OFF (or not enabled), but SELECT granted to authenticated (so clients can read them).
+    * `settings` → RLS = OFF, and no privileges to authenticated/anon (completely locked down).
+    * Use Supabase UI’s **Auth Policies** view on each table to confirm: it should list the policies we created. Also verify the “Enabled” toggle is on for the five tables we secured.
+    * All policies should be owned by the table owner (likely the `postgres` role in Supabase’s context) and apply to role `authenticated` by default (Supabase’s implicit behavior is that policies apply to `authenticated` unless you specify a role). We didn’t explicitly add `FOR ROLE authenticated` in the policy definitions; by default, that means all roles are subject to them. Since only `authenticated` has select rights on these tables, effectively the policies apply to `authenticated` users. This is fine.
+
+18. **Set Up JWT Claim (if not already):** This is a one-time configuration: Supabase JWTs need to include the `account_id` (and possibly `role`). Typically, we achieve this by creating a custom function that Supabase Auth calls on sign-in (`auth.jwt()` function). According to the expert notes, a simplified version was provided that selects the first account for the user and returns a JWT with `account_id` and `role`. **Make sure this is in place** as per the blueprint:
+
+    * If using the SQL approach: create the `auth.jwt()` function as shown in the notes, which joins `account_members` and `accounts` to find the user’s primary account and role. Mark it as `SECURITY DEFINER` so it can read the tables and build the JWT JSON. (This function essentially enforces that a user’s token always carries their account context – critical for RLS to work).
+    * If using Supabase’s built-in external function hook, ensure the JWT contains a claim `account_id`. In summary, **do not skip this** – without the `account_id` claim in JWTs, our RLS policies will always fail (because `current_setting('request.jwt', true)` won’t have `account_id`). After creating it, test a login to see that the JWT payload has the expected claims.
+    * This step might be considered part of auth setup rather than schema, but it’s directly related to making RLS function, so it’s included as a checklist item. It matches the blueprint’s mandate that JWT custom claims are used for multi-tenancy.
+
+19. **Conduct Final “Clean Slate” Verification:** After all the above, the Supabase project should have the initial schema fully in place. To ensure no drift:
+
+    * **Apply All SQL in Order:** If you were writing these in a single SQL migration file or executed step-by-step, ensure all statements executed without errors. In particular, verify that each `CREATE TABLE ...` and `ALTER TABLE ... ENABLE RLS` did not produce errors. Any error could indicate a missing dependency (e.g., creating a table with a FK to another table that didn’t exist yet). If you encountered an error, fix it and re-run. The order we listed is designed to resolve dependencies (plans before accounts references it, accounts before others reference it, etc.).
+    * **Run `dbdiff` or inspect schema:** If using the Supabase CLI, run `supabase db diff` (or `pg_dump --schema-only`) to get the schema DDL and compare it to the blueprint’s expected schema. They should match up exactly, aside from possible naming differences if any. There should be no pending migrations or differences – if there are, reconcile them now so the baseline is correct.
+    * **No drift going forward:** Capture this schema as the baseline. All future changes will be additive migrations on top of this. It’s wise to export a schema snapshot (`schema.sql`) at this point. This helps later to ensure our migrations yield the intended schema state (Supabase’s migration system typically does this automatically).
+    * **Check for Security & Performance warnings:** Make a note of any potential improvements for later (not to be implemented now, but to be aware):
+
+      * The expert noted heavy RLS conditions (e.g., those with joins) could hurt performance; ours are simple equality checks, which is good. If we later add more complex RLS (like checking plan limits), consider using functions or separate roles to keep queries fast.
+      * We granted broad read on `plans` and `features`. This is fine for now (no sensitive data), but remember that triggers or future logic rely on this (our plan limit triggers will assume the user can select from plans, which we ensured by the GRANT).
+      * `maintenance_mode` and `maintenance_all`: ensure the logic to use these is implemented in the app (middleware). We set them up correctly in schema (with defaults). The expert suggested caching `settings.maintenance_all` and checking it on each request early – ensure to follow that in application code.
+      * **Policy audit:** Confirm that `domains` and `billing_events` had their RLS policies spelled out (they were missing in earlier blueprint drafts and explicitly added per expert review) – we’ve added them. Also `settings` is properly locked down. We can consider this audit passed if all above checks are OK.
+
+By completing all the above steps, you will have a **fully initialized database schema** in Supabase that matches the Ozza Blueprint V4 for Phase 1. The `public` schema now contains all the required tables (accounts, account\_members, plans, features, account\_features, domains, settings, billing\_events) with correct columns and relationships. Row-Level Security is enabled on all multi-tenant tables, in a default-deny configuration that isolates tenants by `account_id`. The necessary extensions (like `pgcrypto` for UUIDs) are in place, and no prohibited SQL commands were used (additive-only). This baseline has been verified for correctness and security, so you can proceed to the next phases (such as setting up tenant-specific schemas and writing the business logic like triggers for plan limits) on a solid foundation.

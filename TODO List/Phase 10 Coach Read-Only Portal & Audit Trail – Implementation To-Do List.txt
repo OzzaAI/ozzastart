@@ -1,0 +1,192 @@
+1. Coach Dashboard Page
+ Create Coach Dashboard UI in Next.js 13: Add a new page in the Next.js app (/apps/web) for coaches. This page will list all agencies (accounts) that the logged-in coach is assigned to, per the blueprint’s “coach portal” concept
+file-sypxkfrqpcztppq5n9r4ub
+. Use Supabase (client-side or server-side) to fetch from the public.account_members table all rows where user_id equals the current coach’s ID and role = 'coach'
+file-sypxkfrqpcztppq5n9r4ub
+. Each such membership gives an account_id (agency) the coach can access.
+ Enforce RBAC (Coach-Only Access): Implement proper role-based access control so that only authenticated users with the coach role can view this dashboard
+file-sypxkfrqpcztppq5n9r4ub
+. For example, use Next.js middleware or server-side checks to verify user.role === 'coach' from the JWT before rendering. If a non-coach (e.g., an agency admin) somehow navigates here, block access (return 403 or redirect). This ensures the page is invisible to users who are not coaches
+file-sypxkfrqpcztppq5n9r4ub
+.
+ Fetch and Display Agency Names: For each agency ID obtained from account_members, retrieve the agency’s name from public.accounts (e.g., via a join or a separate query)
+file-sypxkfrqpcztppq5n9r4ub
+. Ensure RLS policies allow the coach to read the necessary rows: the coach should be able to see account entries for accounts they belong to (likely by a policy linking account visibility to membership)
+file-sypxkfrqpcztppq5n9r4ub
+. Display the list of agency names on the dashboard, each with a link or button to “View” that agency’s data in read-only mode. The UI can show a simple list (or cards) of agencies, clearly identifying each by name.
+ Link to Agency Data Proxy View: Configure each agency entry with a link that triggers the coach view for that agency. This could be a Next.js dynamic route (e.g., /coach/agency/[id]) or a client-side action that calls the secure proxy API (discussed below) and then navigates to a read-only view page. The link should include the agency_id (account ID) as a parameter. For example, clicking “View Agency XYZ” could route to a page or modal that loads data for agency XYZ. Ensure this link or route is protected so that if a coach manually alters an ID, they won’t see another agency’s data (the backend will enforce this)
+file-sypxkfrqpcztppq5n9r4ub
+.
+ UI Confirmation of Context: Once on the agency data view, show a clear indication of context (this might be part of the dashboard page or the new page). For instance, display a heading or banner like “Viewing <Agency Name> (Read-Only as Coach)”
+file-sypxkfrqpcztppq5n9r4ub
+. This helps prevent confusion and reminds the user which agency’s data they are viewing. The coach dashboard page itself can be minimal (just the list of agencies with view links), but when a coach switches into an agency view, the interface should highlight the agency name and the read-only mode.
+2. Secure Proxy API: /api/coach/agency/[id]
+ Implement a Protected API Route: Create a Next.js API endpoint (e.g., in apps/web/pages/api/coach/agency/[id].ts or using the App Router’s app/api/coach/agency/[id]/route.ts) to serve as the secure proxy for coach data access
+file-sypxkfrqpcztppq5n9r4ub
+. This route will handle requests from the coach’s frontend when they attempt to view an agency’s data. (If needed for security or RLS bypass, consider implementing this as a Supabase Edge Function with the service role; however, a Next.js API route using the service key can also work, as long as it never exposes that key to the client.) Document the choice in the worklog for clarity.
+ Validate Coach’s Access Rights: In the API handler, extract the agency_id (account ID) from the request (likely from the URL path or query params). Use the Supabase JWT from the request to identify the coach (req.user or by decoding the JWT). Verify that this coach is indeed linked to the target agency. Query the public.account_members table (with a privileged Supabase client or via a server-side RPC) for a row where account_id = <agency_id> and user_id = <coach’s user_id> and role = 'coach'
+file-sypxkfrqpcztppq5n9r4ub
+. If no such membership exists, immediately return HTTP 403 Forbidden (the coach is not allowed to access that agency). This check ensures the request’s target is one of the coach’s assigned agencies, implementing the blueprint’s rule that a coach can only proxy into agencies they have permission for
+file-sypxkfrqpcztppq5n9r4ub
+file-sypxkfrqpcztppq5n9r4ub
+.
+ Service-Role Data Fetch (Cross-Schema): If the coach’s membership is verified, use the database service role (a Supabase admin key or an internal server role) to query the target agency’s schema for the required data
+file-sypxkfrqpcztppq5n9r4ub
+. This step bypasses RLS on the tenant’s data schema, so be extremely careful to constrain the query to the intended tenant’s schema and data. For example, if schemas are named per account (like account_{id} or a similar naming convention), dynamically target that schema for queries. Gather all necessary read-only data that the coach needs to see – this could include lists of leads, clients, analytics, etc., as specified by the product requirements. Do not fetch sensitive personally identifiable information (PII) that coaches shouldn’t see beyond what’s needed for aggregate understanding
+file-sypxkfrqpcztppq5n9r4ub
+. Use read-only SELECT queries; do not perform any INSERT/UPDATE on the tenant schema in this process.
+ Redact PII Fields: Before returning the data, implement a server-side redaction layer to mask or remove any PII in the dataset
+file-sypxkfrqpcztppq5n9r4ub
+. According to the blueprint, fields like lead email addresses, phone numbers, or other contact info must be masked (e.g., show only partial email as *****@domain.com, and redact phone numbers except maybe last 4 digits)
+file-sypxkfrqpcztppq5n9r4ub
+. Ensure this redaction is done on the server (within the API route or edge function) so that the coach’s browser never receives raw PII
+file-sypxkfrqpcztppq5n9r4ub
+. This likely involves traversing the JSON result and replacing certain fields with masked versions or nulls. Maintain a clear list of which fields in each table/response are considered sensitive. (Optionally, use a helper function to apply a masking pattern consistently for emails, phones, etc.) Verify through tests that no unmasked PII appears in the final payload.
+ Structure the JSON Response: Package the fetched data into a JSON response payload that the frontend can easily consume. This might mirror the structure of the agency’s data models (for example, if the agency app normally calls its own APIs to get leads or stats, you may aggregate similar data here). The payload should be comprehensive enough for the coach to view relevant information, but with sensitive fields already redacted. For example, you might return an object like { leads: [...], clients: [...], metrics: { ... } } – whatever is needed for the coach UI. Ensure that no extraneous data (especially not from other accounts) is included. The response should be strictly read-only data. Set appropriate caching headers if the data can be cached (though likely, coaches will want near real-time data, so caching might be minimal or short-lived).
+ Return and Handle Errors Safely: If all checks pass, send the JSON payload with HTTP 200 OK. If any check fails (e.g., coach not authorized for that agency, or an internal error occurs), return an error status (403 for forbidden, 500 for server error, etc.) with minimal info. Do not leak any sensitive info in error messages. For example, a forbidden error should not reveal whether the agency exists or not – just a generic “Access denied.” Log server-side any unexpected errors for debugging. This completes the proxy endpoint’s main logic as described in the blueprint’s coach impersonation flow
+file-sypxkfrqpcztppq5n9r4ub
+.
+ Secure Cross-Schema Access Practices: Implement additional safeguards as needed for cross-tenant access. For instance, construct SQL queries using parameterized inputs to prevent SQL injection, and never use unvalidated input to decide schema names without strict whitelisting against known coach-accessible schema IDs. The blueprint demands that any cross-tenant operation be controlled and audited
+file-sypxkfrqpcztppq5n9r4ub
+file-sypxkfrqpcztppq5n9r4ub
+. Our code should never allow a coach to retrieve data outside of this route or outside of their authorized accounts. Ensure that the service-role credentials (service key) are kept secret (e.g., loaded from server env variables) and are not exposed to the client. The service role should only be used in server-side contexts like this API route or a secured function
+file-sypxkfrqpcztppq5n9r4ub
+.
+3. Audit Logging
+ Design the Audit Table: Add a new table public.audit_coach_access to the database (in the shared public schema) to record each coach data access event
+file-sypxkfrqpcztppq5n9r4ub
+. The table should have columns for:
+id UUID PRIMARY KEY DEFAULT gen_random_uuid() – a unique ID for each log entry.
+coach_id UUID – the unique identifier of the coach (likely the auth.users UID or the user’s primary key from the profiles table) who accessed the data
+file-sypxkfrqpcztppq5n9r4ub
+.
+agency_id UUID – the account (agency) ID that was accessed
+file-sypxkfrqpcztppq5n9r4ub
+.
+accessed_at TIMESTAMPTZ DEFAULT now() – timestamp of when the access occurred.
+checksum TEXT – a hash representing the data that was returned/viewed
+file-sypxkfrqpcztppq5n9r4ub
+.
+Ensure to create this table via a database migration, following the blueprint’s rule of additive schema changes
+file-sypxkfrqpcztppq5n9r4ub
+. Add NOT NULL constraints where appropriate (e.g., coach_id, agency_id, accessed_at should likely be NOT NULL). Consider adding foreign key constraints: e.g., agency_id references public.accounts(id) and coach_id might reference a profiles or users table if one exists for mapping auth users. (If there’s no easy foreign key to the auth system, you can still store the raw UUID and use it for reference.) Document these constraints in the migration notes.
+ Compute Data Checksum: In the proxy API (from step 2), after preparing the redacted JSON data but before sending it to the client, compute a checksum (e.g., SHA-256 hash) of that response payload
+file-sypxkfrqpcztppq5n9r4ub
+. The checksum will serve as a fingerprint of what data the coach actually saw. Use a stable serialization (e.g., convert the JSON to a canonical string or byte representation) and then compute the hash. This should be done server-side (in Node or Deno) using a cryptographic library. The blueprint suggests logging a hash of the returned payload to attest to what was viewed
+file-sypxkfrqpcztppq5n9r4ub
+. Ensure the hashing process is efficient (if the payload is large, consider the performance, but SHA-256 on a reasonably sized JSON should be fine).
+ Insert Audit Log Entry: Using a privileged database context (service role, as the coach’s own role would likely be blocked by RLS on this table), insert a new row into public.audit_coach_access for each successful data access
+file-sypxkfrqpcztppq5n9r4ub
+. Populate the columns: coach_id with the current coach’s user ID, agency_id with the target agency’s ID, accessed_at with NOW() (or let default handle it), and checksum with the hash computed. This insert should occur regardless of whether the data fetch returned an empty result or full data (as long as access was attempted and authorized, log it). Make sure to perform this insertion within the server logic (not on the client) so it cannot be skipped. The coach’s client should have no direct control over it. If using an Edge Function, you can log via the service binding; if using Next.js API, use the server Supabase client with the service key. Handle any insertion errors (e.g., log if needed, but the call should rarely fail – perhaps ensure the table exists via migration).
+ Prevent Spoofing or Bypassing: Double-check that the audit logging cannot be bypassed by the coach. Since the logging code runs on the server with service privileges, the coach cannot directly prevent it from running if they got the data. However, be wary of any edge cases: for example, if the data fetch throws an error after sending partial data. Ideally, structure the code to fetch data, then compute checksum and log, then send response – so that if sending the response fails, you still have a log (or if logging fails, maybe fail the whole request). The blueprint’s goal is to have every cross-tenant read leave a trace
+file-sypxkfrqpcztppq5n9r4ub
+file-sypxkfrqpcztppq5n9r4ub
+. There should be no alternate API path that returns cross-tenant data without logging. Consider also logging unsuccessful access attempts (if a coach tries to access an unauthorized agency, that could be logged in a security log, though the blueprint doesn’t explicitly require it – it focuses on successful reads).
+ Review Audit Data Contents: Note that we are storing a checksum, not the actual data, in the log
+file-sypxkfrqpcztppq5n9r4ub
+. This is intentional for security and privacy (we’re not duplicating potentially sensitive data in the log) but still allows later verification. For instance, if needed for compliance, one could compare the checksum with a freshly computed hash of what data was in the agency at that time (if data is immutable or if the system keeps historical snapshots) to prove what was seen. The presence of coach_id, agency_id, and accessed_at provides who, what, and when for each access
+file-sypxkfrqpcztppq5n9r4ub
+. This meets the SOC 2 evidence requirements mentioned in the blueprint
+file-sypxkfrqpcztppq5n9r4ub
+.
+4. Security & RLS
+ Row-Level Security on Shared Tables: Ensure RLS policies are in place or updated on relevant tables (public.account_members, public.accounts, etc.) to accommodate the coach access scenario. Generally, RLS on these tables should enforce that a user can only see rows associated with their own accounts or memberships
+file-sypxkfrqpcztppq5n9r4ub
+. For account_members, likely there is already a policy like “user can SELECT a membership row if account_members.user_id = auth.uid()” – this allows each user (including coaches) to retrieve their own membership entries (which list the accounts they belong to)
+file-sypxkfrqpcztppq5n9r4ub
+. Verify that this policy exists and is working; if not, implement it. Similarly, for the accounts table, a safe policy is that a user can SELECT an account row if they are a member of that account. This might be implemented via an EXISTS subquery or join condition in the policy (for example: allow select on accounts where EXISTS (SELECT 1 FROM account_members am WHERE am.account_id = accounts.id AND am.user_id = auth.uid())). If such a policy is not yet in place, add it so that coaches (and any user) can only read data about accounts they are associated with. This will secure the dashboard listing and any other cross-account references. Use a SECURITY DEFINER function in the policy if needed to simplify logic and avoid performance issues with joins
+file-sypxkfrqpcztppq5n9r4ub
+.
+ RLS on audit_coach_access: Apply strict RLS to the new audit log table so that coaches or regular users cannot read or manipulate it. By default, no SELECT or DML should be allowed to non-admin roles on this table. One approach: create a policy that denies all for the authenticated role (or simply don’t create a policy that would allow any selects, which on a table with RLS means no access). If we want platform admins to be able to review the logs via the app, we can create a special role or use a Supabase admin (service role) to read it. But in general, treat audit_coach_access as an internal table: only accessible via the backend with the service context, or by a DB administrator. Ensure INSERT is allowed for the service role execution context (service role bypasses RLS by default, so that’s fine), but you might create a policy like “PERMISSIVE INSERT FOR ALL TO authenticated WITH CHECK false” to ensure no authenticated user can insert on their own (the service role isn’t an authenticated user so it bypasses anyway). Essentially, lock this table down so that coaches cannot query “what have I accessed” – they don’t need to see or alter the audit trail
+file-sypxkfrqpcztppq5n9r4ub
+.
+ JWT Claims & Role Verification: Confirm that the JWT issued by Supabase for coaches contains the necessary custom claims, specifically the user’s user_id (their unique identifier) and role set to “coach”
+file-sypxkfrqpcztppq5n9r4ub
+. Supabase by default provides sub (the user ID) and we have configured custom claims for account_id (tenant context) and role. The blueprint specifies that the JWT should include the user’s tenant account and role for use in RLS and app logic
+file-sypxkfrqpcztppq5n9r4ub
+. If the coach belongs to multiple accounts (multiple agencies), the account_id claim might by default only contain one (possibly the primary account the coach signed in under). In our scenario, the coach’s primary account could be one of the agencies or a separate “coaching organization” account. We need to handle this carefully: when the coach is using the proxy, we cannot rely solely on JWT’s account_id to match the target agency (since cross-tenant access is intentionally allowed for coaches via service role). Thus, our server-side check (in step 2) explicitly uses the account_members lookup to authorize instead of JWT’s account claim. Document this nuance in the code comments: the JWT’s role is “coach” which tells us this user can use the coach portal, but the account_id in JWT might not equal the agency_id they are accessing, which is why we verify against account_members. This is an approved deviation from the typical “JWT account_id must match row account_id” rule, handled carefully and audited
+file-sypxkfrqpcztppq5n9r4ub
+file-sypxkfrqpcztppq5n9r4ub
+.
+ Database Roles and Grants: Ensure that the Postgres roles in use do not inadvertently grant coaches access to other schemas. According to the blueprint, ideally each tenant schema has its own role (e.g., role_agency123) and users authenticate with the role tied to their primary account
+file-sypxkfrqpcztppq5n9r4ub
+. A coach logging in might authenticate under one of their accounts’ roles, which wouldn’t give direct rights to another schema’s tables (hence we must use service role for cross-schema). Double-check that using the service role in the proxy API does not violate any security assumption: it should be fine because we perform our own checks. However, do not use the service role in any client-side context, and do not inadvertently disable RLS globally. Keep the principle of least privilege: the coach’s normal Supabase client (if any in the browser) should use the coach’s own role/tenant context and thus be unable to directly query other schemas. All cross-tenant data must flow through our controlled proxy. This aligns with the blueprint’s multi-layer security approach (UI, server, DB each enforce constraints)
+file-sypxkfrqpcztppq5n9r4ub
+.
+ Prevent Direct Data Access Loopholes: Review the application to ensure there are no other API routes or endpoints where a coach’s JWT might be accepted to retrieve data from a tenant schema directly. For example, if there are generic data fetching endpoints that take an account_id as a parameter, ensure they also enforce that the request’s account_id (or the user’s memberships) match, similar to what we do in the coach proxy route
+file-sypxkfrqpcztppq5n9r4ub
+. The blueprint explicitly requires that all such cross-tenant requests be verified by server logic in addition to DB RLS
+file-sypxkfrqpcztppq5n9r4ub
+. We should add checks in any existing routes if needed. Also, ensure the database itself has no leaks: RLS policies should cover all shared tables (we covered accounts, account_members, audit table). Tenant-specific schemas do not allow cross-access by design (a user’s DB role only has privileges on their own schema). Thus, the primary threat vector is our own code – plugging any holes there is critical.
+5. UI Read-Only Enforcement
+ Read-Only Mode Banner: In the coach’s agency data view UI, prominently display a banner or header indicating the read-only nature of the session. For example, a top banner that says: “Viewing Agency XYZ’s Data – Read-Only (Coach Proxy Mode)”
+file-sypxkfrqpcztppq5n9r4ub
+. Use a style that differentiates it from normal content (perhaps a highlighted background) so that it’s very clear to the coach and anyone observing that this is a special mode. This implements the blueprint’s guidance to clearly indicate context to avoid confusion between the coach’s view and an actual agency user’s view
+file-sypxkfrqpcztppq5n9r4ub
+.
+ Disable or Hide Edit Controls: Audit the agency data components to identify all interactive elements that would normally allow creating, editing, or deleting data. For each such element, ensure that in the coach’s context they are either not rendered at all, or rendered in a disabled state (e.g., greyed out buttons)
+file-sypxkfrqpcztppq5n9r4ub
+. This includes form fields, “Add new” buttons, edit icons, drag-and-drop handles, etc. One straightforward approach is to pass a prop or use a context like readOnlyMode=true when rendering the agency’s data page for a coach. The components can check this and either disable inputs or not show certain UI elements. For instance, if normally there’s an “Edit Lead” button next to a lead’s name, hide that entirely for coaches. Verify that any attempt to trigger an action (like hitting an API route to edit) from the frontend is prevented in the UI (and as a backup, the server should also reject it due to the coach’s role and RLS).
+ No Write Transactions: Ensure the coach’s UI does not call any mutation APIs. The easiest way is to not include any forms or save buttons in the coach view. If the frontend code for the agency pages is reused, double-check that form submission or mutation hooks are conditioned on not being in read-only proxy mode. If necessary, create a separate set of read-only components or use conditional rendering. The blueprint is clear: coaches cannot perform write actions on behalf of the agency in MVP
+file-sypxkfrqpcztppq5n9r4ub
+. If a coach somehow triggers a write (say by crafting a request), the backend should reject it because their JWT role is coach (which should not have write access on the target schema). But we aim to stop it at the UI level for better UX and security (defense in depth)
+file-sypxkfrqpcztppq5n9r4ub
+.
+ Mask Sensitive Data in UI: Confirm that the UI properly displays the masked data provided by the API. For example, the coach should see *****@***.com instead of the actual email
+file-sypxkfrqpcztppq5n9r4ub
+. If the masking scheme uses placeholders or partial info (like showing the domain but not the local part of an email), ensure the UI doesn’t try to do any formatting assuming full data. Basically, treat the data as already anonymized – just display it as-is. Add any helpful tooltips or notes if necessary, e.g., hover text on a masked email could say “Email hidden for privacy”. However, do not allow any “show raw” option for coaches. The data is intentionally blinded, and the UI should not provide a way around that.
+ User Feedback for Read-Only Actions: Optionally, if a coach tries to perform an action that is not allowed (maybe they click something out of habit), provide feedback. For example, if an edit button is disabled, you might show a tooltip “Editing is disabled in coach view.” If a certain section is normally editable and now isn’t, consider adding a note like “This view is read-only. Contact the agency owner for changes.” This aligns with transparency that the coach mode is strictly view-only. It’s not explicitly stated in the blueprint, but it falls under making the UI obviously read-only to avoid confusion
+file-sypxkfrqpcztppq5n9r4ub
+.
+6. CI/CD and Testing
+ Database Migration Script: Write a migration SQL (or use a migration tool) for creating the audit_coach_access table. This migration should create the table with the specified schema (columns, types, defaults) and add any constraints or indexes. For example, you might add an index on coach_id and agency_id for query efficiency if we ever filter by those. Follow the blueprint’s rule that migrations must be additive-only – this is a new table, so that’s compliant
+file-sypxkfrqpcztppq5n9r4ub
+. Double-check the migration by running it on a development database and verifying the table structure. Include this migration in the monorepo’s database package (e.g., if using a tool like Prisma or Supabase migrations).
+ Unit Tests – Authorization Logic: Create tests for the secure proxy API endpoint to ensure that authorization is correctly enforced. Test cases should include: (a) a coach user accessing an agency they are a member of (should succeed), (b) the same coach trying a different agency ID they are not assigned to (should be rejected with 403), (c) a non-coach user (e.g., role=admin or owner) hitting the endpoint (should be rejected – perhaps 403 as well, since the route is for coaches only), and (d) an unauthenticated request (should be rejected with 401 or redirect to login). These tests confirm RBAC and membership checks are functioning
+file-sypxkfrqpcztppq5n9r4ub
+.
+ Unit Tests – Data Redaction: Write tests to verify that PII redaction works as intended. For example, if a lead in the agency has email “john.doe@example.com” and phone “1234567890”, the data returned to the coach should have “*****@example.com” (or similar masking) and phone “******7890” (depending on masking rules). The test can call the proxy function (perhaps by simulating the service role query with known sample data) and then inspect the JSON for any forbidden patterns (like the presence of “john.doe”). Automate checks for known email formats or phone patterns to ensure they’re masked. Also test that non-PII fields (like a lead’s status or timestamps) remain unchanged. This ensures our redaction layer doesn’t over- or under-mask.
+ Unit Tests – Audit Log Entry: After a successful data fetch via the proxy, the code should insert an audit log. Write a test that simulates a successful proxy call and then queries the audit_coach_access table (using a privileged connection in the test) to verify a new record was created. Check that the coach_id matches the requesting user, agency_id matches the target, and that checksum is a non-empty string of the expected length (e.g., 64 hex characters if SHA-256). You can also recompute the expected checksum in the test (since you know what data was “fetched” in the simulation) to assert that it matches exactly. Additionally, test that on a forbidden request (coach not linked to agency), no audit entry is created (we only log actual accesses).
+ Integration Tests – End-to-End Coach View: Develop an integration test scenario that covers the entire flow: creating a coach, linking them to an agency, logging in as that coach, accessing the coach dashboard, and viewing an agency’s data. If using a testing framework like Playwright or Cypress, script a login as a coach and navigate to the coach dashboard page. Confirm that the page lists the expected agencies. Click the link for a specific agency and wait for data to load. Verify that the UI displays data (non-empty list of items, etc.), that the banner “Read-Only” is visible, and that no edit controls are present. Also verify that some piece of data known to be sensitive is masked in the UI. This test ensures that the front-end is correctly using the proxy API and enforcing the read-only state.
+ Post-Deploy Canary Test: Following the blueprint’s CI/CD guidelines
+file-sypxkfrqpcztppq5n9r4ub
+, implement a post-deployment canary test focused on the coach access feature. For instance, have an automated script (in CI pipeline or a monitoring system) that upon deploy creates a temporary test agency and a test coach user. It should insert the test coach into the agency’s account_members with role 'coach', then simulate the coach logging in and calling the proxy API for that agency. This can be done with a direct API call using a JWT for the test coach. Verify the API returns the expected data format and status. Then query the audit_coach_access table to ensure a log entry was written for this access. This canary should cleanup after itself: e.g., delete the test user/account or use a dedicated deploy_canary_<commit> tenant that is reset
+file-sypxkfrqpcztppq5n9r4ub
+file-sypxkfrqpcztppq5n9r4ub
+. The goal is to catch any regression where, say, a policy or code change prevents coaches from accessing data or logging properly. If the canary fails (no data or no log), it should signal the deployment process to halt or rollback, as per the deployment safety rules
+file-sypxkfrqpcztppq5n9r4ub
+.
+ Performance & Load Testing (Optional): Although not explicitly requested, consider testing how the proxy API performs with a large tenant dataset. If an agency has a lot of data, the response could be large. Ensure the approach (especially the JSON serialization and hashing) can handle it efficiently. This might involve testing with a dummy dataset of significant size and measuring response time. If needed, optimize by limiting data or paginating. Document any such decisions, but keep within the blueprint’s scope (e.g., the blueprint suggests using materialized views for cross-tenant reports to avoid heavy real-time aggregation
+file-sypxkfrqpcztppq5n9r4ub
+ – though for direct data view, it’s likely acceptable to fetch live data per schema).
+7. Naming, Modularization & Docs
+ Monorepo Structure – Placement of Code: Adhere to the monorepo layout as described in the blueprint
+file-sypxkfrqpcztppq5n9r4ub
+file-sypxkfrqpcztppq5n9r4ub
+. Place front-end components and pages in the appropriate location under /apps/web. For example, create a folder /apps/web/app/coach (if using the App Router) or /apps/web/pages/coach (if using Pages router) for the coach dashboard and related pages. The API route file should reside in the API routes directory (e.g., /apps/web/pages/api/coach/agency/[id].ts). If any shared logic is substantial (like data filtering or the checksum logic), consider adding it to a shared library package (under /packages/...) or a utility module, so it can be tested in isolation and potentially reused (for instance, redaction logic might be reused by future admin “sudo mode” features). Keep files and identifiers lowercase and use clear, descriptive names as per the coding standards
+file-sypxkfrqpcztppq5n9r4ub
+ (e.g., audit_coach_access table name is all lowercase and uses underscores as specified).
+ Code Modularity and Cleanliness: Implement the new functionality in a modular way. For instance, the front-end could have a CoachDashboard component and a CoachAgencyView component that are specific to coach UI. The API route should have its logic possibly broken into helper functions: e.g., verifyCoachAccess(coachId, agencyId), fetchAgencyData(schema, agencyId), redactSensitiveFields(data), logCoachAccess(coachId, agencyId, data) etc. This makes the code easier to maintain and test. Follow the project’s linting and formatting rules (which should be strict according to the blueprint) so all new code passes CI checks
+file-sypxkfrqpcztppq5n9r4ub
+. Name things clearly (for example, avoid abbreviations; use coachId rather than cid, etc.).
+ Documentation in Worklog/Changelog: As required by the blueprint, document all these changes in the project’s worklog or changelog
+file-sypxkfrqpcztppq5n9r4ub
+. This includes writing down design decisions (e.g., “Used Next.js API route with service key for coach proxy due to ease of integration, considered Edge Function but decided against for now because X”), any schema changes (noting the addition of audit_coach_access table), and how the security model is upheld. Mention in the worklog that this implements the Coach Read-Only Portal and Audit Trail feature as per blueprint v5. If there were any ambiguities that required assumptions, call them out for review. The blueprint is the single source of truth
+file-sypxkfrqpcztppq5n9r4ub
+, so ensure every implemented detail has a basis in it (which we’ve maintained via this to-do list).
+ Add Comments and README Updates: In the code, add comments especially in complex areas like the proxy API. For example, atop the API route file, explain that this route allows coaches to fetch agency data in a controlled manner, referencing the blueprint section for clarity. In the database migration file for audit_coach_access, include a comment about the purpose of this table (e.g., “-- This table logs cross-tenant coach access for security auditing (see Ozza Blueprint v5)”). If the repository has a README or developer guide, update it to mention the coach portal feature and how to run the relevant tests. Ensure that any developer running the system knows about the new roles and can add coaches, etc., for testing. Documentation and clarity are part of the maintainability focus of the blueprint
+file-sypxkfrqpcztppq5n9r4ub
+.
+ Verify Naming Consistency: Double-check that all new identifiers (table name, API route path, page URL, variables) follow the naming conventions. The blueprint dictates consistent lowercase and specific casing patterns
+file-sypxkfrqpcztppq5n9r4ub
+. For example, use audit_coach_access (all lowercase, underscores) for the table and do not deviate with pluralization or different naming. Use folder names like coach in lowercase. Ensure any config keys (if added) also follow suit. This consistency will keep the project aligned with the established conventions.
+ Adhere to Security Model: Finally, before marking this implementation complete, review it against the blueprint’s security model in full. Confirm that: (a) multi-tenancy is preserved (no data leaks between schemas except through the intended blind route)
+file-sypxkfrqpcztppq5n9r4ub
+file-sypxkfrqpcztppq5n9r4ub
+, (b) RBAC and RLS are enforced at every level (we have UI/UX enforcement, server-side checks, and DB policies all in place)
+file-sypxkfrqpcztppq5n9r4ub
+, (c) all data modifications follow the rules (we added only an audit table, which doesn’t violate the additive-only rule and doesn’t break any tenant data isolation)
+file-sypxkfrqpcztppq5n9r4ub
+, and (d) performance considerations are noted (the approach avoids any expensive cross-schema joins at query time, sticking to one schema query at a time)
+file-sypxkfrqpcztppq5n9r4ub
+. By systematically checking each of these, we ensure that the Coach Read-Only Portal and Audit Trail implementation is fully compliant with the blueprint and ready for deployment.
