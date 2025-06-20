@@ -2,7 +2,7 @@
 . "$(dirname "$0")/_/husky.sh"
 
 echo "Running pre-push checks..."
-npx pnpm run lint
-npx pnpm run type-check
-npx pnpm run lint:sql
+pnpm run lint
+pnpm run type-check
+pnpm run lint:sql
 echo "Pre-push checks passed." 

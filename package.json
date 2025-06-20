@@ -19,7 +19,7 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx --max-warnings=0",
     "test": "vitest run --passWithNoTests",
-    "lint:sql": "ts-node apps/cli/scripts/lint-sql.ts",
+    "lint:sql": "ts-node --project apps/cli/tsconfig.json apps/cli/scripts/lint-sql.ts",
     "prepare": "husky install"
   }
 }

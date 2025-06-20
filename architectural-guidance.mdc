@@ -1,0 +1,127 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+{
+  "architecture": {
+    "design_philosophy": "Focus on modular, maintainable, and scalable design. The system must be multi-tenant by design, with strict data isolation and no tenant-specific code paths. All features are implemented as configurable options (roles, plans, feature flags) rather than hard-coded logic per tenant. The architecture favors clear separation of concerns, following SOLID principles and layering (e.g., front-end vs. backend vs. database logic), with each module owning a well-defined responsibility. We strive for consistency and clarity across the codebase, ensuring that the design remains flexible for future growth but rigorous in enforcing boundaries and best practices.",
+    "best_practices": [
+      "Design for multi-tenancy from the ground up: ensure that every piece of data and logic is aware of tenant context and isolated appropriately.",
+      "Keep the monorepo structure modular: group related code into distinct applications or packages (e.g., separate front-end, serverless functions, and database modules), and limit coupling between them.",
+      "Use configuration (e.g., feature flags, environment settings, role/plan settings) to handle variability in behavior; avoid branching logic based on specific tenant identifiers.",
+      "Apply SOLID and clean architecture principles: e.g., each service or module has a single responsibility, and code dependencies point inward to abstract interfaces rather than outward to concrete implementations.",
+      "Regularly review the system for any emerging complexity or technical debt. Refactor early to maintain simplicity and prevent architectural drift."
+    ],
+    "violations_to_avoid": [
+      "Embedding tenant-specific conditions or hardcoded tenant IDs in code (breaks multi-tenant design and maintainability).",
+      "Tightly coupling modules (e.g., reaching directly into another module's internals instead of using a well-defined interface or API).",
+      "Introducing circular dependencies between modules or layers.",
+      "Making architectural decisions that contradict the blueprint (e.g., adding an unauthorized new service or skipping the prescribed review process for major changes).",
+      "Neglecting to consider scalability and performance in design—e.g., assuming a single-tenant or single-threaded context where a multi-tenant, concurrent load is reality."
+    ],
+    "recommended_patterns": [
+      "Layered architecture: separate presentation, business logic, and data layers, with clear APIs between them.",
+      "Dependency injection or inversion of control for flexibility and testability of modules.",
+      "Domain-driven design boundaries: encapsulate business contexts (e.g., billing, user management, content editing) in their own modules or components with minimal knowledge of each other's internals.",
+      "Event-driven or message-passing approaches for cross-module interactions (to reduce tight coupling), especially for side-effects like notifications or audit logging.",
+      "Feature toggle/flag system: wrap new or conditional functionality behind a flag that can be turned on/off per tenant or globally, enabling safe rollouts and simpler code branching."
+    ]
+  },
+  "database": {
+    "design_philosophy": "The database is the foundation of multi-tenant data isolation and integrity. We use one schema per tenant to strictly partition data, plus a shared public schema for common reference data. All schema changes are additive and backward-compatible—never destructive—ensuring safe migrations and easy rollbacks. The database is treated not just as storage but as an enforcement point: constraints, triggers, and policies uphold business rules and security (RBAC/RLS) at the lowest level. Simplicity and clarity in the schema are paramount: each table has a clear purpose and relationships, and naming is consistent and descriptive.",
+    "best_practices": [
+      "Follow an additive-only migration strategy: only add new tables or columns (never drop or rename existing ones in a way that loses data) to evolve the schema safely over time.",
+      "Isolate tenant data using separate schemas: every tenant gets their own schema for private data, and only shared reference tables (e.g., feature definitions, plans) reside in the public schema.",
+      "Write and review SQL migrations for every schema change. Migrations must be checked into version control and run via the standard migration tool/CLI to ensure consistency across environments.",
+      "Enforce data integrity in the database: use primary/foreign keys, unique constraints, and check constraints to prevent invalid data. Leverage database triggers or functions for critical business logic enforcement (like cascading deletes only within a tenant's schema, or maintaining audit logs).",
+      "Ensure indexing and query efficiency, especially on tenant-specific keys (like tenant IDs or foreign keys within each schema) to maintain performance as data grows. Regularly analyze query plans for potential optimizations."
+    ],
+    "violations_to_avoid": [
+      "Destructive schema changes (dropping tables/columns or altering types in a non-backwards-compatible way). This violates the safe migration principle and risks data loss.",
+      "Cross-tenant data joins or queries that mingle data between schemas. Each query should be scoped to a single tenant's schema or to the public schema for reference data.",
+      "Bypassing the migration workflow (e.g., making manual database changes without a corresponding migration script). All changes must be tracked and repeatable.",
+      "Not enabling or ignoring Row-Level Security where appropriate. All shared tables in the public schema must have RLS policies to ensure tenants only see permitted rows.",
+      "Using superuser or service roles indiscriminately for routine operations. Instead, use least-privilege roles and trust the combination of RLS + user roles for data access whenever possible."
+    ],
+    "recommended_patterns": [
+      "Schema-per-tenant design: automate the provisioning of a new schema for each new tenant via migrations or CLI scripts, including seeding necessary default data for that tenant.",
+      "Use a consistent naming convention for schemas and tables (e.g., schema named after tenant or a GUID, tables named the same across schemas for uniformity). This makes automation and query generation easier.",
+      "Encapsulate cross-tenant administrative tasks (like running a query across all schemas) into safe utilities or scripts, rather than ad-hoc queries, to avoid mistakes. For example, iterate through schemas via a known list when needed, using explicit whitelists.",
+      "Use database roles and grants to enforce that application connections only have access to their designated schema (and the minimum necessary privileges on the public schema). Each application component should connect with a role scoped to its needs (e.g., read/write to one tenant schema).",
+      "Regularly back up the database and test restoring it. Treat the backups as tenant-isolated as well (e.g., be able to restore a single tenant's schema if needed). This ensures resilience and supports the additive-only approach by providing fallback if a migration goes awry."
+    ]
+  },
+  "security": {
+    "design_philosophy": "Security is woven into every layer of the system by design. The platform operates on a zero-trust, least-privilege model: no code or user should have access to data or actions beyond what is absolutely necessary. We rely on robust authentication and authorization (via Supabase Auth JWTs, RBAC roles, and Postgres RLS policies) to gate every request. Sensitive operations are isolated to secure environments (like Supabase Edge Functions running with elevated roles) and even then carefully constrained. Every feature is built with an assumption of hostile multi-tenant context, meaning thorough validation, sanitization of inputs, and strict enforcement of permissions at all times.",
+    "best_practices": [
+      "Implement Role-Based Access Control (RBAC) for all application features: clearly define roles (e.g., admin, coach, client) and check these roles in both the frontend and backend before allowing sensitive actions or access to data.",
+      "Enable Row-Level Security (RLS) on multi-tenant tables and write explicit policies to ensure each tenant's users can only see and modify their own data. Test these policies thoroughly whenever schema or role changes occur.",
+      "Use Supabase Edge Functions for operations requiring elevated privileges (like processing webhooks or performing admin tasks), and within those functions, limit the scope of what they do. For example, an Edge Function should check the specific event type or input and only touch the relevant records, avoiding any broad or unrestricted data access.",
+      "Apply least privilege everywhere: database connections from the Next.js app should use a limited user role (not the full service role), and each Edge Function should ideally use a narrowly scoped key or its own database role if possible. Never expose secret keys or service roles in client-side code or public repos.",
+      "Keep security in mind with third-party integrations as well: verify webhook signatures (e.g., from Stripe), validate all inputs (never trust client-provided data like IDs or flags without checking ownership), and handle errors or rejections gracefully to avoid leaking information."
+    ],
+    "violations_to_avoid": [
+      "Bypassing security layers for convenience, e.g., using a service role to query data in the app rather than implementing proper RLS policies or role checks.",
+      "Embedding sensitive credentials or secrets in front-end code or in version control. All secrets must be stored in secure config (environment variables or vault) and never sent to clients.",
+      "Disabling or neglecting RLS on a table that contains tenant-specific data, which could lead to data leaks across tenants. Every new table in the shared schema should have an RLS policy before it is used.",
+      "Logging or exposing sensitive user information (like passwords, personal data, access tokens) in a way that could be retrieved by unauthorized parties. Always sanitize logs and responses.",
+      "Ignoring security updates or known vulnerabilities in dependencies or not following up on security audit findings. Security is an ongoing process; failing to patch or monitor can undermine all other practices."
+    ],
+    "recommended_patterns": [
+      "Use a centralized authorization module or middleware: for example, have a function that checks current user's roles/permissions against a required permission and call this consistently in all protected routes or actions.",
+      "Adopt a security-first testing approach: include tests for permission boundaries (e.g., ensure a regular user cannot access admin APIs, test that RLS policies truly restrict data, etc.).",
+      "Employ feature flags to disable or gate new features that haven't been security-hardened yet, ensuring that experimental features don't accidentally expose vulnerabilities to all users.",
+      "Use monitoring and alerting for security-related events: e.g., alerts on multiple failed login attempts, or if an Edge Function is being called in an unusual pattern, etc., to catch potential breaches early.",
+      "Regularly review roles and permissions. Over time, ensure that no role accumulates permissions it shouldn't have, and that any decommissioned features have their access removed. Keep the principle of least privilege up-to-date as the system evolves."
+    ]
+  },
+  "naming": {
+    "design_philosophy": "Consistent naming is crucial for clarity and maintainability. We adopt a uniform convention across the codebase: all files, directories, and database identifiers use lowercase and delimit words with hyphens or underscores as appropriate. This consistency prevents confusion and merge issues (especially on case-insensitive filesystems) and aligns with the founder's guidelines. In code, names should be descriptive but concise, reflecting their purpose or domain concept clearly. A consistent ubiquitous language (same terms for the same concept across modules) ensures that everyone understands what each name means in context.",
+    "best_practices": [
+      "Use **lowercase-kebab-case** for file and directory names (e.g., `user-profile.tsx`, `client-settings/`). No spaces or uppercase letters in filenames or folders.",
+      "Use **snake_case** for database schema, table, and column names (e.g., schema \"tenant_abc123\", table \"user_accounts\", column \"created_at\"). Consistently apply this to avoid case-sensitivity issues and to meet SQL conventions.",
+      "Use clear, descriptive names that reveal intent: for example, a function that sends an invitation email might be called `sendInvitationEmail` (in code) rather than a vague name like `handleTask`. In general, avoid abbreviations unless they are well-known in the domain.",
+      "Maintain a single terminology for core concepts. If the business domain calls the main customer entity a \"tenant\", use that term everywhere (not interchangeably with \"account\" or \"client\" in different parts of the code). This ensures consistency in understanding.",
+      "Follow language-specific conventions for code: in TypeScript/JavaScript, use camelCase for variables and functions, PascalCase for React components or classes, and UPPER_SNAKE_CASE for constants. These should be the only deviations from the all-lowercase rule, and only within code syntax (never for file or DB names)."
+    ],
+    "violations_to_avoid": [
+      "Mixing naming styles or casing in the codebase. For example, having some files in PascalCase and others in kebab-case, or DB columns that start with uppercase. This inconsistency leads to confusion and potential errors.",
+      "Using vague or contextless names (like `data`, `item`, `tmpVar`) especially in a broad scope. Names should convey meaning about their role or content.",
+      "Changing established names without good reason. Renaming a widely used concept or variable can create confusion; any renaming should be justified and consistently applied project-wide (with thorough search-and-replace and code review).",
+      "Using different terms for the same concept in different places (e.g., calling the same user role \"coach\" in one module and \"mentor\" in another without distinction). This violates the ubiquitous language principle and confuses developers and users.",
+      "Including spaces, special characters, or uppercase letters in any filenames, paths, or database identifiers. These can cause cross-platform issues and break naming consistency rules."
+    ],
+    "recommended_patterns": [
+      "Establish and automate linting or naming checks. For instance, use an ESLint rule or git hook to reject filenames with uppercase letters or spaces, and a SQL linter to enforce naming in migrations.",
+      "Create a glossary of key domain terms and their intended usage. Share this with the team so everyone uses consistent terminology in code and communication.",
+      "When introducing a new concept or feature, take a moment to name it consistently with existing terms. Try to fit it into the naming scheme or theme of the project (for example, if all background jobs are named with a verb-noun pattern like \"send_email\", do similar for new jobs).",
+      "Keep names as short as possible but as long as necessary. It's better to have a slightly longer, clear name than a short ambiguous one. For example, `max_login_attempts` is preferable to `maxAtt` or `mLA`.",
+      "Review names during code reviews. If a new identifier or module name doesn't immediately convey its purpose, discuss and refine it. Consistent feedback on naming will keep the whole codebase aligned."
+    ]
+  },
+  "coding": {
+    "design_philosophy": "Code should be clean, intentional, and robust. We prioritize readability and maintainability over clever hacks or premature optimizations. Every piece of code should have a clear purpose and fit within the overall architecture and conventions. We enforce strict linting and formatting rules so that style never obscures substance. Testing is not an afterthought: critical logic and security boundaries must be covered by automated tests to prevent regressions. In essence, the codebase is treated as a living system that we continuously refine—always aiming for simplicity, clarity, and conformance to the established blueprint.",
+    "best_practices": [
+      "Adhere to SOLID principles and design patterns where they make sense. For example, use the Single Responsibility Principle to keep functions and classes focused, and the Open/Closed Principle to add new features via extension rather than modifying core logic.",
+      "Write self-documenting code: prefer clear logic and well-named variables/functions over excessive comments. Comments should explain why something is done if it's not obvious, rather than what the code is doing.",
+      "Keep functions and modules small and focused. If a function exceeds a certain logical complexity or size, consider breaking it into smaller helper functions. Similarly, organize code into modules that group related functionality, and avoid huge files that handle unrelated concerns.",
+      "Use version control and CI processes diligently: commit descriptive messages, break changes into logical commits, and ensure all tests and linters pass before merging. The CI pipeline (including pre-push hooks) must remain green as a baseline for any code change.",
+      "Write tests for critical paths: e.g., permissions enforcement, multi-tenant data separation, payment processing, etc. Use both unit tests for isolated logic and integration tests for system behavior. Aim for a test suite that gives confidence in catching breaches of blueprint rules or security issues."
+    ],
+    "violations_to_avoid": [
+      "Copy-pasting or duplicating code instead of refactoring common functionality into a helper or shared module. Duplication increases maintenance burden and risk of inconsistencies.",
+      "Introducing \"magic numbers\" or hard-coded values that lack context. Every constant should be named or explained, preferably centralized (like config or constants files) if used in multiple places.",
+      "Over-engineering or prematurely optimizing. Do not introduce complex patterns (or dependencies) that are not needed to solve the current problem, as they add unnecessary complexity. Build for current known requirements, keeping the design open for future extension but not cluttered by it.",
+      "Ignoring compiler/linter warnings or failing to type-check. Any TypeScript errors or ESLint violations are not acceptable; they must be resolved or explicitly justified and approved (which should be rare).",
+      "Pushing code that hasn't been reviewed or that violates the established rules. All code changes should go through the proper review (or AI verification) process, and any deviation from the blueprint must be approved explicitly. No shortcuts."
+    ],
+    "recommended_patterns": [
+      "Use feature flags and configuration to develop new features safely. For instance, when adding a large feature, guard it behind a flag so it can be merged and deployed in an off state, and enable it selectively when ready. This keeps releases smooth and avoids long-lived branches.",
+      "Leverage idiomatic language features and frameworks: in React/Next.js, use hooks and context to manage state in a clean way; in database code, use parameterized queries or an ORM for safety. Don't reinvent the wheel if the standard solution is available and fits the need.",
+      "Adopt continuous refactoring: regularly clean up code smells (like long functions, deep nesting, unclear naming) as part of ongoing development. Small refactors ensure the codebase stays healthy and adaptable.",
+      "Encapsulate complex operations or calculations into well-defined functions or classes. This not only makes code more testable but also easier to reuse (e.g., a billing calculation should live in one place rather than scattered around).",
+      "Keep the development workflow efficient and safe: use the provided CLI tools and scripts to manage tasks like migrations, seeding, and testing. This ensures consistency (everyone uses the same process) and reduces the chance of human error (the tools are designed to prevent rule violations, e.g., blocking destructive SQL)."
+    ]
+  }
+}
