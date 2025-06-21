@@ -1,6 +1,6 @@
-Great. I’ll create a complete TO DO list for implementing the Next.js 13 Minimal Portal based on the blueprint and your input. It will include all steps needed—frontend, middleware, Supabase client, authentication, layout, database migrations, middleware logic, and initial pages—ensuring nothing is left to guesswork and there’s no room for creative interpretation.
+Great. I'll create a complete TO DO list for implementing the Next.js 13 Minimal Portal based on the blueprint and your input. It will include all steps needed—frontend, middleware, Supabase client, authentication, layout, database migrations, middleware logic, and initial pages—ensuring nothing is left to guesswork and there's no room for creative interpretation.
 
-I’ll let you know as soon as it’s ready.
+I'll let you know as soon as it's ready.
 
 
 # To-Do List: Minimal Next.js 13 Portal Implementation (Aligned with Ozza Platform Blueprint v5)
@@ -15,11 +15,11 @@ I’ll let you know as soon as it’s ready.
    * `/apps/web/styles` – for global styles (e.g. Tailwind CSS config or global CSS).
    * `/apps/web/public` – for static assets (favicon, logos).
    * Also include Next.js special files at the app root: a `layout.tsx` (global layout) and a `middleware.ts` (see below).
-2. **Naming Conventions:** Use lowercase and kebab-case for directory and file names, consistent with the blueprint’s conventions. For example, name files like `supabase-client.ts`, not uppercase. Use TypeScript (`.ts`/`.tsx`) for all source files to align with the blueprint’s type-safe approach.
-3. **TypeScript Configuration:** Verify that **TypeScript** is properly configured for the workspace. In `/apps/web/tsconfig.json`, enable strict mode (e.g. `"strict": true`) and appropriate module resolution. Ensure the monorepo’s build system (Turborepo/Nx or similar) recognizes the new app. This guarantees we catch type errors and follow the blueprint’s emphasis on type safety and maintainability.
+2. **Naming Conventions:** Use lowercase and kebab-case for directory and file names, consistent with the blueprint's conventions. For example, name files like `supabase-client.ts`, not uppercase. Use TypeScript (`.ts`/`.tsx`) for all source files to align with the blueprint's type-safe approach.
+3. **TypeScript Configuration:** Verify that **TypeScript** is properly configured for the workspace. In `/apps/web/tsconfig.json`, enable strict mode (e.g. `"strict": true`) and appropriate module resolution. Ensure the monorepo's build system (Turborepo/Nx or similar) recognizes the new app. This guarantees we catch type errors and follow the blueprint's emphasis on type safety and maintainability.
 4. **Next.js App Router Setup:** Since we are using the App Router (Next.js 13), remove or ignore any `/pages` directory in this app (if present) to avoid confusion. Place page components under the `/app` directory. For example, we will create `app/login/page.tsx` for the Login page and `app/dashboard/page.tsx` for the Dashboard, etc., as outlined below.
 5. **Global Files:** Create a placeholder for `apps/web/app/layout.tsx` (this will be our global layout component) and an empty `apps/web/middleware.ts` file. Next.js will automatically use `middleware.ts` for Edge Middleware and wrap all pages with `layout.tsx`. We will implement these in later steps.
-6. **Install Dependencies:** If not already in the project, add the Supabase JS client library (e.g. run `npm install @supabase/supabase-js`). No other auth library (like NextAuth) is needed, since we will integrate directly with Supabase per the blueprint’s auth design.
+6. **Install Dependencies:** If not already in the project, add the Supabase JS client library (e.g. run `npm install @supabase/supabase-js`). No other auth library (like NextAuth) is needed, since we will integrate directly with Supabase per the blueprint's auth design.
 
 ## Supabase & Auth Integration
 
@@ -31,16 +31,16 @@ I’ll let you know as soon as it’s ready.
 2. **Supabase Admin Client (Server-Side):** In the same `/apps/web/lib/`, create **`supabase-admin.ts`** for server-side usage (like middleware or server actions). Initialize another Supabase client using the Supabase URL and the **service role key** (from an env var like `SUPABASE_SERVICE_ROLE_KEY`). This client will have full admin rights (bypassing RLS) and will only be used on the server (never exposed to the client). We will use this for middleware tasks like domain lookup and checking global settings.
 3. **Auth Context Provider:** Implement an **AuthProvider** React context to manage user auth state and provide Supabase throughout the app. In `/apps/web/lib/` (or `/apps/web/components/`), create `AuthProvider.tsx`:
 
-   * Define a React context (e.g. `AuthContext`) that will hold the current user session info (e.g. `{ user: User|null, loading: boolean, accountId: string|null }`). The `accountId` can be extracted from the user’s JWT or set from the domain context.
-   * In the `AuthProvider` component, use a React state to track the logged-in user/session. On initial mount, call `supabaseClient.auth.getSession()` (or `getUser()`) to retrieve any existing session. Supabase’s client will use the stored refresh token (in localstorage or cookies) to restore a session if present.
-   * Subscribe to auth changes: call `supabaseClient.auth.onAuthStateChange` and update the context state when the user logs in or out. This ensures the context always reflects the current Supabase auth state (JWT). The blueprint expects that the app will handle token refresh and persistence via Supabase’s client in the background to keep the user logged in.
+   * Define a React context (e.g. `AuthContext`) that will hold the current user session info (e.g. `{ user: User|null, loading: boolean, accountId: string|null }`). The `accountId` can be extracted from the user's JWT or set from the domain context.
+   * In the `AuthProvider` component, use a React state to track the logged-in user/session. On initial mount, call `supabaseClient.auth.getSession()` (or `getUser()`) to retrieve any existing session. Supabase's client will use the stored refresh token (in localstorage or cookies) to restore a session if present.
+   * Subscribe to auth changes: call `supabaseClient.auth.onAuthStateChange` and update the context state when the user logs in or out. This ensures the context always reflects the current Supabase auth state (JWT). The blueprint expects that the app will handle token refresh and persistence via Supabase's client in the background to keep the user logged in.
    * When a session is present, extract the custom JWT claims for `account_id` and `role`. Supabase includes these in the JWT per our setup. You can get them from `user.user_metadata` or by decoding the JWT (Supabase v2 client provides `session.access_token` which can be decoded if needed). Store `accountId` in context for easy access throughout the app.
    * Provide the context value (`{ user, accountId, ... }`) and render `{children}` inside the provider. This makes the current user and account available to any component via `useContext(AuthContext)`.
-   * **Note:** Ensure the AuthProvider is a **Client Component** (use `"use client";` at the top of the file) because it uses state and Supabase’s JS client (which runs in the browser). The context does not do any SSR; it relies on the middleware and client to supply auth info.
+   * **Note:** Ensure the AuthProvider is a **Client Component** (`"use client";` at the top of the file) because it uses state and Supabase's JS client (which runs in the browser). The context does not do any SSR; it relies on the middleware and client to supply auth info.
 4. **Account Context (Tenant) Handling:** Optionally, create a separate **AccountContext** if needed to specifically hold tenant info (like the current `accountId` and maybe account settings or branding). However, since the `accountId` is derived from auth and domain, you may decide to include it in AuthContext to simplify. The blueprint emphasizes that the app is aware of the multi-tenant context and adjusts content per tenant. We will ensure the account context (accountId) is available (via AuthContext or similar) so pages can filter data by tenant.
-5. **JWT Claims Confirmation:** Verify that the Supabase Auth setup includes custom JWT claims for `account_id` and `role`. According to the blueprint, a database trigger (or Supabase custom function) injects these claims on sign-up/login. If this isn’t already configured, a to-do (in Migrations/Seed) is to create the JWT trigger function that selects the user’s account (from an `account_members` table) and adds `account_id` and role into the JWT. This is critical for Row-Level Security to work — the JWT’s `account_id` claim is used by the database to restrict data to the tenant. *Ensure this trigger is deployed in the database before testing login.*
+5. **JWT Claims Confirmation:** Verify that the Supabase Auth setup includes custom JWT claims for `account_id` and `role`. According to the blueprint, a database trigger (or Supabase custom function) injects these claims on sign-up/login. If this isn't already configured, a to-do (in Migrations/Seed) is to create the JWT trigger function that selects the user's account (from an `account_members` table) and adds `account_id` and role into the JWT. This is critical for Row-Level Security to work — the JWT's `account_id` claim is used by the database to restrict data to the tenant. *Ensure this trigger is deployed in the database before testing login.*
 6. **Role & RLS Alignment:** Confirm that RLS policies on tables (like `accounts`, etc.) use the `auth.jwt()` values for `account_id` and `role` to enforce tenant isolation. For example, the `accounts` table might have a policy: *user can select their account row where `id = auth.jwt().account_id`*. This way, when our front-end queries Supabase, it only retrieves data for the right account by default (the JWT automatically scopes it). No additional filtering is needed on the client side.
-7. **Usage in Pages:** With `supabaseClient` and `AuthProvider` set up, we will wrap our application with AuthProvider in the layout (coming up) so that any page can call `supabaseClient` (imported from lib) and rely on the JWT in it. For direct Supabase calls from the client, the JWT is sent along automatically and the database ensures tenant safety via RLS. For any server-side calls (like in middleware or Next API routes), we’ll use the service role client and still double-check the account context manually (dual defense as per blueprint).
+7. **Usage in Pages:** With `supabaseClient` and `AuthProvider` set up, we will wrap our application with AuthProvider in the layout (coming up) so that any page can call `supabaseClient` (imported from lib) and rely on the JWT in it. For direct Supabase calls from the client, the JWT is sent along automatically and the database ensures tenant safety via RLS. For any server-side calls (like in middleware or Next API routes), we'll use the service role client and still double-check the account context manually (dual defense as per blueprint).
 
 ## Middleware (Multi-Tenancy & Maintenance)
 
@@ -60,7 +60,7 @@ I’ll let you know as soon as it’s ready.
      Ensure proper error handling if `error` or no data.
    * If the domain is found, extract the `account_id`. If not found:
 
-     * **Unknown Domain:** If no mapping exists, respond with a 404. We do not allow unknown hosts to proceed. This could be done by returning `NextResponse.next()` with a 404 status or redirecting to our 404 page. For simplicity, we can return `NextResponse.rewrite(new URL('/404', request.url))` which will load the 404 page in our app. (We will implement the 404 page separately.) This ensures that a request to an unrecognized domain doesn’t accidentally fall back to some default content.
+     * **Unknown Domain:** If no mapping exists, respond with a 404. We do not allow unknown hosts to proceed. This could be done by returning `NextResponse.next()` with a 404 status or redirecting to our 404 page. For simplicity, we can return `NextResponse.rewrite(new URL('/404', request.url))` which will load the 404 page in our app. (We will implement the 404 page separately.) This ensures that a request to an unrecognized domain doesn't accidentally fall back to some default content.
 3. **Attach Account Context (Cookie):** When a valid domain is found:
 
    * **Persist the account context:** The blueprint suggests storing the tenant context so that subsequent routing and React components know which account is active. Set a cookie on the response, e.g. `account_id=<uuid>`:
@@ -72,13 +72,13 @@ I’ll let you know as soon as it’s ready.
 
      (Mark it `HttpOnly: false` so client-side code can read it if needed, since it's not a secret. The account UUID is mainly used for context.)
      The cookie path is `/` (whole domain). This cookie travels with all subsequent requests on that domain, so both server and client components can read the current `account_id`.
-   * Alternatively, one could attach the accountId to `request.headers` or `request.nextUrl`, but cookies are the straightforward approach given Next’s middleware capabilities. This accomplishes what the blueprint describes: **middleware attaches the tenant context for the page**.
+   * Alternatively, one could attach the accountId to `request.headers` or `request.nextUrl`, but cookies are the straightforward approach given Next's middleware capabilities. This accomplishes what the blueprint describes: **middleware attaches the tenant context for the page**.
    * **Development fallback:** If you are working in a dev environment (e.g., `localhost` which may not match a domains table entry), consider a development override:
 
-     * You could check `if (hostname === 'localhost')` and use a default account (perhaps via an env var or a query param). The blueprint allows using a fallback tenant in development when custom domains aren’t available. For minimal implementation, you might seed the domains table with `localhost` mapped to a test account, or skip domain check in dev. Document this choice.
+     * You could check `if (hostname === 'localhost')` and use a default account (perhaps via an env var or a query param). The blueprint allows using a fallback tenant in development when custom domains aren't available. For minimal implementation, you might seed the domains table with `localhost` mapped to a test account, or skip domain check in dev. Document this choice.
 4. **Maintenance Mode Check:** After resolving the account, **always check the global maintenance flag**:
 
-   * Query the `settings` table (using `supabaseAdmin`) for the value of `maintenance_all`. If your `settings` table is a single-row table, you might select that row; if it’s key-value, filter where key = 'maintenance\_all'.
+   * Query the `settings` table (using `supabaseAdmin`) for the value of `maintenance_all`. If your `settings` table is a single-row table, you might select that row; if it's key-value, filter where key = 'maintenance\_all'.
    * If `maintenance_all` is `true`:
 
      * Determine if the request should be blocked. In general, **all user-facing pages should redirect to maintenance notice**. The blueprint notes an exception for admin or webhooks, but in our minimal portal we will assume no admin bypass (or we have no UI for admin yet).
@@ -89,9 +89,9 @@ I’ll let you know as soon as it’s ready.
        ```
 
        Ensure that the maintenance page itself can load: we should allow the route `/maintenance` to bypass this redirect to avoid an infinite loop. We can do this by checking `if (request.nextUrl.pathname !== '/maintenance')` before redirecting.
-     * We also might allow certain requests to pass even in maintenance (e.g., if we had Stripe webhooks or admin routes). Since not in scope now, we’ll keep it simple: all requests from regular users go to maintenance.
+     * We also might allow certain requests to pass even in maintenance (e.g., if we had Stripe webhooks or admin routes). Since not in scope now, we'll keep it simple: all requests from regular users go to maintenance.
    * If `maintenance_all` is false (normal operation), just continue.
-   * **Performance consideration:** The maintenance flag lookup is a quick DB query (single row). This runs on every request, but since the number of flags is small, it’s acceptable. For production, we might optimize by caching this flag for a short time, but for MVP it's fine to query each time.
+   * **Performance consideration:** The maintenance flag lookup is a quick DB query (single row). This runs on every request, but since the number of flags is small, it's acceptable. For production, we might optimize by caching this flag for a short time, but for MVP it's fine to query each time.
 5. **Authentication Redirects:** Still in middleware, enforce that protected pages are accessible only when logged in:
 
    * Identify which routes are protected. For our app, the Dashboard (`/dashboard`) is a protected page, whereas the Login (`/login`), Maintenance (`/maintenance`), and static assets are not. Next.js provides the request path via `request.nextUrl.pathname`.
@@ -99,7 +99,7 @@ I’ll let you know as soon as it’s ready.
 
      * Check for an auth indicator. If using Supabase Auth helpers with cookies, there will be cookies like `sb-access-token` or similar. If not, we might rely on the absence of our context cookie combined with absence of an auth cookie. Another approach is to see if `request.headers.get('authorization')` exists with a Bearer token (not in this case by default).
      * In a minimal approach, we can simply check: if `pathname` starts with `/dashboard` (or other private routes) and **no `sb:token` cookie** is present (Supabase sets cookies if using Next.js helper), then redirect to `/_/login` (ensuring to stay on the same tenant domain). However, since we manage auth on the client, it might be easier to handle this in the client.
-     * **Blueprint approach:** The blueprint specifically states *“If the user is not logged in, we redirect them to the login page for that tenant”* at the middleware stage. To implement this, we can do:
+     * **Blueprint approach:** The blueprint specifically states *"If the user is not logged in, we redirect them to the login page for that tenant"* at the middleware stage. To implement this, we can do:
 
        ```ts
        if (request.nextUrl.pathname !== '/login' 
@@ -111,7 +111,7 @@ I’ll let you know as soon as it’s ready.
 
        (Include any other public routes that should be accessible without auth in that condition as well, e.g. `/404` or static files.)
      * This ensures an unauthenticated user trying to access `/dashboard` (or any private page) gets sent to the login form **before** any page load. It provides a nicer UX and security (no partial page flash).
-   * The login page and maintenance page should be **excluded** from this auth redirect logic (otherwise you’d never reach the login form!). Also exclude Next.js internal assets (`/_next/` etc.). If using NextResponse, we might also set `config.matcher` (see next step).
+   * The login page and maintenance page should be **excluded** from this auth redirect logic (otherwise you'd never reach the login form!). Also exclude Next.js internal assets (`/_next/` etc.). If using NextResponse, we might also set `config.matcher` (see next step).
 6. **Middleware Matcher (optional):** To fine-tune performance and scope, you can define `export const config = { matcher: [...] }` in `middleware.ts`. For example:
 
    * Include patterns like `/(dashboard|some-other-protected-route)/(.*)` to target protected areas, plus `/` (if you want to catch the index route).
@@ -121,22 +121,24 @@ I’ll let you know as soon as it’s ready.
    * Navigate to a known domain that maps to an account:
 
      * If not logged in, you should be redirected to `https://that-domain/login` by the middleware.
-     * Log in (we’ll implement login next). After login, try accessing `/dashboard` – it should succeed. If you log out (later), try `/dashboard` again to ensure it redirects to login.
+     * Log in (we'll implement login next). After login, try accessing `/dashboard` – it should succeed. If you log out (later), try `/dashboard` again to ensure it redirects to login.
    * Toggle the `maintenance_all` flag in the DB to true (via direct DB or a script) and ensure any request (except maintenance page) gets bounced to `/maintenance`. Then turn it off and verify normal operation.
    * Try an unknown domain (not in domains table) and confirm you get a 404 response or page.
    * This covers the core multi-tenancy middleware: domain → account resolution, maintenance mode global toggle, and basic auth gate.
+
+Tech-debt — revisit Deno lint rules when Supabase CLI supports type-aware lint for functions.
 
 ## Pages Implementation
 
 ### Login Page
 
-1. **Create Login Route:** Add a new page at **`/apps/web/app/login/page.tsx`**. This will be a public route where users enter credentials. Mark it as a **Client Component** (add `"use client";` at top) because we’ll handle form state and submission in the browser.
+1. **Create Login Route:** Add a new page at **`/apps/web/app/login/page.tsx`**. This will be a public route where users enter credentials. Mark it as a **Client Component** (add `"use client";` at top) because we'll handle form state and submission in the browser.
 2. **Login Form UI:** Implement a simple form with fields for **email** and **password** and a submit button. Use React state (`useState`) to track the form inputs and any error messages. The form should not be automatically submitted by the browser (prevent default submission and handle via JS).
 3. **Supabase Sign-In Logic:** Import the `supabaseClient` from our lib. On form submit, call the Supabase Auth API to sign in:
 
    * Use `await supabaseClient.auth.signInWithPassword({ email, password })` (for Supabase JS v2) or the equivalent for v1 (`signIn({ email, password })`). This will contact Supabase and attempt authentication.
    * Handle the response: If there's an `error`, display it (e.g., "Invalid login, please try again"). If successful, Supabase will have stored the session (the JWT and refresh token) in local storage or cookies as configured.
-   * On success, **redirect the user to the dashboard**. Since this is client-side, you can use Next’s router:
+   * On success, **redirect the user to the dashboard**. Since this is client-side, you can use Next's router:
 
      ```ts
      import { useRouter } from 'next/navigation';
@@ -150,14 +152,14 @@ I’ll let you know as soon as it’s ready.
    * The JWT returned by Supabase includes the `account_id` and `role` in its claims. Our AuthProvider (already wrapping the app) will detect the auth state change via `onAuthStateChange` and update context. So by the time Dashboard mounts, the user should be considered logged in.
 4. **Post-login Session Handling:** Because we set the `account_id` cookie in middleware on the initial request, it should already be present. However, after login, Supabase might issue its own auth cookies (if using the helper library) or just keep the session in memory. We rely on the client to keep the user logged in. The blueprint states the JWT is stored in memory or cookies as needed on login. In our case:
 
-   * The AuthProvider will now have `user` set and `accountId` from the JWT. The cookie we set for accountId is still valid; it can be updated if needed but since the domain hasn’t changed, it’s fine.
+   * The AuthProvider will now have `user` set and `accountId` from the JWT. The cookie we set for accountId is still valid; it can be updated if needed but since the domain hasn't changed, it's fine.
    * Supabase will auto-refresh the token in the background using the refresh token, keeping the session alive without user action.
 5. **Already Logged-In Redirect:** Add a check on the Login page component: if the user is already logged in (e.g., context `user` exists), we should not show the login form. Instead, redirect them to `/dashboard`. You can use `useEffect` to check `AuthContext.user` and `router.replace('/dashboard')` if truthy. This prevents a logged-in user from manually navigating back to the login page (not a common flow, but good practice).
-6. **Tenant Branding (optional):** The blueprint notes that the login page should ideally show the agency’s branding if accessed via their custom domain. For MVP, this could be as simple as displaying the account name on the login screen (e.g., “Log in to **Agency XYZ**”). If we want to do this:
+6. **Tenant Branding (optional):** The blueprint notes that the login page should ideally show the agency's branding if accessed via their custom domain. For MVP, this could be as simple as displaying the account name on the login screen (e.g., "Log in to **Agency XYZ**"). If we want to do this:
 
-   * We can use the `account_id` cookie (from middleware) to fetch the account’s name (either in a `useEffect` calling supabase or via a server component approach). A simpler way: since login is public, we might not have auth to call Supabase directly. Instead, consider that our middleware could have attached the `account_id` in a cookie, so in a client component we can read `document.cookie` to find it and then call `supabaseClient.from('accounts').select('name').eq('id', accountId)` without auth (this would fail if RLS disallows anon selecting account name). Alternatively, we might allow selecting the single account name without auth if we consider it not sensitive, or use the service key in a Next API route.
-   * This is an enhancement; for now, it’s acceptable to leave the login page unbranded or just display a generic product name.
-7. **Finalize Login UI/UX:** Include links for “Forgot password?” if desired (Supabase can handle password reset emails). This is not strictly required by the task, so it can be omitted or left as a future to-do. Ensure basic styling for the form (use Tailwind or simple CSS in `/apps/web/styles/global.css` if set up).
+   * We can use the `account_id` cookie (from middleware) to fetch the account's name (either in a `useEffect` calling supabase or via a server component approach). A simpler way: since login is public, we might not have auth to call Supabase directly. Instead, consider that our middleware could have attached the `account_id` in a cookie, so in a client component we can read `document.cookie` to find it and then call `supabaseClient.from('accounts').select('name').eq('id', accountId)` without auth (this would fail if RLS disallows anon selecting account name). Alternatively, we might allow selecting the single account name without auth if we consider it not sensitive, or use the service key in a Next API route.
+   * This is an enhancement; for now, it's acceptable to leave the login page unbranded or just display a generic product name.
+7. **Finalize Login UI/UX:** Include links for "Forgot password?" if desired (Supabase can handle password reset emails). This is not strictly required by the task, so it can be omitted or left as a future to-do. Ensure basic styling for the form (use Tailwind or simple CSS in `/apps/web/styles/global.css` if set up).
 8. **Test Login:** Start the dev server, navigate to `/login` on a known tenant domain:
 
    * Enter the credentials of a user that exists in Supabase for that account. (Make sure to seed a user via Supabase Auth or the SQL seed scripts. Supabase Auth might require you to have created a user with email/password manually or via a sign-up flow.)
@@ -166,7 +168,7 @@ I’ll let you know as soon as it’s ready.
 
 ### Dashboard Page
 
-1. **Create Dashboard Route:** Add **`/apps/web/app/dashboard/page.tsx`**. This will be a protected page showing the account’s info. We can implement it as a **Server Component** or a Client one. To keep it simple and because we might fetch data on the client (using Supabase JS), implement as a Client Component (`"use client";`) – we will use client-side data fetching for now. (Alternatively, we could fetch with Supabase service key on server and pass data as props, but that involves careful handling of auth; given our auth is primarily client-managed, we'll do client fetch.)
+1. **Create Dashboard Route:** Add **`/apps/web/app/dashboard/page.tsx`**. This will be a protected page showing the account's info. We can implement it as a **Server Component** or a Client one. To keep it simple and because we might fetch data on the client (using Supabase JS), implement as a Client Component (`"use client";`) – we will use client-side data fetching for now. (Alternatively, we could fetch with Supabase service key on server and pass data as props, but that involves careful handling of auth; given our auth is primarily client-managed, we'll do client fetch.)
 2. **Auth Guard (Client-side):** Even though the middleware should prevent unauthenticated access, include a guard in the Dashboard component:
 
    * Use the `AuthContext` via `useContext(AuthContext)` to get current `user` or `session`. If `user` is null (meaning no one is logged in, perhaps if someone bypassed the middleware or on a very first SSR render), you can redirect to `/login` or simply render nothing until the auth state is determined.
@@ -181,9 +183,9 @@ I’ll let you know as soon as it’s ready.
      ```
 
      This is a safety net. In most cases, the middleware has already redirected unauthenticated users, so this is rarely triggered.
-3. **Fetch Account Data:** When the component mounts (and after confirming `user` exists), fetch the account’s name and plan to display:
+3. **Fetch Account Data:** When the component mounts (and after confirming `user` exists), fetch the account's name and plan to display:
 
-   * Use the **Supabase client** (which is already configured with the user’s JWT) to query the `accounts` table for the current account. For example:
+   * Use the **Supabase client** (which is already configured with the user's JWT) to query the `accounts` table for the current account. For example:
 
      ```ts
      const { data: account } = await supabaseClient
@@ -192,7 +194,7 @@ I’ll let you know as soon as it’s ready.
        .single();
      ```
 
-     Because of RLS, this query will automatically be restricted to the logged-in user’s `account_id` (the JWT ensures that). So `.single()` will return that tenant’s account record.
+     Because of RLS, this query will automatically be restricted to the logged-in user's `account_id` (the JWT ensures that). So `.single()` will return that tenant's account record.
    * If you have a `plans` table and want the plan name, you could either:
 
      * Modify the select to join plan info (if you set up a foreign key, Supabase might allow `.select('name, plans(name)')` syntax).
@@ -202,32 +204,32 @@ I’ll let you know as soon as it’s ready.
    * Also consider fetching any other relevant info: e.g., the user's profile (from `auth.users` or a profile table) if you want to display their email or name. Not required here, focusing on account name and plan as asked.
 4. **Display Data:** Use React state to store the fetched account info (e.g., `accountName` and `planName`) once loaded. Render the dashboard UI:
 
-   * For example: a heading like **“Welcome, *Agency ABC*!”** using the account name.
-   * A subheading or text: **“Current Plan: *Free Plan*”** using the plan info.
-   * Possibly display the user’s email or a short note that this is the dashboard.
+   * For example: a heading like **"Welcome, *Agency ABC*!"** using the account name.
+   * A subheading or text: **"Current Plan: *Free Plan*** using the plan info.
+   * Possibly display the user's email or a short note that this is the dashboard.
    * If the data is still loading (fetch in progress), you can show a loading state (spinner or "Loading...").
-   * If there was an error fetching (shouldn’t happen if RLS is correct and the user has access), handle it (maybe via an error boundary or state).
+   * If there was an error fetching (shouldn't happen if RLS is correct and the user has access), handle it (maybe via an error boundary or state).
 5. **Logout Functionality (optional but recommended):** Provide a way to log out:
 
-   * You can add a “Log Out” button on the dashboard. On click, call `supabaseClient.auth.signOut()` which will remove the session (and delete refresh token).
+   * You can add a "Log Out" button on the dashboard. On click, call `supabaseClient.auth.signOut()` which will remove the session (and delete refresh token).
    * Also, clear the `account_id` cookie by setting it to empty or expired via `document.cookie` (since we set it as not HttpOnly for client access). This ensures no stale tenant context.
    * After sign-out, redirect the user to the login page (you could simply rely on AuthProvider noticing the session gone and then use an effect to redirect, or do `router.replace('/login')` immediately).
-   * This step is in line with the blueprint’s note: logging out should clear client session and next access to protected page triggers middleware redirect to login.
-6. **404 Handling in Dashboard:** Although the dashboard is a specific page, consider that if an invalid dynamic segment was used (not applicable here as `dashboard` is static path) or if the account had no data, etc., you might need to show a 404 or error. In our case, since `.single()` on accounts without proper RLS could error, we’d handle it by redirecting to not-found if needed. Typically not an issue if setup correctly.
+   * This step is in line with the blueprint's note: logging out should clear client session and next access to protected page triggers middleware redirect to login.
+6. **404 Handling in Dashboard:** Although the dashboard is a specific page, consider that if an invalid dynamic segment was used (not applicable here as `dashboard` is static path) or if the account had no data, etc., you might need to show a 404 or error. In our case, since `.single()` on accounts without proper RLS could error, we'd handle it by redirecting to not-found if needed. Typically not an issue if setup correctly.
 7. **Styling and UX:** Add minimal styling to the dashboard (could use Tailwind classes if configured). The focus is to verify data flow. For MVP, a simple static text is fine.
 8. **Test the Dashboard:** Log in as a test user and ensure:
 
    * The account name and plan appear correctly (as seeded in the database).
-   * The RLS is working: if you try to tinker with the Supabase query (there’s no easy way in the browser console due to CORS and no direct supabase admin access, but you trust that only one row returned).
+   * The RLS is working: if you try to tinker with the Supabase query (there's no easy way in the browser console due to CORS and no direct supabase admin access, but you trust that only one row returned).
    * Try the logout button: after logging out, you should be redirected to /login and the dashboard should no longer be accessible without re-login.
-   * If possible, test with another account (create a second account, domain, and user) to ensure that users of one account cannot see another account’s data. (That would require mapping another domain locally, etc., so it might be theoretical at this point, but the mechanisms (domain table and RLS) ensure isolation.)
+   * If possible, test with another account (create a second account, domain, and user) to ensure that users of one account cannot see another account's data. (That would require mapping another domain locally, etc., so it might be theoretical at this point, but the mechanisms (domain table and RLS) ensure isolation.)
 
 ### Maintenance Mode Page and 404 Page
 
 1. **Maintenance Page:** Set up a route for maintenance notifications:
 
    * Create **`/apps/web/app/maintenance/page.tsx`**. This can be a **Server Component** (static content).
-   * Content: A simple message like **“We’re down for maintenance.”** Explain that the platform is temporarily read-only or unavailable. You might include an estimate or “please check back soon” as needed.
+   * Content: A simple message like **"We're down for maintenance."** Explain that the platform is temporarily read-only or unavailable. You might include an estimate or "please check back soon" as needed.
    * Style it to be obvious (big font, maybe centered). This page will be seen by all users when `maintenance_all` is true.
    * Do not require any auth or context here – it should load regardless of user state, since even unauthed or uninitialized users might see it.
    * The middleware will redirect users to this page when needed, as implemented earlier. Once here, the page itself is not restricted by middleware (we explicitly allow `/maintenance`).
@@ -235,13 +237,13 @@ I’ll let you know as soon as it’s ready.
 2. **Custom 404 Page:** Implement a user-friendly 404 for unknown routes or missing tenant:
 
    * In Next.js App Router, create a **`not-found.tsx`** file in the **`/apps/web/app`** directory. This is a special file that Next will use when a page is not found.
-   * Inside, define a simple React component that displays a **“404 – Page Not Found”** message. Optionally provide a link to go back to dashboard or login (if user might have been logged in).
+   * Inside, define a simple React component that displays a **"404 – Page Not Found"** message. Optionally provide a link to go back to dashboard or login (if user might have been logged in).
    * Because our middleware may rewrite to `/404` for unknown domains, ensure that visiting that route triggers this UI. Next will automatically use `app/not-found.tsx` if we call `notFound()` in a route or do a rewrite to an invalid path. By rewriting to `/404`, Next should serve the not-found page (since no explicit /404 route exists in App Router, it falls back to the not-found.tsx).
    * Note: In App Router, an alternative is to create a specific not-found component for a route group, but having it at root covers all. Also, the NextResponse with status 404 (without rewrite) might just show a default text. Using `not-found.tsx` ensures a nice UI.
-   * We might also consider an **error boundary** page (`/app/error.tsx`) for unhandled errors, but for MVP, it’s not required unless we anticipate crashes.
-3. **Domain Not Found Scenario:** When the middleware doesn’t find a domain and rewrites to a 404, ensure it returns a 404 status:
+   * We might also consider an **error boundary** page (`/app/error.tsx`) for unhandled errors, but for MVP, it's not required unless we anticipate crashes.
+3. **Domain Not Found Scenario:** When the middleware doesn't find a domain and rewrites to a 404, ensure it returns a 404 status:
 
-   * Our rewrite to `/404` will show the 404 page content, but by default it may send status 200. To properly indicate not found, you might set `response.status = 404` along with the rewrite. Next.js doesn’t have an official way to both rewrite and set status in middleware easily. An alternative is to not rewrite, but instead:
+   * Our rewrite to `/404` will show the 404 page content, but by default it may send status 200. To properly indicate not found, you might set `response.status = 404` along with the rewrite. Next.js doesn't have an official way to both rewrite and set status in middleware easily. An alternative is to not rewrite, but instead:
 
      ```ts
      return NextResponse.json({ message: 'Not Found' }, { status: 404 });
@@ -249,7 +251,7 @@ I’ll let you know as soon as it’s ready.
 
      But that would not use our nice page. Given the limitations, showing the custom page is the priority; the status code being 200 for unknown tenant might be acceptable in a user-facing sense (though not ideal). For completeness, document this quirk or explore Next.js middleware advanced usage for setting status.
    * In any case, from a user perspective, they see the custom 404 message when a domain is invalid or a page is not found.
-4. **Test 404:** Start the app and visit a URL that doesn’t exist, e.g. `/nonexistentpage`. You should see the 404 page. Also test an unknown domain (if possible locally, by tricking hosts file or adjusting the middleware logic) to ensure it triggers the 404 page as planned. The page should load without requiring any special state.
+4. **Test 404:** Start the app and visit a URL that doesn't exist, e.g. `/nonexistentpage`. You should see the 404 page. Also test an unknown domain (if possible locally, by tricking hosts file or adjusting the middleware logic) to ensure it triggers the 404 page as planned. The page should load without requiring any special state.
 
 ## Global Layout & Context
 
@@ -272,7 +274,7 @@ I’ll let you know as soon as it’s ready.
      ```
 
      This ensures a basic document structure. Include `lang` attribute and any global `<head>` metadata via the `metadata` export or inside `<head>` if needed.
-   * Import global styles: if using Tailwind, include `import '../styles/globals.css';` at the top of this file. This pulls in Tailwind’s base styles. Also ensure Tailwind is configured to scan the app directory for class names.
+   * Import global styles: if using Tailwind, include `import '../styles/globals.css';` at the top of this file. This pulls in Tailwind's base styles. Also ensure Tailwind is configured to scan the app directory for class names.
 2. **Wrap with AuthProvider:** Import the `AuthProvider` we created. Wrap the `children` with it:
 
    ```tsx
@@ -292,11 +294,11 @@ I’ll let you know as soon as it’s ready.
      const cookieStore = cookies();
      const accountId = cookieStore.get('account_id')?.value;
      ```
-   * We could pass this `accountId` as a prop into AuthProvider: `<AuthProvider initialAccountId={accountId}>`. Inside AuthProvider (which is client-side), we receive that and can use it for any initial state (e.g., to immediately set the context’s accountId without waiting for Supabase to load).
-   * This step is optional if our AuthProvider will derive accountId from the user’s session anyway. But it can be useful for immediate SSR context (e.g., if we had server components needing the accountId). For now, include it to show completeness.
+   * We could pass this `accountId` as a prop into AuthProvider: `<AuthProvider initialAccountId={accountId}>`. Inside AuthProvider (which is client-side), we receive that and can use it for any initial state (e.g., to immediately set the context's accountId without waiting for Supabase to load).
+   * This step is optional if our AuthProvider will derive accountId from the user's session anyway. But it can be useful for immediate SSR context (e.g., if we had server components needing the accountId). For now, include it to show completeness.
 4. **Layout with Theming (future extension):** The blueprint mentions adjusting theming/branding per tenant in a context wrapping every page. In MVP, we are not implementing dynamic styling, but we should structure the layout so that if needed, we could insert a ThemeProvider or fetch tenant branding:
 
-   * For example, we could fetch the account’s theme (colors, logo) here in the layout (server-side, using accountId and service role). But to keep it simple, skip actual fetch. Just be aware the layout is where such logic would live.
+   * For example, we could fetch the account's theme (colors, logo) here in the layout (server-side, using accountId and service role). But to keep it simple, skip actual fetch. Just be aware the layout is where such logic would live.
    * We might include a placeholder like:
 
      ```tsx
@@ -310,17 +312,17 @@ I’ll let you know as soon as it’s ready.
 
    * It might display the account name (which we could pass down via context after fetching).
    * It could have a logout button accessible everywhere. Since we have logout on dashboard and dashboard is the main app page, it's okay to leave nav minimal.
-6. **Error Handling in Layout:** We can rely on Next’s error boundary pages if needed (not-found and error as discussed). We don’t explicitly handle try/catch in layout; any error thrown in children should bubble to Next’s handling.
+6. **Error Handling in Layout:** We can rely on Next's error boundary pages if needed (not-found and error as discussed). We don't explicitly handle try/catch in layout; any error thrown in children should bubble to Next's handling.
 7. **Verify Layout:** The presence of layout means our pages (login, dashboard, maintenance) are all wrapped with AuthProvider. To ensure this:
 
    * Try accessing the Dashboard; confirm that AuthProvider is indeed wrapping it by checking that `AuthContext` is available (you can console.log context values in Dashboard to test).
    * Also ensure global styles are applied (for example, if you set a background color or font in global CSS, it appears).
-   * The layout should also apply to the 404 and maintenance pages (they will also be wrapped with AuthProvider, which is fine; those pages won’t use auth, but no harm). If we wanted maintenance page outside of auth context, we might have to structure it differently, but it’s not a big issue if AuthProvider initializes on that page too (it will just find no user and do nothing visible).
+   * The layout should also apply to the 404 and maintenance pages (they will also be wrapped with AuthProvider, which is fine; those pages won't use auth, but no harm). If we wanted maintenance page outside of auth context, we might have to structure it differently, but it's not a big issue if AuthProvider initializes on that page too (it will just find no user and do nothing visible).
    * Check that the HTML structure is correct (you have one html/head/body, not multiple nested).
 
 ## Database: Migrations & Seeding
 
-*(These steps involve database setup to align with the blueprint’s data model. They ensure the Next.js portal has the necessary tables and data to function.)*
+*(These steps involve database setup to align with the blueprint's data model. They ensure the Next.js portal has the necessary tables and data to function.)*
 
 1. **Accounts Table:** Create an `accounts` table in the public schema (since we use a separate schema per tenant for their data, this accounts table can be considered a directory of tenants). Include at minimum:
 
@@ -358,10 +360,10 @@ I’ll let you know as soon as it’s ready.
    * `domain text PRIMARY KEY` – the full domain or subdomain. (It might be wise to lower-case and maybe store without protocol. We'll assume hostnames are normalized).
    * `account_id uuid NOT NULL REFERENCES public.accounts(id)` – the account that this domain represents.
    * (Optional: `created_at` timestamp).
-   * This table will be queried by middleware. It doesn’t necessarily need to be accessible from the client (no direct RLS needed if only service role uses it), but you could add RLS to allow an account admin to see their domains.
+   * This table will be queried by middleware. It doesn't necessarily need to be accessible from the client (no direct RLS needed if only service role uses it), but you could add RLS to allow an account admin to see their domains.
    * **Seed Domains:** Insert at least one domain for your test account:
 
-     * If using a development domain, e.g., `localhost` (or `localhost:3000` depending if port is included in `request.hostname` – note Next’s request.hostname typically excludes the port, so "localhost" is safe).
+     * If using a development domain, e.g., `localhost` (or `localhost:3000` depending if port is included in `request.hostname` – note Next's request.hostname typically excludes the port, so "localhost" is safe).
 
        ```sql
        INSERT INTO public.domains (domain, account_id) VALUES ('localhost', '<your-test-account-uuid>');
@@ -413,7 +415,7 @@ I’ll let you know as soon as it’s ready.
 5. **Account Membership (Auth) Setup:** To fully implement multi-tenant auth, we need an `account_members` table linking **Supabase Auth users** to accounts:
 
    * For minimal portal functionality, you can get by without explicitly using this table if you manually ensure each user belongs to one account (for instance, have a user signup process that immediately creates an account or assigns account\_id to user metadata).
-   * However, the blueprint’s JWT claims trigger uses `account_members` to determine a user’s roles and account. So implementing it is wise:
+   * However, the blueprint's JWT claims trigger uses `account_members` to determine a user's roles and account. So implementing it is wise:
 
      ```sql
      CREATE TABLE public.account_members (
@@ -423,10 +425,10 @@ I’ll let you know as soon as it’s ready.
        PRIMARY KEY (user_id, account_id)
      );
      ```
-   * This table will allow multiple accounts per user (for coaches or platform admins), but for a normal agency user, they’ll have one row linking them to their agency account with role "Owner".
+   * This table will allow multiple accounts per user (for coaches or platform admins), but for a normal agency user, they'll have one row linking them to their agency account with role "Owner".
    * **Seed account\_members:**
 
-     * Insert a row linking your test user’s UUID (find it from Supabase auth) to the test account UUID with role 'Owner':
+     * Insert a row linking your test user's UUID (find it from Supabase auth) to the test account UUID with role 'Owner':
 
        ```sql
        INSERT INTO public.account_members (user_id, account_id, role)
@@ -461,7 +463,7 @@ I’ll let you know as soon as it’s ready.
      $$;
      ```
 
-     Then configure this function in Supabase Auth settings (there’s a SQL to attach it as the auth hook, something like `ALTER USER auth SET jwt_custom_claims = 'public.jwt_custom_claims()` or using `supabase migrate` configuration).
+     Then configure this function in Supabase Auth settings (there's a SQL to attach it as the auth hook, something like `ALTER USER auth SET jwt_custom_claims = 'public.jwt_custom_claims()` or using `supabase migrate` configuration).
    * Once in place, whenever a user logs in, their JWT will have e.g. `{"sub": "<uuid>", "account_id": "<uuid>", "role": "Owner", ...}`. This is crucial for our RLS checks and for the frontend to know the account without extra queries.
    * If not using a trigger, Supabase now also allows an **Auth Edge Function** for JWT (mentioned in blueprint), but since blueprint says MVP uses DB trigger, we stick to that.
 7. **RLS Policies:** Add Row-Level Security policies to relevant tables and enable RLS:
@@ -478,9 +480,9 @@ I’ll let you know as soon as it’s ready.
      (This assumes the JWT `account_id` is a text match to the UUID id; you may need to cast types accordingly. Or use `auth.jwt() ->> 'account_id'` = id::text.)
      For now, we might not strictly need a policy if our client only ever selects its own account via supabase (which enforces multi-tenant through separate schema or other means). But if all accounts are in one table, RLS is required to prevent leakage.
    * `domains`: If this is only accessed via service role (middleware), you can choose not to enable RLS (or if enabling, create a policy that prevents any non-service access).
-   * `settings`: Could enable RLS and allow only service role or platform admin roles to select/update. For the app’s middleware usage, our service client bypasses RLS anyway. As a safety, you might restrict `settings` so normal users cannot select it (since they don’t need to).
+   * `settings`: Could enable RLS and allow only service role or platform admin roles to select/update. For the app's middleware usage, our service client bypasses RLS anyway. As a safety, you might restrict `settings` so normal users cannot select it (since they don't need to).
    * `account_members`: Enable RLS. Policy: allow a user to select their own membership row: `user_id = auth.uid()`. This might be used if the app ever needs to know all accounts a user has (not in MVP UI).
-   * The combination of JWT claim injection and these RLS policies ensures isolation: e.g., even if a rogue client tried a different account\_id, they can’t read another account’s row.
+   * The combination of JWT claim injection and these RLS policies ensures isolation: e.g., even if a rogue client tried a different account\_id, they can't read another account's row.
 8. **Apply Migrations:** Use Supabase CLI or your own tooling (maybe the custom CLI at `/apps/cli` if set up) to run these SQL migrations on the database. The steps include:
 
    * Running migration SQLs to create tables and functions.
@@ -493,14 +495,14 @@ I’ll let you know as soon as it’s ready.
    * Check the `accounts` table has your test account (with name and plan).
    * Check `domains` has the correct domain pointing to that account.
    * Check `account_members` links your test user to the account.
-   * If possible, test the JWT trigger: e.g., sign in as the user via Supabase (maybe using the provided login form) and inspect the token (Supabase client’s session or JWT debugger) to confirm `account_id` claim is present and matches the account.
+   * If possible, test the JWT trigger: e.g., sign in as the user via Supabase (maybe using the provided login form) and inspect the token (Supabase client's session or JWT debugger) to confirm `account_id` claim is present and matches the account.
    * With these in place, the Next.js portal should be fully functional and secure per tenant. The portal code will rely on these tables and RLS to enforce the multi-tenancy guarantees (no cross-account data leakage).
 
 ## Configuration & Environment
 
 1. **Environment Variables (.env):** Set up the required environment variables for both development and production. In the monorepo root or `/apps/web/`, create a **`.env.local`** file (not committed) and define:
 
-   * `NEXT_PUBLIC_SUPABASE_URL` – the Supabase project URL (found in your Supabase dashboard). Prefixed with `NEXT_PUBLIC_` so that it’s accessible in frontend code.
+   * `NEXT_PUBLIC_SUPABASE_URL` – the Supabase project URL (found in your Supabase dashboard). Prefixed with `NEXT_PUBLIC_` so that it's accessible in frontend code.
    * `NEXT_PUBLIC_SUPABASE_ANON_KEY` – the Supabase anon public API key (from dashboard settings).
    * `SUPABASE_SERVICE_ROLE_KEY` – the service role secret key for Supabase (for server use only, **do not** prefix with NEXT\_PUBLIC). This is used in `supabase-admin.ts` and should never be exposed to client.
    * Optionally, `NEXT_PUBLIC_SITE_URL` – the base URL of your app (e.g., for building redirect URLs). Not strictly needed for our current code, but Supabase Auth emails might require it if we had magic links.
@@ -509,15 +511,15 @@ I’ll let you know as soon as it’s ready.
 2. **Multi-Environment Config:** The blueprint expects separate Supabase projects for dev, staging, prod, each with its own keys, and uses config variables to switch between them. Document in the repo how to swap keys for different envs (for instance, `.env.production` for prod values or using Vercel env settings). The code should not need to change per environment; only the env vars do.
 3. **Next.js Config:** Check **`apps/web/next.config.js`** for any domain-specific settings:
 
-   * If using custom domains or subdomains on Vercel, ensure wildcard domains are configured in Vercel and that Next.js is aware if needed (Next 13 doesn’t need explicit domain configuration for routing, it relies on the host header which our middleware uses).
+   * If using custom domains or subdomains on Vercel, ensure wildcard domains are configured in Vercel and that Next.js is aware if needed (Next 13 doesn't need explicit domain configuration for routing, it relies on the host header which our middleware uses).
    * If using next/image with remote images, set `domains: []` appropriately. Not needed for our current portal.
-   * Enable experimental features if required (shouldn’t be, as App Router is stable in 13).
-   * Possibly set `output: 'standalone'` if deploying serverless, etc., but that’s environment-specific.
+   * Enable experimental features if required (shouldn't be, as App Router is stable in 13).
+   * Possibly set `output: 'standalone'` if deploying serverless, etc., but that's environment-specific.
 4. **Supabase Settings:** In the Supabase project settings:
 
-   * **Auth**: Ensure email/password auth is enabled (it is by default). We’re not using third-party providers in MVP, but if we did, configure them.
-   * **Auth Redirect URLs**: Add your development and production site URLs to “Redirect URLs” in Supabase Auth if you plan to use magic link or invite flows. Not needed for pure email/password login, but good practice if you ever use password recovery links (they will redirect to your app).
-   * **JWT Settings**: Confirm the JWT expiry (60 minutes default) and that “JWT secret” is set (Supabase generates one – we don’t need it client-side, only if we manually verify tokens). Also, ensure the **JWT claim** function is set if it needs enabling (some Supabase setups require calling `SELECT auth.uid()` with the function in a trigger).
+   * **Auth**: Ensure email/password auth is enabled (it is by default). We're not using third-party providers in MVP, but if we did, configure them.
+   * **Auth Redirect URLs**: Add your development and production site URLs to "Redirect URLs" in Supabase Auth if you plan to use magic link or invite flows. Not needed for pure email/password login, but good practice if you ever use password recovery links (they will redirect to your app).
+   * **JWT Settings**: Confirm the JWT expiry (60 minutes default) and that "JWT secret" is set (Supabase generates one – we don't need it client-side, only if we manually verify tokens). Also, ensure the **JWT claim** function is set if it needs enabling (some Supabase setups require calling `SELECT auth.uid()` with the function in a trigger).
    * **Email Templates**: If desired, customize the confirmation/reset email templates to match branding (MVP might skip this, but blueprint mentions it for white-labeling).
 5. **Testing Maintenance Mode:** As part of configuration, simulate the maintenance mode toggle:
 
@@ -525,8 +527,8 @@ I’ll let you know as soon as it’s ready.
    * Remember to set it back to false after testing, or your app will remain locked.
    * You might also test `disable_signups` if you had a signup flow (not in scope here).
    * This is an operational config step that the team might do during deploys as described in the blueprint (set maintenance true, run migration, then false).
-6. **Logging and Monitoring:** (Optional config) – Ensure that any environment-specific logging (Supabase logs, Vercel logs) is set up so you can debug issues in auth or middleware. For instance, Supabase provides an “Auth Logs” section to see sign-in attempts and errors, which is useful if login fails.
-7. **Documentation & .env.example:** Create a **.env.example** file (without actual secrets) listing all required env vars (SUPABASE\_URL, ANON\_KEY, SERVICE\_ROLE\_KEY, etc.) so other developers or the CI pipeline know what needs to be set. According to the blueprint’s process guidelines, all changes and config should be documented clearly.
+6. **Logging and Monitoring:** (Optional config) – Ensure that any environment-specific logging (Supabase logs, Vercel logs) is set up so you can debug issues in auth or middleware. For instance, Supabase provides an "Auth Logs" section to see sign-in attempts and errors, which is useful if login fails.
+7. **Documentation & .env.example:** Create a **.env.example** file (without actual secrets) listing all required env vars (SUPABASE\_URL, ANON\_KEY, SERVICE\_ROLE\_KEY, etc.) so other developers or the CI pipeline know what needs to be set. According to the blueprint's process guidelines, all changes and config should be documented clearly.
 8. **Run the App:** Finally, run `npm run dev` (or the equivalent) for `/apps/web`. Open the browser to the configured domain:
 
    * If using `localhost`, ensure `domains` table has "localhost" entry. Navigate to `http://localhost:3000/` – middleware should catch it and redirect to `/login` (since not logged in).
