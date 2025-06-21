@@ -31,8 +31,12 @@ export default tseslint.config({
     files: ['apps/functions/**/*.ts'],
     extends: [tseslint.configs.recommended],
     languageOptions: {
+        parserOptions: { project: null },
         globals: {
             ...globals.deno,
         }
-    }
+    },
+    rules: {
+      '@typescript-eslint/consistent-type-imports': 'off',
+    },
 }); 
