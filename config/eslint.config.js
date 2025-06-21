@@ -15,15 +15,12 @@ export default tseslint.config({
   ignorePatterns: ['**/dist/**', '**/node_modules/**', 'apps/functions/**'],
   overrides: [
     {
-      files: ['apps/!(functions)/**', 'packages/**'],
+      files: ['apps/**', 'packages/**'],
       parserOptions: { project: ['./tsconfig.json'] },
     },
     {
       files: ['apps/functions/**'],
-      parser: '@typescript-eslint/parser',
-      rules: {
-        '@typescript-eslint/no-unused-vars': ['error', { "argsIgnorePattern": "^_" }],
-      }
-    }
+      languageOptions: { parserOptions: { project: null } },
+    },
   ],
 }); 
