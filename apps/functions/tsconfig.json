@@ -2,14 +2,12 @@
 // It is only picked up by the Deno language server and is ignored by the
 // main Node.js build process, which uses the root tsconfig.json.
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "target": "esnext",
-    "module": "esnext",
-    "moduleResolution": "node",
-    "lib": ["esnext", "deno.ns"],
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
-  }
+    "checkJs": false,
+    "composite": false,
+    "types": ["deno.ns"],
+    "noEmit": true
+  },
+  "include": ["**/*.ts"]
 } 

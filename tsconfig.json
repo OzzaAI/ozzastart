@@ -1,18 +1,22 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "node",
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "strict": true,
-    "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "composite": true,
+    "declaration": true,
     "sourceMap": true,
-    "rootDir": ".",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
-    }
+      "@/*": ["apps/web/*"]
+    },
+    "jsx": "preserve"
   },
-  "include": ["apps/web/**/*", "apps/cli/**/*", "packages/**/*"],
-  "exclude": ["node_modules", "dist", ".next", "out", "coverage"]
+  "include": ["apps/**/*", "packages/**/*"],
+  "exclude": ["node_modules", "dist", ".next", "apps/functions"]
 } 
