@@ -1,28 +1,58 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
+'use client';
 
-export default async function DashboardPage() {
-  const supabase = createSupabaseServerClient();
+import { createSupabaseBrowserClient } from '../../lib/supabase/client';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+export default function DashboardPage() {
+  const router = useRouter();
+  const supabase = createSupabaseBrowserClient();
+  const [user, setUser] = useState<User | null>(null);
 
-  if (!session) {
-    redirect('/login');
+  useEffect(() => {
+    const fetchUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        setUser(user);
+      } else {
+        router.push('/login');
+      }
+    };
+
+    fetchUser();
+  }, [supabase, router]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
+
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    );
   }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center">
-      <h1 className="text-4xl font-bold">Dashboard</h1>
-      <p className="mt-4 text-lg">
-        Welcome, <span className="font-semibold">{session.user.email}</span>
-      </p>
-      <div className="mt-8 w-full max-w-2xl rounded-lg border bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold">Your JWT Claims</h2>
-        <pre className="mt-4 overflow-x-auto rounded-md bg-gray-100 p-4 text-sm">
-          {JSON.stringify(session.user, null, 2)}
-        </pre>
+      <div className="w-full max-w-lg rounded-lg border p-8 text-center shadow-sm">
+        <h1 className="mb-4 text-3xl font-bold">
+          Welcome to Your Dashboard
+        </h1>
+        <p className="mb-6">
+          You are logged in as: <strong>{user.email}</strong>
+        </p>
+        <button
+          onClick={handleLogout}
+          className="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+        >
+          Log Out
+        </button>
       </div>
     </div>
   );

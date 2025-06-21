@@ -1,26 +1,38 @@
 import tseslint from 'typescript-eslint';
+import globals from 'globals';
 
 export default tseslint.config({
-  root: true,
-  parserOptions: { project: ['./tsconfig.json'] },
+  files: ['**/*.{js,mjs,cjs,ts,tsx}'],
   extends: [
-    'eslint:recommended',
-    'plugin:@typescript-eslint/recommended',
-    'plugin:prettier/recommended',
+    tseslint.configs.recommendedTypeChecked,
+    tseslint.configs.stylisticTypeChecked,
   ],
-  rules: {
-    'no-console': 'warn',
-    '@typescript-eslint/explicit-function-return-type': 'off',
+  languageOptions: {
+    parserOptions: {
+      project: true,
+      tsconfigRootDir: import.meta.dirname,
+    },
+    globals: {
+      ...globals.node,
+    },
   },
-  ignorePatterns: ['**/dist/**', '**/node_modules/**', 'apps/functions/**'],
-  overrides: [
-    {
-      files: ['apps/**', 'packages/**'],
-      parserOptions: { project: ['./tsconfig.json'] },
-    },
-    {
-      files: ['apps/functions/**'],
-      languageOptions: { parserOptions: { project: null } },
-    },
-  ],
+  rules: {
+    '@typescript-eslint/no-unused-vars': [
+      'error',
+      { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+    ],
+    '@typescript-eslint/no-explicit-any': 'warn',
+    'no-console': 'warn',
+  },
+  ignores: ['**/dist/**', '**/node_modules/**', '.next/**'],
+},
+{
+    // Disable type-aware linting for Deno functions
+    files: ['apps/functions/**/*.ts'],
+    extends: [tseslint.configs.recommended],
+    languageOptions: {
+        globals: {
+            ...globals.deno,
+        }
+    }
 }); 
