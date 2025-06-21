@@ -51,4 +51,40 @@ jobs:
         run: pnpm --filter @ozza/cli build
 
       - name: Run CLI --help to ensure it's executable
-        run: node apps/cli/dist/index.js --help 
+        run: node apps/cli/dist/index.js --help
+
+  canary-smoke-test:
+    name: "Canary Smoke Test"
+    runs-on: ubuntu-latest
+    needs: [build, cli-build-test]
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 7
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Start Supabase
+        run: pnpm dlx supabase start
+
+      - name: Create Canary Tenant
+        run: pnpm --filter @ozza/cli exec ozza-cli create-tenant canary_user_test_ci ${{ secrets.TEST_EMAIL }} ${{ secrets.TEST_PASSWORD }}
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Run Playwright tests
+        working-directory: ./apps/web
+        run: pnpm exec playwright test
+        env:
+          TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }} 
