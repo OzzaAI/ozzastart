@@ -436,3 +436,61 @@ export const recurring_workflows = pgTable("recurring_workflows", {
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// MCP Agents Table
+export const agents = pgTable("agents", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("userId").notNull().references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  spec: text("spec").notNull(), // YAML specification
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+}, (table) => ({
+  userIdx: index("agents_user_idx").on(table.userId),
+  nameIdx: index("agents_name_idx").on(table.name),
+}));
+
+// Chat Sessions Table
+export const chat_sessions = pgTable("chat_sessions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("userId").notNull().references(() => user.id, { onDelete: "cascade" }),
+  sessionId: text("sessionId").notNull(),
+  agentId: uuid("agentId").references(() => agents.id, { onDelete: "set null" }),
+  state: jsonb("state").notNull().default('{}'), // LangGraph state
+  metadata: jsonb("metadata").default('{}'), // Additional session metadata
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+}, (table) => ({
+  userSessionIdx: index("chat_sessions_user_session_idx").on(table.userId, table.sessionId),
+  agentIdx: index("chat_sessions_agent_idx").on(table.agentId),
+  updatedAtIdx: index("chat_sessions_updated_at_idx").on(table.updatedAt),
+}));
+
+// User Settings Table
+export const user_settings = pgTable("user_settings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("userId").notNull().unique().references(() => user.id, { onDelete: "cascade" }),
+  whiteLabelConfig: jsonb("whiteLabelConfig").notNull().default('{}'), // White-label customization
+  preferences: jsonb("preferences").default('{}'), // User preferences
+  apiKeys: jsonb("apiKeys").default('{}'), // Encrypted API keys
+  integrations: jsonb("integrations").default('{}'), // Third-party integrations
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+}, (table) => ({
+  userIdx: index("user_settings_user_idx").on(table.userId),
+  updatedAtIdx: index("user_settings_updated_at_idx").on(table.updatedAt),
+}));
+
+// Shares Table for Viral Tracking
+export const shares = pgTable("shares", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("userId").notNull().references(() => user.id, { onDelete: "cascade" }),
+  agentId: uuid("agentId").notNull().references(() => agents.id, { onDelete: "cascade" }),
+  platform: text("platform").notNull(), // 'skool', 'x', 'linkedin', 'facebook', etc.
+  link: text("link").notNull(), // Generated referral link
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+}, (table) => ({
+  userIdx: index("shares_user_idx").on(table.userId),
+  agentIdx: index("shares_agent_idx").on(table.agentId),
+  platformIdx: index("shares_platform_idx").on(table.platform),
+  createdAtIdx: index("shares_created_at_idx").on(table.createdAt),
+}));
+

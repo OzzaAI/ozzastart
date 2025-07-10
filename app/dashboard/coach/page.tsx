@@ -31,6 +31,8 @@ import CombinedRevenueCard from '@/components/analytics/CombinedRevenueCard';
 import MiniTopNav from '@/components/dashboard/MiniTopNav';
 import AIHelper from '@/components/dashboard/AIHelper';
 import SetupGuidance from '@/components/dashboard/SetupGuidance';
+import ROITracker from '@/app/dashboard/_components/roi-tracker';
+import CoachMetrics from '@/app/dashboard/_components/coach-metrics';
 
 interface SetupStep {
   id: string;
@@ -128,6 +130,7 @@ function WelcomeMessage({ userName, revenue }: { userName: string, revenue: any 
 
 export default function CoachDashboard() {
   const [coachData, setCoachData] = useState<CoachData | null>(null);
+  const [coachMode, setCoachMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -140,6 +143,17 @@ export default function CoachDashboard() {
         if (!sessionResponse?.data?.session) {
           router.push('/login');
           return;
+        }
+
+        // Check coach mode setting
+        try {
+          const settingsResponse = await fetch("/api/user-settings");
+          if (settingsResponse.ok) {
+            const settingsData = await settingsResponse.json();
+            setCoachMode(settingsData.settings.preferences?.coachMode || false);
+          }
+        } catch (settingsError) {
+          console.error('Failed to load coach mode setting:', settingsError);
         }
 
         // Mock data following your structure
@@ -282,6 +296,12 @@ export default function CoachDashboard() {
           lifetimeEarnings={coachData.revenue.lifetime}
         />
       </div>
+
+      {/* ROI Tracker - AI Performance & Analytics */}
+      <ROITracker coachMode={coachMode} />
+
+      {/* Coach Dashboard - Only visible when coach mode is enabled */}
+      <CoachMetrics coachMode={coachMode} />
 
       {/* Snapshots with Action Items */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">

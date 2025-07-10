@@ -26,7 +26,10 @@ import {
   X,
   BookOpen,
   LifeBuoy,
-  ArrowUp
+  ArrowUp,
+  Store,
+  Share2,
+  Download
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -97,6 +100,28 @@ const navigationItems: NavItem[] = [
         label: 'Settings',
         href: '/dashboard/coach/webapp/settings',
         icon: Settings
+      }
+    ]
+  },
+  {
+    label: 'Marketplace',
+    href: '/dashboard/marketplace',
+    icon: Store,
+    children: [
+      {
+        label: 'Browse Agents',
+        href: '/dashboard/marketplace',
+        icon: Store
+      },
+      {
+        label: 'My Downloads',
+        href: '/dashboard/marketplace/downloads',
+        icon: Download
+      },
+      {
+        label: 'My Shares',
+        href: '/dashboard/marketplace/shares',
+        icon: Share2
       }
     ]
   },

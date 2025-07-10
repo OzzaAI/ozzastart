@@ -8,9 +8,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Check, FileImage, Upload, X } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Check, FileImage, Upload, X, Bot, Code, Copy } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -29,6 +38,13 @@ export default function UploadPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [dragActive, setDragActive] = useState(false);
+  
+  // Workflow conversion state
+  const [workflowJson, setWorkflowJson] = useState("");
+  const [agentName, setAgentName] = useState("");
+  const [converting, setConverting] = useState(false);
+  const [yamlPreview, setYamlPreview] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const handleFileUpload = async (files: FileList | File[]) => {
     const fileArray = Array.from(files);
@@ -135,16 +151,69 @@ export default function UploadPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
+  const handleWorkflowConvert = async () => {
+    if (!workflowJson.trim()) {
+      toast.error("Please enter workflow JSON");
+      return;
+    }
+
+    setConverting(true);
+    try {
+      const response = await fetch("/api/convert", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          workflowJson: workflowJson.trim(),
+          agentName: agentName.trim() || undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+
+      if (data.success) {
+        setYamlPreview(data.yaml);
+        setPreviewOpen(true);
+        toast.success(`Agent "${data.agent.name}" created successfully!`);
+        
+        // Clear form
+        setWorkflowJson("");
+        setAgentName("");
+      } else {
+        throw new Error(data.error || "Conversion failed");
+      }
+    } catch (error) {
+      console.error("Conversion error:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to convert workflow");
+    } finally {
+      setConverting(false);
+    }
+  };
+
+  const copyYamlToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(yamlPreview);
+      toast.success("YAML copied to clipboard");
+    } catch (error) {
+      toast.error("Failed to copy YAML");
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">File Upload</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Upload & Convert</h1>
         <p className="text-muted-foreground mt-2">
-          Upload images to Cloudflare R2 storage with drag and drop support
+          Upload images to Cloudflare R2 storage and convert workflows to MCP agents
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Upload Area */}
         <Card>
           <CardHeader>
@@ -200,6 +269,61 @@ export default function UploadPage() {
                 <Progress value={uploadProgress} className="h-2" />
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Workflow to MCP Converter */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bot className="h-5 w-5" />
+              Workflow to MCP Agent
+            </CardTitle>
+            <CardDescription>
+              Convert n8n workflow JSON to MCP agent specification
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="agentName">Agent Name (optional)</Label>
+              <Input
+                id="agentName"
+                placeholder="My Custom Agent"
+                value={agentName}
+                onChange={(e) => setAgentName(e.target.value)}
+                disabled={converting}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="workflowJson">Workflow JSON</Label>
+              <Textarea
+                id="workflowJson"
+                placeholder='{"name": "My Workflow", "nodes": [...], ...}'
+                value={workflowJson}
+                onChange={(e) => setWorkflowJson(e.target.value)}
+                className="min-h-[120px] font-mono text-sm"
+                disabled={converting}
+              />
+            </div>
+
+            <Button
+              onClick={handleWorkflowConvert}
+              disabled={converting || !workflowJson.trim()}
+              className="w-full"
+            >
+              {converting ? (
+                <>
+                  <Code className="h-4 w-4 mr-2 animate-spin" />
+                  Converting...
+                </>
+              ) : (
+                <>
+                  <Bot className="h-4 w-4 mr-2" />
+                  Convert to Agent
+                </>
+              )}
+            </Button>
           </CardContent>
         </Card>
 
@@ -319,6 +443,52 @@ export default function UploadPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* YAML Preview Modal */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bot className="h-5 w-5" />
+              MCP Agent Specification
+            </DialogTitle>
+            <DialogDescription>
+              Your workflow has been converted to an MCP agent specification in YAML format.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={copyYamlToClipboard}
+                variant="outline"
+                size="sm"
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copy YAML
+              </Button>
+              <Button
+                onClick={() => setPreviewOpen(false)}
+                variant="outline"
+                size="sm"
+              >
+                Close
+              </Button>
+            </div>
+            
+            <div className="border rounded-md overflow-hidden">
+              <div className="bg-muted px-3 py-2 border-b">
+                <code className="text-sm font-mono">agent-specification.yaml</code>
+              </div>
+              <div className="p-4 overflow-auto max-h-[50vh]">
+                <pre className="text-sm font-mono whitespace-pre-wrap break-words">
+                  {yamlPreview}
+                </pre>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
