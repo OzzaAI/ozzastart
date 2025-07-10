@@ -1,0 +1,1 @@
+const { exec } = require('child_process');exec('npx drizzle-kit generate', { cwd: 'C:\Dev\Ozza-Reboot' }, (error, stdout, stderr) => {  if (error) {    console.error(`exec error: ${error}`);    return;  }  console.log(`stdout: ${stdout}`);  console.error(`stderr: ${stderr}`);});

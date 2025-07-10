@@ -1,0 +1,20 @@
+[
+  {
+    "account_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+    "user_id": "user1_ozza_id",
+    "role": "owner",
+    "created_at": "2024-01-01T10:00:00Z"
+  },
+  {
+    "account_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+    "user_id": "user2_ozza_id",
+    "role": "client",
+    "created_at": "2024-01-05T12:00:00Z"
+  },
+  {
+    "account_id": "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
+    "user_id": "user1_ozza_id",
+    "role": "coach",
+    "created_at": "2024-02-20T09:00:00Z"
+  }
+]

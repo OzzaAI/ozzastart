@@ -1,0 +1,28 @@
+[
+  {
+    "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+    "schema_name": "agency1",
+    "account_name": "Agency One",
+    "plan_id": "pro",
+    "plan_status": "active",
+    "stripe_customer_id": "cus_abc123",
+    "maintenance_mode": false,
+    "logo_url": "https://example.com/logo1.png",
+    "primary_color": "#FF0000",
+    "secondary_color": "#00FF00",
+    "created_at": "2024-01-01T10:00:00Z"
+  },
+  {
+    "id": "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
+    "schema_name": "agency2",
+    "account_name": "Agency Two",
+    "plan_id": "free",
+    "plan_status": "active",
+    "stripe_customer_id": null,
+    "maintenance_mode": false,
+    "logo_url": null,
+    "primary_color": null,
+    "secondary_color": null,
+    "created_at": "2024-02-15T11:30:00Z"
+  }
+]

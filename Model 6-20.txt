@@ -1,0 +1,573 @@
+Great — I’ll now produce a full-length, section-by-section rewrite of the original business model, maintaining the original structure and conventions.
+
+This version will fully replace the previous "Model 6-18," incorporate AI-related upgrades required to compete with GoHighLevel (clearly flagged throughout), and align with the current internal strategy as reflected in Website Blueprint V2 and recent agency UI/UX planning.
+
+I’ll let you know as soon as it’s ready.
+
+
+# Ozza Comprehensive Business Model Blueprint (2025 Update)
+
+## Business Model Logic
+
+Ozza operates a multi-tier, multi-tenant SaaS platform connecting **coaches**, **agencies**, and **SMB clients** in a single ecosystem. The core logic is a hierarchical flow: **coaches recruit and mentor agencies**, agencies serve **SMB (small business) clients** using Ozza’s tools, and Ozza provides the platform underlying it all. Key aspects of this model include:
+
+* **Multi-Tenant SaaS Architecture:** All agencies run on a single cloud platform instance (shared codebase and infrastructure) with strict tenant isolation. This allows centralized updates and maintenance, benefiting from economies of scale and ensuring that every agency always has the latest features without managing separate installs. We deliberately avoid one-off custom deployments per agency to keep the system uniform and scalable.
+
+* **Hierarchy of Users:** Ozza’s ecosystem has three primary levels – **Coaches**, **Agencies**, and **SMB Clients**:
+
+  * **Coaches** are experienced partners who act as mentors and first-line support for agencies. Each coach can onboard and oversee multiple agencies.
+  * **Agencies** are the direct customers of Ozza’s SaaS platform. They use the platform to build websites and digital solutions for their SMB clients. An agency can manage multiple SMB client projects within their account.
+  * **SMB Clients** are the end businesses that receive websites/marketing services from the agencies. SMBs do not interact with Ozza directly – they experience the output (websites, campaigns) that agencies create on the platform.
+
+* **Coach→Agency→SMB Flow:** Coaches extend Ozza’s reach by bringing in agencies and helping them succeed. Agencies, in turn, bring in their portfolio of SMB clients onto the platform (by building those clients’ websites and managing their digital presence via Ozza). This flow ensures a scalable distribution: Ozza focuses on platform development, coaches focus on agency success, and agencies focus on SMB client results. The value chain is clear – Ozza empowers coaches, who empower agencies, who deliver value to SMBs.
+
+* **Distinct Value Propositions:** Each layer has its own incentives:
+
+  * Coaches earn commission (revenue share) and build a community of successful agencies under their guidance.
+  * Agencies get a business-in-a-box solution (website builder, tools, and a mentor) without needing to develop their own tech – allowing them to focus on acquiring and servicing SMB clients.
+  * SMB clients receive modern websites and digital services (delivered by agencies) that are enhanced by Ozza’s technology, without needing to know Ozza exists.
+  * Ozza grows its subscription revenue through agencies at scale, leveraging coaches as a cost-effective channel for sales and support.
+
+* **Centralized Platform, Decentralized Service:** Ozza centrally maintains the platform and feature set, while services to SMBs (like design, marketing, consulting) are decentralized through agencies. This model means Ozza doesn’t directly service SMBs (avoiding channel conflict) – instead, we enable agencies to do so. All strategic decisions reinforce this balance: Ozza will not compete with agencies for end clients, and coaches will not directly service end clients either. Each party stays in their lane for clarity and scalability.
+
+## Roles and Permission System
+
+To support the multi-level model, Ozza defines clear user roles with specific permissions. This ensures each participant has appropriate access and control while maintaining data security and preventing overlap of responsibilities. The roles include:
+
+* **Ozza Core (Platform Admin):** Internal Ozza team members with full administrative access. They can create/manage coach accounts, oversee all agencies, configure platform-wide settings, and access any data as needed for support or maintenance. This role is restricted to Ozza’s employees and is used for platform governance, support escalation, and monitoring.
+
+* **Coach:** Coaches are partner users who can nurture and manage agencies but have limited access to agency data by default. A coach has a **Coach Dashboard** showing all their agencies’ high-level metrics (e.g. number of clients, site launches, subscription status) and can **switch into an agency view in a limited capacity** to assist. Coaches can **view and guide**, but *not directly modify agency assets or client data without permission*. They cannot see sensitive details of an agency’s clients unless the agency opts to share (see “Blind-Mode” privacy). Coaches do **not** have the ability to create or own end-client projects – their role is advisory:
+
+  * They can invite new agencies and are automatically linked as the coach for those agencies.
+  * They can access training and support tools to help their agencies (knowledge bases, demo accounts, etc.).
+  * They can submit support tickets on behalf of their agencies and see status updates.
+  * **Coach Control Rules:** (unchanged from original model) Coaches **cannot take unilateral actions** in an agency’s account like changing billing, removing users, or contacting the agency’s clients. They operate with the agency’s consent and within the platform’s “coach view” permissions. These rules ensure coaches guide rather than control agencies, avoiding any franchise-like authority.
+
+* **Agency Owner/Admin:** This is the primary user role for agencies – typically the agency founder or designated admin. They have full control over their agency’s workspace. Permissions include:
+
+  * Managing all aspects of their agency account – creating SMB client projects (websites), editing content, launching sites, accessing lead data, etc.
+  * Inviting agency team members/staff and assigning their permissions.
+  * Viewing and managing billing for their subscription to Ozza.
+  * Deciding what data (if any) to share with their coach (they can grant the coach temporary deeper access to a project for help, or keep certain info private).
+  * Enabling “blind mode” settings (to hide client identities from coach, default is privacy on).
+  * The agency owner essentially has the final say on anything within their agency’s account.
+
+* **Agency Team Member:** Agencies can have team accounts for their staff (designers, developers, account managers, etc.) within their organization. Team members have permissions set by the Agency Owner:
+
+  * They might be able to build and edit websites, manage specific client projects, or handle leads, depending on role.
+  * By default, team members cannot change agency-wide settings or billing. Their access is typically confined to operational tasks (e.g., editing a website, publishing content, viewing assigned client data).
+  * Team members do not interact with coaches directly through the platform (communication with the coach usually goes via the agency owner/admin), maintaining a clear hierarchy.
+
+* **(Optional Future) SMB Client User:** Currently, SMB clients (the end businesses) do **not** get direct logins to the Ozza platform. Agencies interface with the platform on their behalf (e.g., making site updates or viewing analytics to report). This is by design to keep the agency at the center of the client relationship. However, in the roadmap we consider a **client portal** for SMBs to, for example, view their website stats or submit requests. If introduced, such a portal would be **read-only or limited-interaction** for SMBs and fully controlled by the agency (ensuring agencies maintain the client relationship). **(No change to current model:** SMBs remain external to the platform for now.)
+
+**Permissions Summary:** Each role only sees and does what’s necessary for their function. Coaches see across agencies but only high-level data; an agency sees only its own data (plus any SMB project data it creates); team members see subsets of agency data; SMB clients see only outputs (websites, reports) that agencies share externally. This structured permission system maintains confidentiality and security across tenants. All role interactions are audited (we log coach access to agency accounts, team member actions, etc.) for accountability.
+
+## Product Architecture & Domains
+
+Our product architecture is designed for clarity between different user experiences (coach vs agency) and to support the multi-tenant model at scale. It encompasses distinct app domains for each user type, a unified backend, and a modular front-end (especially with the **Website Builder V2** improvements and new UI/UX).
+
+* **Unified Backend, Segmented Frontend:** Ozza’s backend is a single application (and database) that houses all agencies’ data partitioned by tenant IDs. Business logic enforces that each agency (tenant) only accesses its own records. On the frontend, we deliver different **SPA** (Single Page Application) interfaces or modes:
+
+  * **Coach Portal/UI:** a dedicated interface (or mode) optimized for coaches. Coaches log in at a specific domain (e.g. `coach.ozza.com`) or toggle a “Coach Mode” which presents aggregated info and management tools for their agencies. The coach UI allows switching into a specific agency’s context (respecting permissions) via a secure impersonation mechanism. The new UI architecture provides a clear distinction when a coach is viewing an agency’s workspace (visual indicators and limited editing capability) to avoid any confusion.
+  * **Agency Portal/UI:** the main application interface at (e.g.) `app.ozza.com` where agencies operate. It’s tailored to agency needs – creating and editing websites, managing client projects, viewing analytics, etc. Each agency’s admin and team log in here. The UI is white-labeled for agencies to a degree (agencies can brand the interface with their logo for internal use), but Ozza’s overall design language remains for consistency. Coaches do not normally log in here directly; if they assist, they do so via the coach interface’s switch mechanism.
+  * Both portals share common underlying components but have role-based feature toggles. This new separation (introduced in UI/UX revamp **V2**) resolves earlier usability issues – coaches now have a bird’s-eye view and quick navigation across agencies, while agencies have a focused workspace for their own business.
+
+* **Website Builder (V2 Architecture):** The core product module is the website/funnel builder that agencies use to create SMB client websites. **Website Blueprint V2** updates have been fully integrated:
+
+  * The builder uses a modern, block-based editor with drag-and-drop capabilities and real-time preview. It supports multi-page websites, customizable templates, forms, and basic funnel flows (e.g. landing page → form → thank-you page).
+  * All site content for each SMB project is stored under that agency’s tenant space. Publishing a site allows it to be accessed on a live domain (see Domains below).
+  * **New Features from Blueprint V2:** The builder now includes a **template library** of pre-designed sections and themes (coaches and Ozza can contribute best-practice templates for agencies to use). It also supports **responsive design controls** (agencies can adjust layouts for mobile vs desktop easily) and **version history** (to undo/rollback changes).
+  * **AI 🔹 Site Generation:** We have introduced AI-assisted features to the builder to keep pace with industry trends. For example, agencies can use an **AI Content Assistant (AI 🔹)** to generate initial copy for a webpage or blog post based on prompts (e.g., "Generate an ‘About Us’ text for a local bakery"). The builder can also suggest image choices from a stock library, and we are piloting **AI 🔹 Image Generation** for simple graphics (using third-party AI services). These enhancements dramatically speed up site creation for agencies, giving them a head start with content and design – a critical competitive feature as platforms like GoHighLevel now offer AI content tools.
+  * **Future Modules:** The architecture is built to be extensible. Beyond websites, we have stubs for additional modules like **basic CRM/lead management**, **email marketing**, or **landing page funnels**. Currently, the focus is on websites and landing pages, but the platform design allows plugging in new components (e.g., a CRM tab or Marketing Automation tab) that would also respect the multi-tenant structure.
+
+* **Domains & Hosting:** Domain management is an important part of the architecture:
+
+  * Each agency’s own account lives under the Ozza app domain for management purposes (as above). But the **SMB client websites** that agencies publish can be on **custom domains** that the SMBs choose (e.g., `www.clientbusiness.com`). The platform provides DNS guidance or integration (e.g., we use domain connect or manual CNAME/A record setups) to point those domains to Ozza’s hosting. We host all client sites on our infrastructure (global CDN for speed, etc.), but the branding of those sites is the SMB’s.
+  * For agencies or SMBs that don’t have a custom domain yet, we offer a temporary subdomain option like `clientname.agencyname.ozza-sites.com` for staging or initial launches. This helps in quick demos and testing. However, our goal is to have final sites on the client’s own domain for professionalism.
+  * **White-Label Consideration:** We do **not** extensively white-label the core platform under each coach or agency’s brand for the software itself (agencies know they are using Ozza). The focus is on **output white-labeling** – the SMB-facing deliverables carry the agency’s branding. This avoids confusion and any franchise appearance. (Coaches likewise are not creating their own branded version of Ozza; they work within the Ozza ecosystem).
+  * The platform’s email notifications or system messages to agencies are co-branded with Ozza and (optionally) the coach’s name, but never directly to SMB clients. Any client-facing communications (like form confirmation emails, etc.) are branded from the agency or their client’s brand.
+
+* **Scalability & Performance:** The architecture is cloud-based and auto-scales to support many agencies and high traffic on all the hosted SMB websites. We use isolated data partitions and efficient caching so one agency’s heavy usage won’t degrade others. We plan for thousands of agencies and tens of thousands of end-client sites as a scalability target. Technical specifics (database sharding, CDN, etc.) are handled behind the scenes to meet this goal. From a business model perspective, this transparent scaling means Ozza can grow usage without needing each new agency to run on separate infrastructure, maintaining cost efficiency.
+
+* **Security & Separation:** All data is segmented by role and tenant. Coaches can only query data through coach-specific APIs that aggregate or filter out private details. Agencies access only their data. We enforce this not just in front-end logic but at the API and database level (each query requires agency or coach identifiers to ensure no cross-access). Regular security audits and permission reviews are done to uphold trust in the multi-tenant system.
+
+In summary, the product architecture after the V2 update cleanly separates the **experience for coaches vs agencies**, improves the website builder’s capabilities (with **AI enhancements** and better UI), and maintains robust multi-tenant infrastructure. All domains and touchpoints are configured to reinforce the proper relationships: Ozza is the backbone, agencies are the operators, and coaches are the supporters – with technology facilitating each connection.
+
+## Pricing, Revenue Share, and Discount System
+
+Ozza’s revenue model is a SaaS subscription model layered with a commission scheme for coaches. We have preserved the original pricing structure and tiers, and the way revenue sharing works with coaches remains unchanged. Key elements:
+
+* **Subscription Pricing Tiers:** We offer **three subscription plans for agencies**, designed to cater to different sizes of agency operations. *(Note: The exact pricing and features per tier remain as originally set – we have not altered tier prices or core limits in this update.)* The tiers are:
+
+  * **Basic Plan** – Intended for new or small agencies. This entry-level plan includes all essential features of the platform (full website builder access, hosting for a limited number of client sites, basic support). It has a cap on the number of active SMB client projects (e.g. up to 10 websites) and limited advanced features. *Pricing:* \$**X** per month (affordable for solo operators or startups).
+  * **Pro Plan** – A mid-tier for growing agencies. It raises the limits (e.g. up to 50 client sites) and unlocks additional features such as advanced templates, priority support, and possibly add-on modules (like basic CRM if/when available). This is our most popular tier for agencies looking to scale. *Pricing:* \$**Y** per month (a moderate rate that balances value with platform costs).
+  * **Enterprise Plan** – Meant for large agencies or those with extensive needs. It supports an **unlimited** number of client projects (or very high cap) and includes all features, including any premium add-ons, dedicated account support, and custom SLA options. This plan may also allow multiple agency sub-accounts or brand customizations if needed. *Pricing:* Typically \$**Z** per month or custom-negotiated for very large clients. (We handle enterprise deals on a case-by-case basis, ensuring alignment with our revenue model.)
+
+  Each tier’s pricing is set to ensure **Ozza’s margins** cover hosting and support costs while remaining attractive to agencies (especially given they can resell our capabilities to many SMB clients). We do **not change these tier structures** in this model update – any alterations to pricing would be strategic decisions outside the scope of this document.
+
+* **Revenue Share for Coaches:** Coaches earn a **commission on the subscription revenue** from the agencies they bring in. This remains exactly as before:
+
+  * For every monthly subscription payment an agency makes, a fixed percentage (e.g. **20%** of revenue) is allocated to that agency’s coach as commission. This aligns incentives: coaches are rewarded for helping agencies stay subscribed and succeed (lower churn).
+  * The revenue share is recurring as long as the agency stays on the platform. Coaches build a compounding income stream by adding more agencies.
+  * The commission percentage is standardized across all coaches and all tiers (to keep it simple and fair). Ozza absorbs this cost as a customer acquisition and success expense – effectively splitting subscription revenue with coaches.
+  * **No Changes:** The commission rate and structure remain the same as the original model (no coach should see a change in their payout). We maintain this to honor existing arrangements and because it has proven effective in motivating coach participation.
+  * Payout logistics: coaches typically receive their revenue share payouts monthly or quarterly (through our billing system, after collecting from agencies). Ozza handles the tracking and payment automatically.
+
+* **Discount System:** We have a built-in discounting mechanism to encourage coach-led sales and to reward commitments:
+
+  * **Coach Referral Discount:** When a coach recruits a new agency, that agency may receive a **promotional discount** on their subscription. For example, we have offered “**first 1-2 months free**” or “**X% off the first year**” for agencies brought in by coaches. This incentive (configurable in the system) helps coaches convince prospects to join and lowers the barrier for new agencies. Ozza funds these discounts as part of our customer acquisition cost – coaches still receive their commission on the post-discount revenue so their earnings aren’t penalized.
+  * **Annual Prepay Discount:** If an agency opts to pay annually (rather than monthly), we provide a discount (e.g. \~10% off the yearly total). This encourages commitment and improves cash flow. Coaches also get their share from these annual payments (either upfront or divided over the year, proportionally).
+  * **Volume/Upsell Discounts:** In some cases, if an agency grows and needs to upgrade to a higher tier or significantly exceed usage, we empower coaches to offer a tailored discount or promotion to ease that upsell. For instance, moving from Basic to Pro mid-year might come with a prorated deal. All such special discounts are approved by Ozza management but can be facilitated via the coach.
+  * The discount system is managed via unique codes or links associated with coaches and promotions. The **rules remain as originally** defined – we haven’t introduced random discounts that could undermine pricing consistency. All strategic discounts are planned (startup promos, seasonal offers, etc.) and communicated to coaches.
+
+* **Pricing Control and Integrity:** **Coaches cannot alter pricing tiers or grant unapproved discounts on their own.** They leverage only the official discounts Ozza provides (to maintain a standard market pricing and avoid any coach competing on price). Agencies all ultimately pay subscription fees to Ozza (we handle billing centrally), so we keep pricing transparent and consistent. Coaches’ influence is in providing value (guidance, possibly a referral discount), not changing the core pricing model.
+
+* **Additional Revenue Streams:** While our main revenue is from agency subscriptions, there are potential additional streams:
+
+  * **Add-On Services:** (Future) We may offer premium add-ons (like extra AI credits, premium template packs, etc.) for additional fees. These would similarly have a revenue share component for coaches if sold through their agencies.
+  * **Marketplace:** (Future concept) If we integrate third-party services (e.g. an email sender, advanced SEO tools) and resell them through Ozza, we might get margin on those. Any such development would maintain the principle that coaches share in the value if they drove the sale.
+  * Currently, however, the simplicity of a straightforward subscription + commission model is preferred, and we avoid complicating the revenue model with too many variables.
+
+In summary, **our revenue model remains unchanged**: Agencies subscribe on tiered plans appropriate to their size; coaches earn a steady percentage of that revenue for their mentorship; and targeted discounts help accelerate growth without breaking the pricing logic. This approach scales well – as agencies add more SMB clients and possibly move up tiers, Ozza’s revenue increases and coaches’ earnings increase correspondingly, aligning everyone’s growth incentives.
+
+## Coach Onboarding and Ownership Logic
+
+Bringing coaches into the fold and assigning agencies to them is handled carefully to ensure quality over quantity and to avoid any structural pitfalls. The **coach onboarding process** and **agency ownership rules** are designed to support growth while protecting all parties’ interests (and avoiding franchise implications). Here’s how it works:
+
+* **Selective Coach Recruitment:** We onboard coaches through a controlled process. Potential coaches typically are experienced digital marketing professionals, agency consultants, or industry experts who align with our mission. Ozza either **invites** high-potential individuals or they **apply** to become coaches. The onboarding involves:
+
+  * An application or interview to vet the coach’s background (we look for those who have successfully run or coached agencies, understand SMB marketing, and are willing to adhere to our model).
+  * Signing a **Coach Agreement** – a contract outlining their role, commission structure, confidentiality (including handling of any agency data seen), and non-franchise clause (making clear they are independent and not an Ozza franchisee or employee).
+  * **Training & Certification:** New coaches go through Ozza platform training. They must learn the ins and outs of our product (Website Builder, admin dashboard, AI features, etc.) and best practices in coaching agencies. We may certify them through a short course or mentorship with an existing senior coach before they can recruit agencies. This ensures consistency in the guidance agencies receive.
+  * Once onboarded, coaches get access to the Coach Portal and are listed in our system as active coaches ready to recruit agencies.
+
+* **Agency Acquisition (by Coaches):** Coaches are expected to bring agencies onto the platform through their own networks and outreach. Each coach is given a unique referral link or code to register new agencies:
+
+  * When an agency signs up through that link, the system automatically **assigns that agency to the coach** as the “owner/mentor”. The agency’s account is tagged with the coach’s ID.
+  * Thereafter, all revenue share and association rules apply. The coach can see that agency in their dashboard and will start earning commission once the agency subscribes.
+  * Coaches typically approach small agencies or freelancers who could benefit from Ozza (often those who lack good infrastructure). Ozza supports coaches with marketing materials and case studies to aid their recruitment efforts, but we do not directly interfere in how coaches find prospects – they are entrepreneurs in this sense.
+
+* **Coach-Agency Assignment Rules:**
+
+  * **One Coach per Agency:** An agency can only have one coach linked at any given time (to avoid confusion and overlapping guidance). The first coach who recruits or is assigned to the agency remains their coach.
+  * **No Switching by Default:** We do not encourage agencies to switch coaches freely. If an agency is unhappy with their coach, they can escalate to Ozza for a remedy (which might involve reassigning a different coach or handling the account directly by Ozza temporarily). But an agency cannot self-select a new coach without cause – this prevents “coach hopping” and respects the original coach’s effort in recruitment.
+  * **Ownership Longevity:** A coach’s ownership of an agency relationship persists as long as the coach remains in the program and the agency is active. Even if an agency’s subscription tier changes or they expand, the original coach continues to be attached (and receive revenue share).
+  * **House Accounts:** If an agency signs up *without* a coach referral (e.g., inbound through our website or other marketing), that agency is considered a “house account”. By default, Ozza’s internal success team may handle onboarding, or we may assign such an agency to a coach *after* signup based on capacity or regional/industry fit. (This ensures every agency eventually gets a coach, even if they came in unassigned. Assignment in such cases is done carefully to be fair – often rotated or given to coaches who specialize in that agency’s niche.)
+  * **Coach Capacity:** To maintain quality, we generally limit how many agencies a single coach should handle actively. While there’s no hard cap in the software, we internally target around **10-15 agencies per coach** in the early stages. If a coach is approaching their capacity or struggling to support existing agencies, we slow their new assignments and recruit more coaches. This ratio may evolve as we introduce more self-serve tools, but personal attention is a cornerstone, so we monitor it.
+
+* **Coach Performance & Retention:** We continuously evaluate coaches on metrics like agency activation rates, retention of their agencies, and agency satisfaction:
+
+  * If a coach underperforms (e.g., their agencies consistently churn early or give poor feedback), Ozza may intervene with additional training or, in worst cases, remove that coach from the program.
+  * If a coach leaves the program or is removed: their agencies do **not** get dropped. Instead, those agencies become house accounts or are reassigned to another coach. The **ownership logic ensures agencies always belong to Ozza ultimately**, not to the coach personally – thus if a coach departs, the relationship transitions smoothly. (Commission to the departing coach would cease at that point, and any new coach’s commission would start on future billings.)
+  * Coaches are **independent**, but we require notice if they intend to leave, so we can reassign agencies appropriately. We also restrict coaches from attempting to “take” agencies off Ozza (soliciting them to leave the platform) – such actions are contractually prohibited to protect our client base.
+
+* **Geography and Specialty:** We do not grant exclusive territories or verticals to coaches (to avoid franchise-like territory rights). However, we do consider a coach’s expertise when assigning non-referred agencies. For example, if an agency focuses on dental clinics and we have a coach with healthcare niche experience, we might pair them. Coaches are encouraged to develop specialties (which can become a selling point to attract agencies in that niche), but no formal exclusivity exists. All coaches operate under the same Ozza umbrella and brand.
+
+* **No Franchise Representation:** Coaches do **not** represent themselves as “Ozza branch owners” or franchisees. They are simply “Ozza Coaches” – partners who help agencies use Ozza. Their marketing to agencies is positioned around how they (the coach) can help the agency grow using the platform, not that they run a franchise of Ozza. This distinction is vital legally (as covered in the Legal section) and is reinforced during coach onboarding.
+
+In essence, the coach onboarding and ownership system is designed to **bring in high-quality coaches, link agencies to the right coach, and maintain that relationship long-term** for mutual success. We keep the process structured to prevent conflicts: one coach per agency, clear rules on transitions, and strong oversight by Ozza to ensure coaches operate within guidelines. All these decisions uphold the strategic intent – leverage coaches for scale, but keep Ozza’s customer (the agency) ultimately tied to Ozza’s platform value.
+
+## Agency Activation and Privacy Logic (Blind-Mode)
+
+Getting agencies fully active on the platform and preserving the appropriate privacy between agencies and coaches (and between agencies and Ozza) are critical operational considerations. We have a formalized **agency activation process** and a special **“Blind Mode” privacy feature** to manage data visibility.
+
+* **Activation Process for New Agencies:** When an agency joins Ozza (whether via coach or direct), we guide them through a structured onboarding to become an “activated” (successful) agency:
+
+  1. **Onboarding Checklist:** New agencies are presented with a step-by-step setup guide in the app (e.g., complete profile, upload logo, add first client project, publish a demo site). Coaches are notified of new signups under them and expected to assist in these steps.
+  2. **Initial Training & Setup:** In the first 1-2 weeks, the coach will typically schedule one or more onboarding calls or meetings with the agency. Together they review how to use the builder, discuss the agency’s business goals, and outline a plan to land or transition their first SMB client onto Ozza. This personal onboarding is crucial for activation.
+  3. **First Client Launch:** We define an agency as “activated” once they have built and published at least one SMB client website through the platform (or otherwise started generating value, e.g., capturing leads for a client). Achieving this within the first 30-60 days is a key goal. Coaches are incentivized to make it happen (because a successful first launch strongly correlates with the agency sticking with the platform).
+  4. **Trial Period and Conversion:** We often provide a short free trial or money-back period for new agencies (e.g., 14 or 30 days) to reduce risk. During this time, the coach’s job is to get them to value quickly. Once the trial lapses, the agency is charged their subscription – by then, if they have a client site live or in progress, they’re much more likely to continue. *No change in policy:* trials and conversions operate the same as before, with coaches closely involved.
+  5. **Activation Metrics:** We track whether an agency completes onboarding steps and how quickly. If an agency stalls (e.g., hasn’t created any project by day 15), the system alerts their coach and our success team to intervene. The aim is to proactively engage and remove roadblocks to activation.
+
+* **Agency Privacy & “Blind-Mode” Settings:** We enforce privacy boundaries to protect agency autonomy and client data, primarily through the **Blind-Mode** feature:
+
+  * **Default Blind-Mode:** By default, when a new agency is linked to a coach, the coach can see **only high-level information** about that agency’s activity, not specifics of their clients or content. For example, a coach might see that an agency has “5 client sites, 2 published, 3 in draft” and generic metrics like total page views or lead form submissions. However, the coach will **not see the actual client names, contact details, or detailed content** on those sites in default blind mode.
+  * **What Blind-Mode Hides:** All sensitive identifiers are masked. In the coach’s dashboard, clients might be listed as “Client A, Client B…” or just counts. Any data that could let a coach directly identify or contact an SMB client is hidden. Financial information (if agencies charge clients through the platform, in future) would also be hidden.
+  * **Rationale:** This ensures agencies feel secure that their client list and proprietary work are not accessible to third parties (even their coach) without consent. Agencies invest in building their client base, and blind-mode guarantees that coaches (and Ozza staff not involved in support) cannot poach or interfere with those relationships.
+  * **Coach Assistance with Privacy:** If an agency wants hands-on help from a coach on a specific project, they have the option to **temporarily lift blind-mode for that project**. For instance, an agency could invite their coach to collaborate on a particular website build – the system would then grant the coach limited access to that project’s content for a time. The coach might receive a special link or an access permission in their coach UI to view/edit that one client site. This is always initiated by the agency; coaches cannot force it.
+  * **Trust and Gradients:** In practice, as a coach-agency relationship strengthens, some agencies may opt to share more info. We provide **granular privacy settings** – an agency can choose to share certain data with their coach, like letting the coach see their site analytics or even review lead entries, if they find it helpful. These settings are clearly presented (with explanations) so the agency understands the coach’s visibility. Some agencies in growth mode appreciate more coach insight, while others prefer to keep things blind – we accommodate both.
+  * **Blind-Mode and Ozza:** Ozza internal staff, by virtue of operating the platform, can see data for support purposes, but we uphold similar principles. For instance, if Ozza’s success team is helping an agency, we treat their client info confidentially and would never share it across agencies or with coaches beyond what’s allowed. Our internal policy is that we only access agency data when necessary for support or troubleshooting.
+
+* **Client Confidentiality:** Beyond the coach-agency dynamic, we ensure that each agency’s clients (SMBs) are not visible to any other agency. There’s complete data isolation per tenant. Even in aggregated marketing materials or case studies, we anonymize or get permission before mentioning any agency’s clients. This fosters confidence among agencies that their competitive info (client base, strategies) stays private.
+
+* **White-Label / Branding Privacy:** In line with blind-mode, the platform is designed so that **SMB clients perceive the agency as the sole provider** of their service:
+
+  * Any websites or marketing materials produced carry the agency’s branding (or the SMB’s branding), not Ozza’s. There’s no public “Powered by Ozza” footer unless the agency chooses to disclose it. This way, from the SMB’s perspective, they are simply working with the agency. Ozza remains an invisible tech backbone.
+  * Coaches likewise remain invisible to SMB clients. A coach might help an agency build a campaign or troubleshoot something, but the client only ever interacts with the agency. There’s no scenario where a coach would directly reach out to or be known by the SMB without the agency mediating it.
+  * This protects the agency’s business and avoids any impression that the agency is sub-contracting work (even if they consult their coach behind the scenes). It’s effectively a **ghost coaching** model – support is provided in the background.
+
+* **Agency Data Ownership:** Each agency owns the data of their SMB clients (contacts, site content, etc.). Blind-mode reinforces that coaches do not own or freely access that data. Legally, agencies are data controllers for their client info (see DPA chain in Legal section), and Ozza/coach are processors or sub-processors. Practically, if an agency leaves Ozza, they can export their client data; coaches have no claim to it. Also, if a coach leaves Ozza, they do not take any agency data with them – everything remains with the agency and Ozza.
+
+* **Activation Status Monitoring:** As part of privacy and quality control, we mark agencies as **Active**, **At-Risk**, or **Inactive** in our internal systems:
+
+  * Active means they have met onboarding goals and are regularly using the platform.
+  * At-Risk might mean usage or logins have dropped, no new sites in a while, or subscription is behind – triggers coach and Ozza to check in.
+  * Inactive means they have stopped their subscription or not engaged beyond trial. For inactive agencies that churned, we anonymize or delete their SMB data after a grace period per our data retention policy.
+  * These statuses are visible to the coach (e.g., a coach can see if one of their agencies hasn’t logged in for 30 days, indicating they should reach out). It’s another loop to ensure agencies don’t silently fail without notice.
+
+**In summary**, our activation and privacy policies ensure that:
+
+* Every agency is quickly brought to a point of value (first client success) with coach assistance.
+* Agencies maintain full control and confidentiality over their client relationships and data (coaches assist but cannot intrude).
+* “Blind-mode” by default protects agency business secrets, while allowing flexibility to collaborate when needed.
+* This careful balance builds trust: agencies trust that using Ozza and a coach won’t compromise their client list, and coaches can still do their job effectively through proper channels.
+
+## Support Model and Escalation Path
+
+Providing excellent support is a shared responsibility between Ozza and the coaches, structured in tiers. The support model ensures that agencies get timely help either from their coach or directly from Ozza, and there’s a clear path to escalate issues that need higher-level intervention. Our support structure and processes (with escalation) are as follows:
+
+* **Tier 1: Coach-Led Support:**
+
+  * **Role of Coaches:** Coaches serve as the first line of support for their agencies. For day-to-day questions on using the platform, best practices, or minor issues, agencies are encouraged to reach out to their coach first. This can be via email, messaging, or scheduled calls – whatever communication channel the coach and agency prefer.
+  * **Scope:** Coaches handle “how do I…” questions (e.g., how do I set up a new page, how to improve SEO on a client’s site), strategic advice (like pricing services to SMBs, marketing tips), and initial troubleshooting (e.g., if an agency is having difficulty with a feature, the coach can often walk them through it or verify if it might be a bug).
+  * **Tools for Coaches:** We equip coaches with a robust knowledge base, a support FAQ, and training to answer common questions. Coaches also have a direct line to Ozza’s support resources (see Tier 2) in case they need guidance on an issue. They can search our documentation or community forums to help resolve their agency’s questions quickly.
+  * **Availability:** We expect coaches to be reasonably responsive to their agencies (e.g., respond within one business day). This is part of the coach’s commitment – their agencies’ success and satisfaction is tied to the coach’s performance. Many coaches set up weekly check-ins with new agencies to preempt issues and provide proactive support.
+
+* **Tier 2: Ozza Support Team:**
+
+  * If an issue goes beyond the coach’s ability or jurisdiction, it moves to Tier 2. Ozza maintains an in-house **Support Team** (and Customer Success Team) to handle technical issues, account problems, or anything the coach cannot solve.
+  * **When Tier 2 Kicks In:** Examples include software bugs, system outages, billing issues, or advanced technical questions. Also, if an agency cannot reach their coach (e.g., coach on vacation or unresponsive), they can contact Ozza support directly.
+  * **Support Channels:** Agencies (or coaches on behalf of agencies) can create support tickets through our support portal or via email ([support@ozza.com](mailto:support@ozza.com)). We also have live chat support during business hours which agencies can access from the app. Coaches have a priority hotline or chat channel to Ozza support for urgent matters affecting their agencies.
+  * **Process:** When a ticket comes in, our support reps first verify if the agency’s coach has been involved. Often, coaches will submit the ticket themselves with relevant details, which is ideal because they can provide context. If an agency submits directly, our team may CC or inform the coach (unless it’s inappropriate, e.g., a complaint about the coach).
+  * Our support team troubleshoots and resolves what they can at their level (many issues like password resets, minor bug confirmation, configuration questions).
+  * **Response SLAs:** We aim for an initial response within e.g. 4 business hours for high-priority issues (site down, critical bug) and 1 business day for normal queries. Resolution times vary by complexity, but we keep the coach and agency updated frequently if something is taking long.
+
+* **Tier 3: Escalation to Engineering/Product:**
+
+  * If the support team identifies a problem that requires a deeper technical fix (like a software bug or a feature request) or something that needs a policy decision, they escalate to the appropriate Ozza team:
+
+    * **Engineering Dev Team:** for confirmed bugs, performance issues, or data problems. A ticket might be logged in our bug tracking system with priority. Engineering will then schedule a fix (immediately for critical bugs affecting many users, or in regular sprints for less critical ones). The support team communicates timelines back to the coach/agency.
+    * **Product Management:** for feature requests or usability feedback. While not an immediate “fix”, these escalations inform our roadmap. The product team might reach out to the coach/agency for more details and possibly offer workarounds or alternatives in the meantime.
+    * **Infrastructure/Ops:** if it’s a hosting or uptime issue, our DevOps will intervene (e.g., scaling servers, database issues).
+  * We have an on-call system for critical outages (24/7 urgent response) – if an SMB website is down or a major functionality is broken, coaches and agencies have an emergency line. Ozza’s engineers can be paged to resolve such incidents ASAP. Thankfully, these are rare, but the path exists.
+  * During an escalation, the coach’s role is largely to reassure the agency (we encourage coaches to be the communication bridge, explaining that the issue is escalated and being worked on). Ozza support will keep both the coach and agency informed of progress.
+
+* **Support Accountability and Escalation Path Visibility:**
+
+  * We provide a clear **escalation path diagram** to coaches and agencies (in our help docs) that shows: try coach → then Ozza support → then engineering. So everyone knows how to get help and where an issue will go next if unresolved.
+  * Coaches are trained to recognize when to escalate. For example, if more than 10 minutes is spent without solving a technical glitch, it’s better to file a ticket. We’d rather have proactive escalation than delay resolution.
+  * Agencies can also escalate if they feel their issue isn’t getting due attention. If an agency is unhappy with support from their coach, they can contact Ozza success management directly. We treat those situations delicately: possibly assigning a success manager or another coach to step in temporarily to assist that agency.
+
+* **Knowledge Base and Self-Service:** Alongside direct support, we have an extensive online knowledge base with guides and tutorials for common questions. Agencies are encouraged (via the UI) to search there first. We also maintain a **community forum** where agencies (and coaches) can ask questions and share tips. Coaches often participate there, building credibility and helping others, which reduces support load overall.
+
+  * **AI 🔹 Support Assistant:** (Planned) We are exploring an **AI-driven support chatbot (AI 🔹)** integrated into the platform. This bot would instantly answer common questions using our documentation and even suggest solutions (for example, “How do I connect a custom domain?” or “Why isn’t my site showing up on Google?”). The AI assistant can handle tier-0 queries, freeing up human support for complex issues. It’s crucial that it provides accurate info, so we’re training it on our official docs. Coaches and agencies will benefit from quicker answers at any hour.
+
+* **Escalation of Feature Requests and Feedback:** Not all escalations are “problems” – often coaches will collect feature requests from their agencies (e.g., a need for a new template type or integration). We’ve established a channel for that: coaches can submit feedback tickets or discuss in monthly coach meetings. Product team reviews and prioritizes these. We close the loop by informing coaches which requests are accepted into the roadmap or if not, the reasoning. This ensures agencies (through their coach) feel heard in the platform’s evolution.
+
+* **Customer Success Oversight:** Separate from reactive support, our Customer Success team (including account managers for big agencies) keeps an eye on agency health metrics (as mentioned prior). If an agency is struggling or repeatedly contacting support, success managers might proactively intervene with the coach to devise a plan (e.g., extra training for the agency).
+
+  * We also hold **quarterly business reviews (QBRs)** with coaches to go over their agencies’ statuses, any recurring issues, and identify opportunities to improve the platform or support. This aligns everyone on preventing problems and enhancing satisfaction.
+
+* **Priority and Escalation Etiquette:** We classify issues by severity:
+
+  * **P1 – Critical:** e.g., Ozza platform down, majority of sites inaccessible, critical data loss. All hands on deck, immediate engineering escalation, leadership notification. Coaches are instructed to call our emergency line for any P1.
+  * **P2 – High:** Major feature inoperative or significant impact on one/many agencies (e.g., publishing not working for one agency approaching a deadline). Fast response from support, likely engineering fix within 24 hours.
+  * **P3 – Normal:** General questions, minor bugs with workarounds. Handled in turn by support.
+  * **P4 – Low:** Cosmetic issues, minor suggestions. Logged and addressed in future updates.
+  * By having this, coaches can set expectations with agencies. If something is P3, the agency knows it might take a day or two but it’s in queue. If P1, everyone’s hair is on fire and we’re working non-stop to fix it.
+  * We maintain professionalism in all support interactions. If conflicts arise (say an agency is upset), coaches are trained in de-escalation and can always bring in an Ozza success manager to mediate. The escalation path is not just technical – it’s also for customer relationship issues.
+
+Overall, our support model leverages coaches for personalized front-line help and Ozza’s team for technical backbone. It’s a partnership: coaches handle guidance and simple issues, Ozza handles the platform and tougher problems. The escalation path ensures no issue falls through the cracks – there’s always a next step until resolution. This layered approach scales support efficiently as we grow (we don’t need a huge support staff for every minor question because coaches handle many), yet maintains high-quality assistance for agencies.
+
+## Roadmap and Priority Boundaries
+
+We maintain a clear product roadmap to drive Ozza’s development and a set of priority boundaries to ensure we focus on what matters most. The roadmap outlines near-term and longer-term features/improvements (including critical **AI enhancements** to stay ahead), while the boundaries clarify what we are **not** doing (to avoid scope creep and dilution of vision).
+
+* **Current Roadmap (Next 6-12 Months):** Our immediate focus is on **enhancing core platform features and integrating AI capabilities** to achieve parity (and differentiation) against competitors like GoHighLevel:
+
+  * **AI 🔹 Capabilities Rollout:** A top priority is expanding our artificial intelligence features:
+
+    * **AI Content Generation (Q3 launch):** Fully integrate the AI writing assistant in the Website Builder (currently in beta). This will let agencies generate or refine website copy, blog posts, and marketing text with one click, using GPT-powered suggestions. We are also adding an **AI SEO Advisor (AI 🔹)** that can analyze a page and suggest keywords or improvements to rank better.
+    * **AI Chatbot/“Employee” (Q4 pilot):** Develop an AI chat widget that agencies can deploy on their SMB clients’ sites to answer common visitor questions and capture leads automatically. Similar in concept to HighLevel’s “AI Employee,” this **AI 🔹 Chatbot** will use a knowledge base (FAQs the agency provides, or general business info) to converse with site visitors. This adds value to SMB sites and saves agencies time on handling inquiries. Voice integration (AI voice agents to answer calls) is on our exploratory list, likely as a follow-on feature once text chat proves out.
+    * **AI Workflow Assistant (Q4):** Introduce AI suggestions in any future workflow or CRM modules. For example, if we add email campaign features, an **AI 🔹 Campaign Builder** could draft email content or suggest follow-up sequences. In the shorter term, this might manifest as an AI recommending next steps for an agency (e.g., “You added a contact form – enable an automatic thank-you email?”).
+    * These AI features are in development with careful consideration for cost (we may use a mix of third-party AI APIs and in-house models) and privacy (ensuring no sensitive data is sent to AI without consent). The goal is to make Ozza **cutting-edge for AI-driven agencies**, turning AI into a competitive advantage for us.
+  * **UX/UI Refinements (continuous):** Following the major UI/UX architecture overhaul, we have a queue of refinements:
+
+    * Smoother **coach-agency switching** experience (e.g., allow coaches to leave notes on agencies within the dashboard, or a notification center for coach-agency communications).
+    * Enhanced **agency dashboard** analytics – giving agencies more at-a-glance info on their total client portfolio (e.g., aggregate traffic across all sites, cumulative leads, etc.).
+    * **Template & Module Library Expansion:** We plan to add more pre-built website templates, section blocks, and possibly starter “snapshots” (configurations) that agencies can use. This includes more industry-specific templates (plumbers, restaurants, etc., often guided by coach feedback on what SMB niches their agencies serve).
+    * **Performance and Polish:** Ongoing performance improvements (faster load times for the builder, quicker publish times) and UI polish (fine-tuning the editor, fixing minor usability issues reported).
+  * **New Feature Modules:** On the near-term roadmap, we’re exploring adding:
+
+    * **Basic CRM/Lead Management (Beta by Q1 next year):** A lightweight CRM so agencies can track leads captured via their websites in Ozza itself. Initially, this might just list form submissions or inquiries per client site, but we’ll evolve it into a simple pipeline manager. This keeps agencies from needing an external CRM for basic needs.
+    * **Client Reporting Dashboard (Beta):** A read-only dashboard that agencies can export or share with SMB clients to show key metrics (website traffic, SEO rankings, etc.). This ties into demonstrating ROI to clients. It might be a PDF report or an online link that an agency can brand. It will **not** be a full client login (to maintain the agency as intermediary), but it automates a piece of their work (report generation).
+    * **Third-Party Integrations:** Possibly integrate with popular tools (e.g., email marketing like MailChimp, or Google Analytics, or a booking plugin) to extend functionality. We’ll prioritize integrations that many agencies ask for. For example, embedding a Calendly widget for appointment booking on sites, or Slack notifications for new leads. These are typically less resource-intensive than building from scratch and can add immediate value.
+    * **Mobile App (Exploratory):** Evaluate if a mobile app for Ozza (especially for agencies to manage on the go) is needed. Many competitor platforms offer an app for, say, checking leads or chatting with clients. We’ll gauge demand and possibly start with a mobile-optimized web experience and limited push notifications.
+  * **Stability and Scalability:** Another near-term focus is hardening the platform for more users:
+
+    * Complete any needed refactoring from the Blueprint V2 changes (ensuring the architecture can handle more templates, more concurrent users editing, etc.).
+    * Improving our automated testing and monitoring to catch issues early as usage grows.
+    * Ensuring compliance updates (e.g., adapting to new privacy laws) so our platform stays enterprise-ready as we onboard larger agencies.
+
+* **Mid-Term Roadmap (1-2 years):** Looking slightly further out, our strategy is to broaden Ozza from a website-centric platform to a more comprehensive **agency business platform** (while still staying focused on marketing/digital presence for SMBs). Plans include:
+
+  * **Marketing Automation:** Introduce features like email marketing campaigns, SMS marketing, social media scheduling – allowing agencies to run multi-channel campaigns for their SMB clients all within Ozza. This makes our offering closer to an all-in-one (the direction of major competitors). Likely we’d integrate or build an **email campaign builder**, contact list manager, and maybe a **social post scheduler**. (AI can assist here too, e.g., AI-generated email content or social captions – aligning with our AI focus.)
+  * **E-commerce Light:** Evaluate adding e-commerce capabilities for SMB websites (simple store with a few products). This is a frequent request for certain niches. We’d likely partner or integrate with an existing solution (to avoid reinventing a full e-commerce engine) – e.g., integrating Shopify or WooCommerce for those who need it, or providing a basic cart/checkout for simple cases.
+  * **Community & Learning:** Building a stronger community feature set – possibly an in-app coach-agency community forum or resource hub where agencies can also learn from each other (under coaches’ moderation). This could also include a marketplace of “snapshots” or templates that coaches or expert agencies contribute (with possible revenue share for them) – similar to how GoHighLevel opened a template marketplace. This drives growth by making the platform more useful over time.
+  * **Internationalization:** Adapting the platform for other languages and markets. This might include multi-language site support in the builder, local hosting regions, and compliance with different countries’ regulations. If expansion is a goal, mid-term we prepare the ground (e.g., the system should support localization of the UI, different currencies/time zones thoroughly, etc.).
+  * **Analytics & AI Insights:** Deepen our analytics offerings – not just reporting data but providing **AI-driven insights (AI 🔹)**. For example, an AI might analyze an SMB site’s performance and tell the agency “The contact form conversion is low compared to similar sites – consider moving it above the fold” or “Your client’s site has high bounce rate on mobile – perhaps simplify the page or improve load time.” This kind of proactive suggestion engine leverages our data across the platform to help all agencies improve. It’s complex, but very differentiating if we nail it.
+
+* **Long-Term Vision (3+ years):**
+
+  * We aim for Ozza to become the **go-to operating system for digital agencies** serving SMBs, with coaches as the accelerant. In the long term, we might incorporate things like full CRM & sales pipelines, invoicing/billing for agencies to charge their clients, project management tools, etc. However, these will only be pursued if they align with our core mission and if agencies truly need an integrated solution versus using external tools.
+  * Also, exploring **AI at the core**: potentially having an **“AI Coach”** that complements human coaches by handling routine check-ins or analyzing an agency’s usage of the platform to give them tips. This would not replace the human coach, but augment the guidance with data-driven recommendations (for example, an AI could tell the coach which of their agencies might be struggling this month based on usage patterns).
+  * Another idea in long-term: enabling **agencies to resell the platform** under their own brand (SaaS resale). This is something GoHighLevel offers (agencies resell the platform to clients). We have been cautious with white-label so far, but in future we could allow agencies to offer a client-facing app (for example, a small business client login to edit their own website or see leads) as a paid service, which essentially makes the agency a mini SaaS provider. If we do this, it’ll be carefully structured to still keep Ozza mostly behind the scenes and maintain our legal structure (we’d likely call it a “Client self-service portal” rather than giving full platform access).
+  * Geographic expansion with local coach communities is another long-term aspect. We might have region-specific coaches and adapt our approach to different markets (for instance, how coaches operate in Europe vs US might differ with regulations, etc.).
+
+* **Priority Boundaries (“North Star” Focus):** To remain efficient and true to our model, we also define what **not** to do or areas to say “no” (or “not now”) to:
+
+  * **No Direct SMB Services:** We will not pivot to servicing SMBs directly or offering an agency-like service ourselves. For example, Ozza will not create a consulting arm to build websites for SMBs. That would compete with our agencies and break the model. Our focus is enabling others (coaches and agencies), not being an agency.
+  * **Avoid Custom Development Per Client:** We do not do custom feature development for one agency or one coach’s needs if it’s not broadly useful. (E.g., if one agency requests a very niche feature only they would use, we politely decline or find a workaround via integration.) This boundary ensures we scale the product for the many, not fragment it for the few. Our platform improvements should benefit a wide segment of users or align with our strategic direction.
+  * **No Franchise-like Controls:** We refrain from any policies that would resemble franchisor behavior (e.g., setting prices that agencies must charge their SMB clients, dictating their branding or office location, etc.). Agencies run their own business freely outside of using our platform. We advise via coaches, but we do not **mandate** business decisions. This boundary is both strategic (attractive to agencies) and legal (to avoid franchise classification).
+  * **Core vs. Integrate:** We carefully decide what features to build in-core vs integrate from third parties. Our priority is on core competencies: website building, lead capture, and the immediate extensions of those (like simple CRM, marketing automation). For ancillary needs (accounting software, complex design tools, etc.), we prefer integration over building. This boundary prevents us from spreading too thin. If an agency needs something beyond our scope, we aim to play nice with existing solutions (via API or Zapier integrations) rather than becoming everything to everyone.
+  * **Quality over Quantity (in Coaches and Agencies):** We’d rather have fewer, successful agencies and coaches than many who are unsuccessful. Thus, we won’t sacrifice quality control in coach onboarding just to grow numbers quickly, and we won’t chase agency sign-ups that aren’t a good fit (e.g., someone wanting a quick website but not interested in long-term usage). This focus keeps churn low and health high.
+  * **Scoping AI Wisely:** On AI, while we’re enthusiastic, we avoid “shiny object syndrome.” We won’t implement AI for the sake of AI if it doesn’t truly help our users. Each AI feature must solve a real problem or save time. Also, we will monitor the costs – e.g., if certain AI features become too costly per use, we might limit or charge for heavy usage rather than jeopardize our margins. The boundary here is keeping AI features sustainable and genuinely value-adding.
+
+* **Roadmap Review Cadence:** We treat the roadmap as a living document. It’s reviewed quarterly with input from all stakeholders (founders, product team, coaches’ feedback, market trends). Adjustments are made as needed – for instance, if a competitor releases something disruptive, we may re-prioritize to respond faster. However, the core strategy (enable agencies via coaches, focus on SMB marketing tech) remains our compass, and we avoid knee-jerk diversions that don’t fit our long-term vision.
+
+In sum, the roadmap balances **innovation (especially with AI and broader features)** with **focus (sticking to what makes our model unique).** We clearly delineate what we will do soon, later, or not at all. This ensures resources (development, time, capital) are invested in the highest-impact areas for our growth and our users’ success.
+
+## Legal Structure (No Franchise Risk, DPA Chain)
+
+Ozza’s legal and structural framework is deliberately crafted to support our business model while minimizing regulatory risks. In particular, we have taken care to avoid being categorized as a franchise, and to properly handle data privacy through a chain of agreements (DPA – Data Processing Addendum) among all parties.
+
+* **No Franchise Risk – Independent Relationships:**
+
+  * **Coach as Independent Contractor:** Each coach is an independent contractor to Ozza (or in some cases, a referral partner/consultant), **not** an employee and **not** a franchisee. The **Coach Agreement** explicitly states this status. Coaches pay no fee to join, they do not license a trademark to operate their own business, and we do not dictate how they run their coaching practice beyond adherence to our program rules. This is crucial: franchise laws trigger when a business grants the right to use a brand and imposes a marketing system or significant control in exchange for a fee. We avoid this by:
+
+    * Not charging coaches any upfront or ongoing fee for being part of the program.
+    * Not requiring coaches to establish a business under our brand or follow a strict operation manual for their own business (they follow our methods only in relation to using the Ozza platform and supporting agencies, which is more akin to a partnership program).
+    * Allowing coaches flexibility in how they attract and work with agencies (as long as they meet basic performance standards and ethical guidelines).
+  * **Agency as Customer, Not Franchisee:** Agencies subscribe to a software service – legally, they are customers of Ozza, similar to any B2B SaaS client. They are not using an Ozza brand to sell to end customers; they use their own brand when dealing with SMB clients. We do not impose a “method of operating the agency’s entire business” beyond using our software. An agency can use Ozza’s platform as much or little as they want, set their own pricing to their SMB clients, and offer other services outside of Ozza. This autonomy means there is no “franchise system” being imposed.
+  * **No Branding Requirements:** We do not require agencies or coaches to display Ozza branding to their clients. Coaches may identify themselves as “Ozza Certified Coach” in industry circles, but it’s not a consumer-facing designation. Agencies typically do not mention Ozza to SMBs at all (unless they choose to). Because we aren’t pushing a consumer-facing brand through our agencies (unlike, say, a Subway franchise where the end customer must see the franchise branding), we further distance from franchise territory.
+  * **No Exclusive Territories or Income Guarantees:** We don’t give coaches exclusive geographic territories, nor promise them any guaranteed income. Coaches earn based on performance (commission). Similarly, agencies are not granted exclusive territories for finding SMB clients – they compete freely like any business. Absence of exclusivity is another factor: franchises often have territory grants, which we avoid.
+  * **No Retail Presence or Physical Requirements:** Our model is entirely digital. We’re not asking coaches or agencies to maintain a storefront or follow specific decor or local marketing mandates. This makes many franchise regulations (which focus on brick-and-mortar consistency) irrelevant.
+  * Our legal counsel has reviewed the model against franchise law criteria in our key markets (especially the U.S.). We ensure our contracts and operations steer clear of the three classic franchise elements: trademark license, significant control/assistance, and a required fee. Only if all three exist would we risk franchise classification – in our case, none cleanly apply. Coaches do get assistance and training (one element), but there’s no fee and no consumer-facing trademark license; hence it’s deemed a partnership/affiliate program, not a franchise.
+
+* **Liability and Representation:**
+
+  * Coaches and agencies each carry their own business liabilities. For example, if an agency makes marketing claims to an SMB or fails to deliver to a client, that’s between the agency and their client – Ozza is just the software provider. Our Terms of Service clarify that relationship.
+  * Coaches likewise are not agents of Ozza who can bind us; they can’t sign contracts on Ozza’s behalf or offer things we haven’t authorized. They are facilitators and mentors. This is communicated in agreements to avoid any ostensible authority issues.
+  * We require coaches and agencies to carry appropriate insurance for their own operations (e.g., general business liability, E\&O if advising). Ozza carries its own product liability and E\&O insurance covering the software/service we provide, but we shield ourselves from being liable for how agencies use the platform in servicing their SMB clients.
+
+* **Data Protection Chain (DPA and Privacy):**
+
+  * Given the data flow (SMB client data being input by agencies into Ozza, with coaches potentially viewing some data), we enforce a robust DPA chain:
+
+    * **Agency–Ozza:** When an agency signs up, our Terms of Service include a Data Processing Addendum. In this relationship, the **agency is the Data Controller** for any personal data of their SMB clients that they put on our platform, and **Ozza is a Data Processor**. We commit to processing data only for the purposes of delivering the service, following applicable privacy laws (GDPR, CCPA, etc.), and implement appropriate security measures. We also list our subprocessors (hosting providers, etc.) for transparency.
+    * **Ozza–Coach:** Coaches, in the course of providing support, may have access to personal data (for example, an SMB client’s name, email, etc., if an agency shares screen or gives access). Therefore, we treat coaches as **subprocessors or authorized persons** under Ozza. Each coach signs an agreement (and DPA) with Ozza in which they agree to handle any personal data in accordance with privacy laws, use it only for support purposes, and maintain confidentiality. Essentially, Ozza extends its data protection obligations to coaches contractually. We also restrict coaches from downloading or storing agency data outside the platform.
+    * **Agency–Coach (if needed):** In some jurisdictions, it might be prudent that the agency also acknowledges the coach as a 3rd-party data processor for them. This could be covered in the agency’s contract or in our terms (e.g., informing the agency that by using a coach, they consent to that coach having limited access to their data under confidentiality). Typically, our Terms of Service obtained agency consent that Ozza may share data with assigned coaches as part of the service delivery. So the legal chain is intact: agency consents to Ozza and its authorized agents (coaches) processing the data.
+  * **End SMB Client Data:** We must ensure SMB client personal data (like their customers’ info, etc., though primarily we store website visitor leads, which are personal data) is handled lawfully. We push down obligations:
+
+    * Agencies are responsible for having privacy policies on the websites they build, informing visitors that data submitted will be stored and potentially accessed by the agency via third-party software (Ozza). We provide sample privacy policy language agencies can use that covers Ozza as a processor.
+    * If an SMB client or a person whose data is in the system exercises a GDPR right (say data deletion request), Ozza will assist the agency in fulfilling it (since we store the data). Our DPA covers this cooperation.
+  * **No Unapproved Data Use:** Ozza (and coaches) are strictly prohibited from using any agency’s data for purposes outside of providing the service. For example, Ozza will not mine an agency’s client list to market something, and coaches obviously cannot either. All parties follow the principle that data belongs to whoever collected it (the agency re: their SMB clients).
+  * We conduct periodic training for coaches on data privacy best practices – e.g., not to copy client data out to their own devices, always use the platform for viewing data, etc. Breaches of data confidentiality are grounds for immediate termination of a coach.
+
+* **Contracts Summary:**
+
+  * **Terms of Service (Agencies):** covers subscription terms, data processing terms, usage rules, limitation of liability, etc. It includes clauses that agency is independent and not an agent of Ozza, and that they are responsible for compliance with laws in their business use of Ozza (e.g., they won’t spam through our platform, etc.). We explicitly disclaim any franchise or business opportunity – stating agencies are simply customers of a software service.
+  * **Coach Agreement:** covers commission structure, expectations, confidentiality, data protection, non-solicitation (coach won’t try to steal agencies away from Ozza or vice versa), and termination clauses. Also includes a statement that nothing in the agreement constitutes a franchise or creates an employment relationship. Coaches cannot create an “Ozza Coach” business offering to SMBs – they only interact with agencies.
+  * **Data Processing Addenda:** as above, attached to both the Terms of Service and Coach Agreement.
+  * **Non-compete/Non-circumvention:** We have a mild non-compete for coaches – while active in our program, they shouldn’t promote direct competitors to the same agencies. After leaving, they can do what they want, but they can’t take our confidential info or agencies’ data. We avoid anything too restrictive (to not appear like controlling a franchisee’s entire livelihood), but enough to protect trade secrets and goodwill.
+  * **Intellectual Property:** Ozza retains IP rights to the platform; agencies own the content they put in (websites, etc.). Coaches are licensed to use Ozza’s trademarks in a limited way (they can call themselves an Ozza Coach, use our logo in presentations to agencies), but they can’t misrepresent as Ozza Inc. And if a coach creates any training materials or templates that they share through Ozza, IP is shared/negotiated (some coaches may license content to us for all agencies to use).
+  * **Franchise Law Acknowledgement:** In U.S. documents, we explicitly state that Ozza is not offering a franchise, and no payments by the coach constitute a franchise fee, and that any resemblance is unintentional and outside the scope of the relationship. This clarity in writing further guards us if ever challenged.
+
+* **Regulatory Compliance:** We stay abreast of legal changes:
+
+  * If any state or country were to question our model under franchise or business opportunity laws, we have contingency to adjust (e.g., file for exemption or tweak how coaches are engaged). So far, by structure, we should remain exempt.
+  * We comply with GDPR, CCPA, and other privacy laws as a data processor. We’ve appointed a Data Protection Officer internally to oversee this. Breach response plans are in place if needed.
+  * We ensure our marketing of the coach program doesn’t inadvertently trigger franchise law – e.g., we avoid words like “own your business with Ozza” or implying guaranteed income. We present it as a partnership with commissions.
+
+In essence, our legal structure is built to **protect the company and our partners**: avoiding franchise liabilities by keeping relationships clearly as SaaS customer and independent partner, and protecting data rights through proper agreements. By maintaining these boundaries and agreements, we support our innovative model without falling into costly legal traps.
+
+## GTM (Go-To-Market) and Growth Loops
+
+Our go-to-market strategy leverages the unique coach-agency structure as a growth engine. Instead of a traditional direct sales force, we have a **network-driven approach** where coaches act as our sales and success agents. Additionally, we design growth loops that propel expansion through the success of our users. Key elements of GTM and growth:
+
+* **Coach-Led Sales Channel:** Coaches are essentially our **channel partners** for acquiring agencies. This has several strategic advantages:
+
+  * **Warm Network Access:** Many coaches have existing relationships or credibility in communities of digital agencies or freelancers. When they join Ozza, they tap into these networks to bring agencies aboard. This warm introduction often converts better than cold outreach by a software company. We equip coaches with promo materials, case studies, and sometimes leads (e.g., if an agency inquires to us directly, we may pass it to a coach).
+  * **Incentivized Growth:** Because coaches earn revenue share, they are highly motivated to sign up agencies and help them succeed (so the coach’s own income grows). Each coach in effect becomes a mini growth engine, investing their time in outreach, webinars, content marketing, and 1-on-1 recruiting. Ozza’s role is to support and coordinate this rather than having a huge internal sales team.
+  * **Trainings and Webinars:** As part of GTM, we hold periodic webinars or workshops hosted by top coaches or Ozza staff, targeting prospective agencies. For example, “How to scale your web design agency – with Ozza Coach \[Name]”. These events provide value and subtly pitch the platform via the coach’s success stories. Coaches bring in attendees from their network, and Ozza markets it via online ads or partnerships.
+  * **Referral Programs:** While coaches are the primary referrers, we also implement a referral incentive for existing agencies: if an agency refers another agency to Ozza (which is less common but possible if they have peers), they can receive a one-time credit or bonus. However, we usually channel those referrals to be managed by a coach (perhaps assigning the referring agency’s coach to the new sign-up, or if none, giving it to a suitable coach). This keeps the coach at the center of GTM even for referrals.
+
+* **Digital Marketing and Brand Building:** Ozza itself undertakes marketing to build awareness and attract both coach and agency prospects:
+
+  * **Content Marketing:** We produce content (blogs, whitepapers, podcasts) on topics like “How agencies can double their revenue with better systems” or “The future of AI in small business marketing”. This thought leadership draws in agencies searching for solutions, and highlights Ozza as an innovative platform with coaching support. We often feature our coaches or successful agencies in these pieces (social proof).
+  * **SEO and Website:** Our website is optimized to capture leads – both those interested in becoming coaches and agencies interested in the platform. We have separate landing pages: one for “Partner with Ozza (Coaches)” and one for “Solutions for Agencies”. Each explains the benefits and invites sign-up or demo requests.
+  * **Targeted Advertising:** We run targeted campaigns (LinkedIn, Facebook groups, Google Ads) aimed at small agency owners, freelancers in web design/marketing, and potential coaches (e.g., marketing consultants who might want a new income stream). These ads typically funnel to a webinar or to downloading a guide, which then involves a coach in follow-up.
+  * **Conference and Communities:** We participate in digital marketing conferences, small business expos, and online communities (like marketing agency forums). Sometimes coaches represent Ozza at these events (with our support), speaking or networking and effectively acting as evangelists. This boosts credibility since coaches often have personal success stories to share.
+
+* **Onboarding as GTM:** Our onboarding process itself is a growth loop – a well-supported new agency is more likely to succeed and then **publicize their success**, indirectly driving growth:
+
+  * We encourage agencies (with coach guidance) to share their wins (e.g., “Launched 5 sites in a month thanks to Ozza!”) on social media or in industry groups. This can pique curiosity in other agencies, leading to word-of-mouth inquiries. Some coaches organize group calls or mastermind sessions with multiple agencies, where positive experiences can spread.
+  * Coaches also form their own mini-communities: e.g., a coach with 10 agencies might host quarterly group meetups (virtually) among them to share tips. This community success vibe can lead those agencies to refer friends or ex-colleagues to the coach (and thus Ozza).
+
+* **Growth Loops in Product Usage:** We aim to bake in loops where usage by one user attracts others:
+
+  * **Powered by Ozza (Optional Attribution):** While we don’t force it, we give agencies the option to include a “Powered by Ozza” badge on websites, possibly in exchange for some benefit (like a small discount or their client gets some perk). If used, this can generate curiosity from SMBs or other agencies who see it and look up Ozza. We tread carefully here due to our stance on white-label, so this is purely optional and tactful (perhaps just on certain templates or admin screens).
+  * **SMB Impact → Agency Growth:** As agencies’ SMB clients see great results (better websites, more leads), the agencies grow their book of business (happy clients refer new clients, etc.). A growing agency may hire or partner with other freelancers – who then get exposure to Ozza and potentially spin up their own agency on the platform or join an existing one using Ozza. We’ve seen cases where a freelancer working for one Ozza-powered agency later starts their own agency and becomes an Ozza customer, effectively *viral growth at the professional level*.
+  * **Agency Case Studies:** We turn successful agencies into case studies (with permission). These are circulated via our marketing and also by coaches in recruitment. An agency success story often highlights both the platform and the coach’s help. This not only retains the current agency (celebrating their success deepens loyalty) but also draws new agencies who aspire to similar success.
+
+* **Scaling the Coach Network:** We treat coach recruitment as an ongoing GTM effort too:
+
+  * We identify regions or niches where we want more reach (say we notice sign-ups from agencies in Australia but lack a coach there). We might reach out via LinkedIn to consultants in that region, or run ads like “Partner Program: Calling all Marketing Coaches”.
+  * We emphasize the income opportunity and the value-add: coaches can expand their own business by aligning with us. This messaging is careful to avoid “investment” language (again to avoid sounding like a franchise biz-op) – instead, “Join our partner program to earn recurring revenue by helping agencies succeed.”
+  * As we bring on more coaches, they in turn bring on more agencies, forming a positive feedback loop. We do manage this growth to avoid overlap (as mentioned, not too many coaches chasing the same agencies).
+  * There’s also a small loop where a very successful agency might evolve to become a coach. For example, an agency owner using Ozza who grows significantly might say “I’d like to help other agencies do what I did.” If they fit the criteria, we can onboard them as a coach (perhaps after they wind down direct client work or have a team manage it). This is great because they’re a walking proof of concept.
+
+* **Retention as Growth:** We consider **retention a part of GTM**, because low churn means higher lifetime value and more word-of-mouth:
+
+  * Coaches play a pivotal role in retention. A well-coached agency is likely to stick around, which means stable revenue and possibly referrals. So our growth strategy heavily relies on keeping agencies happy through coach support.
+  * We measure NPS (Net Promoter Score) among agencies and coaches. A high NPS among agencies means they’ll promote us to peers. Some agencies might even become unofficial advocates, posting about Ozza in forums (especially if they feel it gave them an edge).
+  * Reducing churn (especially involuntary churn like if agencies forget to use the platform) is achieved by ensuring agencies see continuous value (new features, AI tools, etc., plus coach guidance). The more value they see, the more they talk about it in their circles – fueling growth.
+
+* **Strategic Partnerships:** We look for opportunistic partnerships:
+
+  * For instance, partnering with organizations that have many small agencies or consultants as members (like marketing associations or freelancer platforms). We could offer a co-branded program or discounts to those members, with coaches ready to catch the leads.
+  * Technology partnerships: integrating with a popular tool (e.g., a deal with a web hosting provider or a domain registrar to refer customers to Ozza for site building). Each integration that gets our name out is a mini-channel.
+  * These are longer plays, but we keep an eye out. The main loop remains coach -> agency, which is proving effective.
+
+* **Metrics-Driven GTM:** We closely monitor GTM metrics:
+
+  * Cost of acquiring a new agency (CAC) – though in our model direct CAC is low since coaches handle much of acquisition cost via their own efforts and we pay via commission. We do account for coach commission as a kind of CAC (paid over time).
+  * Ratio of agencies per coach, and ramp time (how quickly after onboarding does a coach start bringing agencies).
+  * Conversion rates of leads to agencies when a coach is involved vs when not – this proves the model’s effectiveness.
+  * Churn rate per coach’s cohort – if certain coaches have lower churn among their agencies, we learn from their methods.
+  * These guide us in refining our approach: e.g., if content marketing yields a lot of sign-ups but they churn because they weren’t properly coach-supported, we adjust by involving coaches earlier in the funnel.
+
+In summary, our GTM is a **distributed model leveraging human relationships and success stories**, amplified by content and community. The growth loops are inherently built: Coaches recruit agencies → agencies succeed with support → successful agencies attract more agencies and possibly new coaches → the cycle repeats. By aligning incentives (revenue share), we essentially crowd-source our salesforce and ensure that growth and retention go hand in hand. This strategy is scalable and defensible, as it’s not just about pouring money into ads, but creating an ecosystem where each participant helps us grow.
+
+## Metrics and Internal KPIs
+
+We track a comprehensive set of metrics to gauge the health of the business and the effectiveness of our model. These KPIs (Key Performance Indicators) cover growth, revenue, product usage, and partner performance. They guide strategic decisions and highlight where we need to improve. Below are the primary metrics we monitor:
+
+* **Agencies (Active Agency Count):** The number of **active agencies** on the platform is a top-line metric. We define active agencies as those with an active subscription and at least one recent login or project update in the last 30 days. We track:
+
+  * *Total Active Agencies* – overall count, aiming for steady growth month over month.
+  * *New Agencies per month* – sign-ups that converted to paid after trial.
+  * *Churned Agencies per month* – count of cancellations or downgrades to 0 in a given month.
+  * We further break this down by tier (e.g., how many Basic vs Pro vs Enterprise agencies) to see where growth is strongest and if agencies upgrade tiers over time.
+
+* **Revenue Metrics:**
+
+  * **MRR (Monthly Recurring Revenue):** The total monthly subscription revenue from agencies. This is a core financial metric – we want to see MRR growth in line with agency count and upgrades.
+  * **ARR (Annual Run Rate):** Simply MRR \* 12, a projection of yearly revenue based on current subscriptions.
+  * **ARPA (Average Revenue per Agency):** MRR divided by number of active agencies. This indicates if we are successfully moving agencies to higher tiers or selling add-ons. ARPA can increase if agencies grow or adopt higher plans.
+  * **Revenue Churn:** Measures lost MRR due to agency churn or downgrades, offset by expansion revenue (agencies upgrading). We keep an eye on **net MRR churn** (negative churn is a goal, meaning upgrades outpace cancellations).
+  * **Coach Payout Rate:** The percentage of revenue paid to coaches as commission. This is typically stable (e.g., 20% of eligible revenue), but we track the absolute amount to ensure it aligns with forecasts and to understand cost of this channel. It’s basically a CAC proxy and also helps us ensure coaches are getting a good payout as we grow.
+
+* **Agency Success Metrics:** These are usage-based indicators that an agency is deriving value (leading to retention):
+
+  * **Average # of SMB Clients per Agency:** How many end-client projects each agency has on Ozza, on average. Growth in this number means agencies are expanding their business through our platform. We also track distribution (e.g., X agencies have 1 client, Y agencies have 5+, etc.) to identify power users.
+  * **Sites Published:** Total number of SMB websites published via Ozza (cumulative and new per month). This reflects real output. A higher ratio of published sites per agency indicates good adoption.
+  * **Leads Captured:** (Once we have forms/CRM) how many leads or form submissions flow through Ozza for clients. This shows if the sites are generating business value. It’s an indirect metric but helpful to demonstrate to ourselves (and in marketing) the end impact.
+  * **Feature Usage:** e.g., % of agencies using the AI content tool, or the number of AI-generated pieces of content. **AI 🔹 usage metrics** are important to ensure our AI investments are actually being utilized. If low, we’d investigate why.
+  * **Login Frequency:** Average days per week an agency user logs in. High frequency might correlate with high engagement. If agencies log in rarely, they might not be leveraging the platform fully (or it could mean they set things up and it runs itself – context matters).
+
+* **Coach Performance Metrics:**
+
+  * **Agencies per Coach:** On average how many active agencies each coach has. This helps gauge if we are under- or over-utilizing coaches and when to recruit more. We also look at distribution (some coaches might have far more agencies – those could be star performers or overloaded).
+  * **Coach Activation Rate:** What percentage of agencies recruited by a coach reach “activated” status (first site live) within a timeframe. This measures coach effectiveness in onboarding.
+  * **Agency Retention by Coach:** Churn rates segmented by coach. If certain coaches’ agencies churn more, that’s a flag to investigate support quality or agency fit. Coaches with near-zero churn among their cohort are our models to emulate.
+  * **Coach Satisfaction & Activity:** We gather feedback from coaches (e.g., via quarterly surveys or one-on-one calls). We look at how engaged coaches are: Do they attend our training sessions? Do they log into the coach portal frequently? Since coaches are partners, qualitative metrics matter too (but we sometimes quantify, e.g., each coach should log in at least X times/week to check their agencies).
+  * **Recruitment Pipeline:** Number of prospective coaches in talks or training. We have a target for how many new coaches we want per quarter, aligned with regions we expand into.
+
+* **Customer Satisfaction Metrics:**
+
+  * **Agency NPS (Net Promoter Score):** We periodically ask agencies “How likely to recommend Ozza?” and track the score. This is a key health indicator of product-market fit and support effectiveness. We aim for a high NPS, and especially watch any detractors’ reasons to fix issues.
+  * **Coach NPS:** Similarly, we ask coaches how likely they are to recommend partnering with Ozza to others. A high coach NPS means they find value in our partnership (product quality, commission, support from Ozza).
+  * **Support Satisfaction:** After support interactions (tickets), we often prompt agencies to rate their experience. We track CSAT (customer satisfaction) or CES (effort score) for support, to ensure our support model is working. We might also track average resolution time of support issues as an internal KPI.
+
+* **Growth Efficiency Metrics:**
+
+  * **CAC (Customer Acquisition Cost):** Because our model is unique, we compute CAC in a nuanced way. We include marketing spend, a portion of coach commissions (as acquisition cost), and any onboarding costs. We compare CAC to **LTV (Lifetime Value)** of an agency (which is ARPA \* average lifespan \* gross margin). A healthy LTV/CAC ratio (e.g., 3:1 or higher) indicates sustainable growth. We strive to keep CAC low through the leverage of coaches, which generally reduces expensive sales costs.
+  * **Conversion Rates:** Lead-to-signup and signup-to-paid conversion. We measure the funnel: out of all agency leads (website inquiries, webinar attendees, etc.), how many actually sign up for trial, and how many trials convert to paying. Coaches’ involvement is often the variable – e.g., trials with coach support convert at a higher rate than those without. These numbers guide us to always attach a coach early.
+  * **Churn Rate (%):** The percentage of agencies canceling per month or year. We track both logo churn (count of agencies) and revenue churn. We aim to keep monthly churn very low (since losing agencies hurts network effects too). We also differentiate between *voluntary churn* (agency actively cancels) and *involuntary* (failed payment, etc. – which we attempt to recover via dunning processes).
+
+* **Internal Operational Metrics:**
+
+  * **Uptime and Performance:** Technical KPIs like 99.9% uptime, page load times, etc., to ensure the platform’s reliability (as it indirectly affects satisfaction and churn). We have dashboards for error rates, response times. Major deviations here trigger engineering response – also coaches are sometimes given a view of uptime status to communicate with agencies if needed.
+  * **Development Velocity:** Internally, we measure how quickly we ship features (e.g., number of releases per month, lead time from idea to deployment). While not externally visible, this affects how fast we can respond to needs (and thus indirectly retention/growth). We set OKRs (Objectives and Key Results) around delivering key roadmap items on schedule.
+  * **Support Load:** Number of tickets per agency per month. If this goes too high, it might mean usability issues. Ideally, as we improve the product and knowledge base, this number stays modest. We also track first-response and resolution times as mentioned, as part of our support KPIs.
+  * **Financial Metrics:** Beyond revenue, we watch **gross margin** (after hosting, support, coach commissions costs) to ensure the model is financially viable. Because each agency brings hosting costs and a coach commission, we need gross margin per agency to remain healthy (\~60-70% or more ideally in SaaS). We also manage **burn rate** and runway as a startup metric (if applicable).
+
+* **AI Feature Metrics:** Since AI features are a new strategic area, we specifically track:
+
+  * **AI Feature Adoption:** e.g., how many agencies have used the AI writer or chatbot feature at least once.
+  * **AI Engagement:** e.g., average number of AI-generated content pieces per agency, or number of chatbot conversations handled.
+  * **Impact Metrics:** e.g., did using the AI content tool reduce the time to publish a site (we might measure average days to publish for projects that used AI vs those that didn’t)? This helps prove the value of AI integration.
+  * These help us refine the AI offerings and ensure they justify the investment.
+
+Each of these KPIs is owned by relevant team members (Growth, Success, Product, Engineering). We review them in weekly and monthly leadership meetings. Red flags (like a spike in churn or drop in NPS) trigger deep dives to identify causes (e.g., a problematic feature, a coach leaving, etc.) and put corrective actions in place. Similarly, positive trends (e.g., a particular coach driving a lot of new signups) are analyzed to replicate success across the board.
+
+By keeping a close eye on these metrics, we maintain a data-informed picture of the business’s health. This is especially important given our multi-layer model – we ensure no area (coach performance, product usage, etc.) is lagging hidden behind aggregate numbers. Our KPI dashboard is effectively the pulse of Ozza, guiding us as founders to celebrate wins and tackle challenges proactively.
+
+## Technical Constraints
+
+While pursuing our ambitious product goals, we must work within certain technical constraints and guiding principles. These constraints ensure we maintain system stability, security, and feasibility given our team resources. Outlining them helps the team and stakeholders understand the boundaries of our platform’s design and why some trade-offs are in place. Key technical constraints include:
+
+* **True Multi-Tenancy (Single Codebase):** We commit to a single codebase and multi-tenant architecture for all agencies and coaches. This means:
+
+  * We cannot fork the code or create custom versions of the platform for specific clients without incurring massive overhead, so we **don’t do custom feature branches per agency**. All agencies get the same features (with feature flags or tier-based toggles as needed).
+  * Database shared (logical separation): All data sits in shared databases with tenant IDs. We avoid any design that would require setting up new separate database instances for each customer (until maybe extremely large scale where sharding by customer clusters might occur, but even then it’s pooling tenants).
+  * This constraint is by design to allow scalability and ease of updates. The trade-off is reduced flexibility for one-off customizations, which we accept as a necessary limitation.
+
+* **Performance Isolation:** We must ensure one tenant’s heavy usage doesn’t starve others of resources. Therefore:
+
+  * We impose **limits/quotas** per agency: e.g., file storage limits, API rate limits, max number of concurrent site visitors (practically handled via scalable infra, but we have soft limits and can throttle if someone abuses or a client site gets unexpectedly huge traffic).
+  * Our cloud infrastructure is scalable (auto-scaling groups, containerized services) but within cost reason. If an agency needs an unusually high amount of resources (like hosting a video-heavy site that breaks our typical usage patterns), we either upsell them to cover costs or guide them to optimizations – we won’t let the general pool suffer.
+  * We continuously optimize our code for efficiency (e.g., use CDNs for assets, cache common queries) so normal usage stays within comfortable server loads.
+
+* **Security and Compliance Constraints:** Security is paramount in multi-tenant SaaS:
+
+  * **Data Isolation & Access Control:** At the code level, every single data access must be scoped by tenant. We enforce this through our ORM and service layer rigorously (we have checks and code reviews focusing on this). Under no circumstance should data leak across agencies or to coaches improperly. We also log access – especially whenever a coach views an agency’s data via our impersonation tools, for audit trail.
+  * **Encryption:** All web traffic is over HTTPS. Sensitive data at rest (passwords, API keys, personal info) is encrypted in the database. Backups are encrypted. This is non-negotiable to meet our privacy commitments.
+  * **Compliance:** We are constrained by GDPR, etc., meaning features like data deletion, export, and user consent are built-in. For instance, we must be able to delete an SMB’s personal data if requested – so we design our data models to allow deletion of form submissions or contacts easily by agency request.
+  * **Pen Testing & Audits:** We invest in periodic third-party security audits. Any findings are prioritized. This constraint adds to our dev workload, but it’s required for enterprise-readiness and to maintain trust.
+
+* **Third-Party Services and AI Constraints:**
+
+  * We rely on some third-party services for functionality (e.g., cloud hosting providers, email delivery services, AI API providers like OpenAI). We are constrained by their performance and terms:
+
+    * For example, if OpenAI’s API has rate limits or downtime, our AI features could be impacted. Thus we have fallbacks (like queueing requests or using an alternative model if one fails).
+    * We also must abide by cost constraints – AI API usage costs can spike if heavily used. We’ve built in some usage throttling or tiered access to AI features (e.g., Basic plan might have X AI credits per month included, beyond that would incur a fee). This ensures AI-related costs don’t balloon unpredictably.
+  * Integration limits: If we integrate with third-party APIs (Google Analytics, etc.), we’re subject to their call quotas and update cycles. We design with those in mind (caching responses, not polling too frequently).
+
+* **Team and Technology Stack Constraints:**
+
+  * Our development team is relatively small (as a startup), so we choose a tech stack that maximizes productivity. We likely use a high-level framework (e.g., a JavaScript/TypeScript-based stack for both front and back end, or similar cohesive stack) to allow faster development. We avoid exotic tech that would be hard to hire for or maintain.
+  * We don’t have 24/7 dedicated devops yet (though on-call rotations exist), so we constrain ourselves to managed services where possible (e.g., use managed databases, use serverless or PaaS for some components) to reduce the ops burden. This might limit extreme customization at the infrastructure level but pays off in reliability.
+  * We prioritize features – some technically possible things are delayed due to team bandwidth. For example, building a native mobile app could be done, but would require separate expertise and doubling UI maintenance, so we postpone it until we truly need it (ensuring the web app is mobile-friendly as an interim).
+
+* **Backward Compatibility & Migration:**
+
+  * As we improve the platform (e.g., moving from Website Builder V1 to V2), we maintain migration paths. We decided early on **not** to support multiple versions indefinitely (we don’t want to maintain a legacy editor forever). So we sometimes enforce migrations – e.g., we may auto-upgrade older sites to the new system or provide tools for agencies to transition. This is a constraint in that we carefully manage such migrations to not disrupt agencies’ work. But we won’t allow infinite backward compatibility to slow us down; instead, we handle it via good communication and support when big changes occur.
+  * Similarly, we can’t easily drop support for something without a plan (e.g., if some agencies heavily use a feature we consider removing, we must either grandfather it or help them transition). So our architecture tries to make features modular, where toggling them off for some or phasing out is possible without breaking everything.
+
+* **Scalability Ceilings:** We have targets for scale (thousands of agencies, etc.), but realistically we also know where our design’s soft limits are:
+
+  * For instance, a single database can handle X agencies with Y data volume comfortably. Beyond that, we’d need to shard or split read/write DBs. We know that point (through load testing) and plan to reach it perhaps after hitting, say, 5,000 agencies. This is a constraint that informs our capacity planning; when we near it, we invest in architectural change.
+  * The website hosting infrastructure is another: each site is dynamic (if using forms or certain widgets). We rely on a CDN and caching, but if an agency’s site suddenly gets millions of hits, our current setup might strain unless we allocate more servers. We have auto-scaling, but we also have a cost constraint not to over-provision for hypothetical traffic. So extremely high-traffic scenarios might require us to reach out and do a custom plan (which we note in our policy – sites with consistently extraordinary traffic may need a different arrangement).
+
+* **No Customer-Side Plugin/Code Execution (for now):** Unlike WordPress which allows arbitrary plugins, Ozza’s platform does not allow agencies to run custom server-side code. This is a deliberate technical constraint to keep the system secure and stable:
+
+  * Agencies can add custom HTML/CSS/JS in controlled areas (like an HTML widget for embedding third-party scripts), but they cannot upload, say, their own backend logic. If an agency needs something beyond our capability, we’d handle it via official integrations or not at all.
+  * This constraint means some advanced agencies might chafe at limits, but it’s necessary to prevent one agency’s custom code from affecting others or complicating upgrades. We position it as a benefit (you don’t have to maintain plugins; we handle all functionality centrally).
+  * In the future, we might allow more extensibility (like an app marketplace where approved third-party extensions can run in a sandbox), but even that will be carefully vetted. The constraint of “no arbitrary code” stands for platform integrity.
+
+* **Data Storage and Residency:**
+
+  * We currently host all data in (for example) the US on AWS. Some clients (agencies with European SMBs) might request EU data residency. Our current setup is single-region. To accommodate that, we’d eventually deploy to multiple regions, but until then, a constraint is that all data is in one region. We mitigate legal issues via standard contractual clauses for data export, etc. However, if a deal mandates EU-only storage, we may need to expedite multi-region support. This is noted as a constraint that could affect enterprise sales, so it’s on our radar technically.
+  * Also, we can’t store infinite data forever. We have retention policies (e.g., keep deleted agency data backups for 90 days then purge; limit file upload sizes etc.). We communicate these constraints in our terms (e.g., “files up to 100MB each, total storage X GB on Basic plan” etc.). This prevents abuse and keeps infra costs predictable.
+
+* **Transactional Email/Deliverability:**
+
+  * We send emails (password resets, form notifications to agencies, etc.) via a third-party SMTP service. We are constrained by their deliverability rules and volumes. For now it’s sufficient, but if agencies start sending mass emails via our future CRM, we’ll need to invest in email infrastructure or integration. We won’t attempt building our own mail server (too risky for spam issues), we’ll integrate reputable services. So email sending for marketing might be limited initially (maybe requiring connecting their Mailchimp or similar) – that’s a boundary set by both compliance (anti-spam laws) and technical overhead concerns.
+
+* **Testing and Quality vs Speed:**
+
+  * As a guiding constraint, we lean towards quality for core features given the high stakes of multi-tenant issues. We have automated tests covering critical functionalities (user permissions, publishing workflow, billing calculations, etc.). This can slow down development a bit (writing tests, doing QA), but it’s a required discipline. We can’t ship untested code that might charge wrong commissions or expose data. So internally we accept slightly less speed of feature delivery for the sake of stability. We communicate this to sales/coaches if they push for a quick fix that hasn’t been vetted – we’d rather a slight delay than a crisis rollback.
+
+In conclusion, these technical constraints are not roadblocks but design parameters that keep Ozza reliable and sustainable. By recognizing and openly stating them, we make sure our strategy (and promises to users) align with what we can actually deliver. As we grow, some constraints may be lifted (with more resources, we can tackle things like multi-region or a mobile app), but we will always carefully balance ambition with the realities of maintaining a secure, multi-tenant platform. Keeping within these guardrails has allowed us to innovate on the model (coaches, AI, etc.) without letting the technology buckle under unpredictability.

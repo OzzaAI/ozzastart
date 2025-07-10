@@ -1,0 +1,18 @@
+[
+  {
+    "id": "d0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33",
+    "account_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+    "host": "portal.agencyone.com",
+    "site_id": "f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a55",
+    "created_at": "2024-03-01T08:00:00Z",
+    "updated_at": "2024-03-01T08:00:00Z"
+  },
+  {
+    "id": "e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
+    "account_id": "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
+    "host": "app.agencytwo.com",
+    "site_id": "c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a66",
+    "created_at": "2024-04-10T14:00:00Z",
+    "updated_at": "2024-04-10T14:00:00Z"
+  }
+]

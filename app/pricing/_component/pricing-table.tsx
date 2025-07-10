@@ -111,90 +111,140 @@ export default function PricingTable({
   return (
     <section className="flex flex-col items-center justify-center px-4 mb-24 w-full">
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-medium tracking-tight mb-4">
-          Fake Subscription
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          Test out this starter kit using this fake subscription.
-        </p>
+        <h2 className="text-3xl font-bold mb-4">Pricing</h2>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8 max-w-4xl w-full">
-        {/* Starter Tier */}
+      <div className="grid md:grid-cols-3 gap-8 max-w-6xl w-full">
+        {/* Coach Plan */}
         <Card className="relative h-fit">
-          {isCurrentPlan(STARTER_TIER) && (
-            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-              <Badge
-                variant="secondary"
-                className="bg-green-100 text-green-800"
-              >
-                Current Plan
-              </Badge>
-            </div>
-          )}
           <CardHeader>
-            <CardTitle className="text-2xl">Starter</CardTitle>
-            <CardDescription>Perfect for getting started</CardDescription>
+            <CardTitle className="text-2xl">Coach</CardTitle>
+            <CardDescription>Partner program</CardDescription>
             <div className="mt-4">
-              <span className="text-4xl font-bold">$10</span>
+              <span className="text-4xl font-bold">20%</span>
+              <span className="text-muted-foreground"> revenue share</span>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Partner dashboard</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Revenue tracking</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Performance analytics</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Resource library</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Priority support</span>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button className="w-full" variant="outline">
+              Apply to be a Coach
+            </Button>
+          </CardFooter>
+        </Card>
+
+        {/* Agency Plan */}
+        <Card className="relative h-fit border-primary">
+          <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+            <Badge variant="default">Most Popular</Badge>
+          </div>
+          <CardHeader>
+            <CardTitle className="text-2xl">Agency</CardTitle>
+            <CardDescription>Professional plan</CardDescription>
+            <div className="mt-4">
+              <span className="text-4xl font-bold">$99</span>
               <span className="text-muted-foreground">/month</span>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">
               <Check className="h-5 w-5 text-green-500" />
-              <span>5 Projects</span>
+              <span>Unlimited projects</span>
             </div>
             <div className="flex items-center gap-3">
               <Check className="h-5 w-5 text-green-500" />
-              <span>10GB Storage</span>
+              <span>Custom branding</span>
             </div>
             <div className="flex items-center gap-3">
               <Check className="h-5 w-5 text-green-500" />
-              <span>1 Team Member</span>
+              <span>Priority support</span>
             </div>
             <div className="flex items-center gap-3">
               <Check className="h-5 w-5 text-green-500" />
-              <span>Email Support</span>
+              <span>Client management</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Advanced analytics</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Custom domains</span>
             </div>
           </CardContent>
           <CardFooter>
-            {isCurrentPlan(STARTER_TIER) ? (
-              <div className="w-full space-y-2">
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={handleManageSubscription}
-                >
-                  Manage Subscription
-                </Button>
-                {subscriptionDetails.subscription && (
-                  <p className="text-sm text-muted-foreground text-center">
-                    {subscriptionDetails.subscription.cancelAtPeriodEnd
-                      ? `Expires ${formatDate(subscriptionDetails.subscription.currentPeriodEnd)}`
-                      : `Renews ${formatDate(subscriptionDetails.subscription.currentPeriodEnd)}`}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <Button
-                className="w-full"
-                onClick={() => handleCheckout(STARTER_TIER, STARTER_SLUG)}
-              >
-                {isAuthenticated === false
-                  ? "Sign In to Get Started"
-                  : "Get Started"}
-              </Button>
-            )}
+            <Button className="w-full">
+              Start Your Agency
+            </Button>
+          </CardFooter>
+        </Card>
+
+        {/* Client Access */}
+        <Card className="relative h-fit">
+          <CardHeader>
+            <CardTitle className="text-2xl">Client</CardTitle>
+            <CardDescription>Basic access</CardDescription>
+            <div className="mt-4">
+              <span className="text-4xl font-bold">Free</span>
+              <span className="text-muted-foreground"> with invitation</span>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Analytics dashboard</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Performance tracking</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Direct communication</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Management tools</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Mobile access</span>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button className="w-full" variant="outline">
+              Invited by Agency
+            </Button>
           </CardFooter>
         </Card>
       </div>
 
       <div className="mt-12 text-center">
         <p className="text-muted-foreground">
-          Need a custom plan?{" "}
+          Questions about pricing?{" "}
           <span className="text-primary cursor-pointer hover:underline">
-            Contact us
+            Contact our team
           </span>
         </p>
       </div>

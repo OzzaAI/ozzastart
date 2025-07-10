@@ -1,0 +1,1951 @@
+Skip to content
+Training & UX Certification 
+Articles & Videos
+Consulting
+Reports & Books
+About NN/g 
+Log In
+Search
+
+Psychology for UX: Study Guide
+
+Tanner Kohler
+January 10, 2024 · Updated Apr. 24, 2025
+
+Share
+
+Summary:  Unsure where to start? Use this collection of links to our articles and videos to learn about some principles of human psychology and how they relate to UX design.
+Bringing psychology and technology together is at the heart of UX design because UX is people. However, you do not need a degree in psychology to understand the basics of how humans function. Most psychological principles that are relevant to UX are easy to understand but make a big difference when applied correctly. Since the beginning, NN/g has always preached that the best designs are built for people as they really are — not who we wish they were.
+
+Don Norman (one of our principals) calls himself a cognitive designer because regardless of the type of products you are working on, what matters is that you design systems for how people think. The following resources will help you explore and understand many of the psychological principles that help create the best user experiences and achieve an organization’s goals.
+
+In This Article:
+Attention
+Gestalt Principles
+Memory
+Sensemaking
+Decision Making and Choice
+Motor Processes and Interaction
+Motivation
+Cognitive Biases
+Persuasion and Influence
+Emotion and Delight
+Attitudes toward Technology
+Additional Paid Resources
+Attention
+Although most people feel like they notice everything going on around them, their ability to do so is very limited. Humans cannot focus their attention on everything at once — their brains automatically filter out anything that doesn’t seem useful.
+
+Number
+
+Link
+
+Format
+
+Description
+
+1
+
+Tunnel Vision and Selective Attention
+
+article
+
+Users tend not to look beyond what they immediately notice — even if important info is right on the screen.
+
+2
+
+Change Blindness in UX: Definition
+
+article
+
+People often miss changes that are small and occur outside of their area of focus.
+
+3
+
+Change Blindness in User Interfaces
+
+video
+
+4
+
+Change Blindness Causes People to Ignore What Designers Expect Them to See
+
+article
+
+Changes in certain design elements frequently go unnoticed by users. Designers must help users to notice these changes.
+
+Gestalt Principles
+People perceive order in the world around them. The Gestalt principles describe heuristics that people use to decide whether certain stimuli are part of the same whole.
+
+Number
+
+Link
+
+Format
+
+Description
+
+1
+
+The Gestalt Principles for User Interface Design
+
+video
+
+The Gestalt principles describe how people perceive visual elements and group them into bigger objects.
+
+2
+
+The Principle of Common Region: Containers Create Groupings
+
+article
+
+Items enclosed within the same border or container are perceived as part of the same group.
+
+3
+
+Common Region: Gestalt Principle for User Interface Design
+
+video
+
+4
+
+Principle of Closure in Visual Design
+
+article
+
+People tend to fill in blanks to perceive a complete object whenever a set of external stimuli partially matches that object.
+
+5
+
+Closure: Gestalt Principle for User Interface Design
+
+video
+
+6
+
+Similarity Principle in Visual Design
+
+article
+
+Elements with similar characteristics are perceived as part of the same group.
+
+7
+
+Similarity: Gestalt Principle 1 for UI Design
+
+video
+
+8
+
+Proximity Principle in Visual Design
+
+article
+
+Elements that are close to each other are perceived as part of the same group.
+
+9
+
+Proximity: Gestalt Principle for User Interface Design
+
+video
+
+10
+
+Figure/Ground: Gestalt Principle for User Interface Design
+
+video
+
+This principle refers to how people distinguish an object (the figure) from its background (the ground).
+
+11
+
+Continuation: Gestalt Principle for User Interface Design
+
+video
+
+Elements arranged in visual paths and sequences are perceived as part of the same whole.
+
+12
+
+Common Fate: Gestalt Principle for User Interface Design
+
+video
+
+Elements that are synchronized or coordinated in movement are perceived as part of the same group.
+
+13
+
+Connectedness: Gestalt Principle for User Interface Design
+
+video
+
+Explicitly connected objects are perceived as being a single unit.
+
+Memory
+Human memory is limited and imperfect. The limits of human memory affect people’s ability to process information and shape the way information is stored for long periods.
+
+Number
+
+Link
+
+Format
+
+Description
+
+Memory Capacity and Limitations
+
+1
+
+Short-Term Memory and Web Usability
+
+article
+
+People will remember very little of what they see on the web, so designs should aid their short-term memory.
+
+2
+
+Short-Term Memory Limitations Impact User Interface Design
+
+video
+
+3
+
+Working Memory and External Memory
+
+article
+
+Working memory is a type of short-term memory that stores information relevant to the current task. Systems should avoid straining users’ working memory by providing ways to offload information into an external memory.
+
+4
+
+Working Memory and External Memory
+
+video
+
+5
+
+Memory Recognition and Recall in User Interfaces
+
+article
+
+User interfaces should not force users to memorize information; it should be provided for them to reference.
+
+6
+
+Usability Heuristic 6: Recognition vs. Recall in User Interfaces
+
+video
+
+7
+
+The Magical Number 7 and UX
+
+video
+
+People can hold only around 7 chunks of information in their short-term memory at one time.
+
+8
+
+How Chunking Helps Content Processing
+
+article
+
+Present information in meaningful chunks to help people process and remember it.
+
+9
+
+Why Chunking Content is Important
+
+video
+
+10
+
+Minimize Cognitive Load to Maximize Usability
+
+article
+
+Reducing extraneous cognitive load improves the usability of any interface.
+
+11
+
+What Is Cognitive Load?
+
+video
+
+ 
+
+How and Why Information Is Remembered
+
+12
+
+Priming and User Interfaces
+
+article
+
+Exposure to a stimulus increases people’s ability to retrieve information that is related to that stimulus.
+
+13
+
+How Priming Influences UX
+
+video
+
+14
+
+The Peak–End Rule: How Impressions Become Memories
+
+article
+
+People tend to remember peak events (whether positive or negative) and final events.
+
+15
+
+Peak–End Rule: Use to Your Advantage
+
+video
+
+16
+
+Spatial Memory: Why It Matters for UX Design
+
+article
+
+People remember imprecise locations of interface elements.
+
+17
+
+The Power Law of Learning: Consistency vs. Innovation in User Interfaces
+
+article
+
+As people are repeatedly exposed to the same stimulus, their ability to remember it increases.
+
+18
+
+7 Tips for Memorable and Easy-to-Understand Imagery
+
+article
+
+Relevant, high-quality visuals placed next to associated text can enhance users’ ability to understand and remember content.
+
+19
+
+The Picture-Superiority Effect: Harness the Power of Visuals
+
+article
+
+People often remember visuals better than words.
+
+20
+
+How to Use the Zeigarnik Effect in UX
+
+video
+
+People tend to remember unfinished tasks better than completed ones.
+
+Sensemaking
+People are not like cameras. They do not objectively capture information and process it the same way as anyone else would. People constantly try to make sense of the world by relying on their own experiences and understandings. However, sometimes these perceptions are accurate and sometimes they are not.
+
+Number
+
+Link
+
+Format
+
+Description
+
+1
+
+Mental Models
+
+article
+
+The way people think something works influences how they will interact with it.
+
+2
+
+What Is a Mental Model?
+
+video
+
+3
+
+Information Scent: How Users Decide Where to Go Next
+
+article
+
+Users click on links that seem most closely related to their tasks and interests.
+
+4
+
+Information Scent
+
+video
+
+5
+
+Information Foraging: A Theory of How People Navigate on the Web
+
+article
+
+Users continue searching for information only when the benefit of doing so seems to outweigh the cost.
+
+Decision Making and Choice
+Having more options does not always lead to greater satisfaction. Making choices (especially complex ones) is difficult and requires significant mental effort. Guiding users through decisions by making things simple will improve their experience in every context.
+
+Number
+
+Link
+
+Format
+
+Description
+
+1
+
+Prospect Theory and Loss Aversion: How Users Make Decisions
+
+article
+
+People shy away from situations where they might lose something because they prefer sure wins.
+
+2
+
+Compensatory vs Noncompensatory: 2 Decision-Making Strategies
+
+article
+
+People weigh the pros and cons of each alternative only when they must choose among a small number of options.
+
+3
+
+Satisficing: Quickly Meet Users' Main Needs
+
+article
+
+In many situations, people will choose the first option that meets their basic criteria.
+
+4
+
+Simplicity Wins over Abundance of Choice
+
+article
+
+Providing more choices and options makes decision making more difficult by increasing the mental effort required of users. .
+
+5
+
+Choice Overload Impedes User Decision Making
+
+video
+
+6
+
+More Choices More Trouble (UX Slogan 12)
+
+video
+
+More features in a product can easily reduce its usability.
+
+7
+
+Clean the Sludge from Decision-Making Workflows
+
+article
+
+Simplify decision-making workflows to help users make choices they’ll be satisfied with.
+
+8
+
+Hick's Law: Designing Long Menu Lists
+
+video
+
+Combining Hick’s Law with other design techniques can make long menus easy to use.
+
+9
+
+Decision Biases Affecting UX Practitioners
+
+video
+
+UX practitioners are people too, and thus also susceptible to decision biases.
+
+10
+
+Explicitly State the Difference Between Options
+
+article
+
+Clearly highlight key differences between options to help users select the right option.
+
+Motor Processes and Interaction
+Interactions between humans and technology are inherently limited by human abilities and their willingness to act. To create the best user experiences, systems need to adapt to people, not people to systems.
+
+Number
+
+Link
+
+Format
+
+Description
+
+1
+
+Interaction Cost
+
+article
+
+The total amount of resources required — both mental and physical — in any web interaction makes up the interaction cost.
+
+2
+
+Why Interaction Cost Matters to UX
+
+video
+
+The higher the interaction cost, the less likely it is that users will take an action.
+
+3
+
+The 3 Response Time Limits in Interaction Design
+
+video
+
+Users expect systems to respond quickly. Their patience varies based on the context.
+
+4
+
+Fitts's Law and Its Applications in UX
+
+article
+
+Users can click on page elements more quickly and accurately if they are large and close to their cursors/fingers.
+
+5
+
+Fitts's Law
+
+video
+
+Motivation
+UX designers must create usable designs, but they must also create designs that people are motivated to use. However, leveraging what we know about human motivation in ways that harm people is both unethical and harmful for a business.
+
+Number
+
+Link
+
+Format
+
+Description
+
+1
+
+Autonomy, Relatedness, and Competence in UX Design
+
+article
+
+Meeting the three fundamental human needs increases user motivation and satisfaction.
+
+2
+
+Self-Determination Theory: Users Want Autonomy, Relatedness, and Competency
+
+video
+
+3
+
+Three Methods to Increase User Autonomy in UX Design
+
+article
+
+Users appreciate the freedom to interact with designs in ways that align with their priorities
+
+4
+
+Why Designers Think Users Are Lazy: 3 Human Behaviors
+
+article
+
+Users aren't lazy, they're efficient: people tend to take the path of least resistance when using devices.
+
+5
+
+Users Are Not Lazy (UX Slogan #10)
+
+video
+
+6
+
+Fresh Start Effect: How to Motivate Users with New Beginnings
+
+article
+
+People are more motivated to make commitments after life events that encourage new beginnings.
+
+7
+
+Video Game Engagement vs Addiction
+
+video
+
+Deceptive patterns used in video games make an engaging experience into a negative and addicting one.
+
+8
+
+Social Media and Gamification
+
+video
+
+Social media has become increasingly gamified through the quantification of traditionally qualitative interactions.
+
+Cognitive Biases
+Patterns that describe systematic ways in which people deviate from rational thinking are often called biases or heuristics. These biases are mental shortcuts people use to save themselves from doing extra mental work when making sense of the world.
+
+Number
+
+Link
+
+Format
+
+Description
+
+1
+
+You Are Not the User: The False-Consensus Effect
+
+article
+
+People tend to think that others have the same views and attitudes as themselves.
+
+2
+
+The Halo Effect
+
+article
+
+People judge a person or thing based on a single observed attribute.
+
+3
+
+The Halo Effect in UX Design
+
+video
+
+4
+
+Confirmation Bias in UX
+
+article
+
+People (including UX practitioners) tend to seek out information they agree with and reject information they don't agree with.
+
+5
+
+Confirmation Bias in UX Work
+
+video
+
+6
+
+The Availability Heuristic
+
+video
+
+People overestimate the prevalence and importance of information they were recently exposed to.
+
+7
+
+The Negativity Bias in User Experience
+
+article
+
+People give more attention to negative comments and experiences than to positive ones.
+
+8
+
+The Negativity Bias in a User's Experience
+
+video
+
+9
+
+The Anchoring Principle
+
+article
+
+Initial information that a person is exposed to can affect their subsequent decisions.
+
+10
+
+How Anchoring Influences UX
+
+video
+
+11
+
+Decision Frames: How Cognitive Biases Affect UX Practitioners
+
+article
+
+The way information is presented changes how it is interpreted and what decisions are made.
+
+12
+
+Survey-Response Biases in User Research
+
+video
+
+Because of certain predictable biases, respondents will not answer honestly in badly written surveys.
+
+13
+
+Functional Fixedness Stops You from Having Innovative Ideas
+
+article
+
+Becoming fixated on one way of seeing a problem makes it difficult to come up with varied and creative solutions.
+
+14
+
+The Hawthorne Effect or Observer Bias in User Research
+
+article
+
+People often modify their behavior if they know they are being observed.
+
+15
+
+The Danger of Defaults
+
+video
+
+People generally do not change defaults.
+
+Persuasion and Influence
+Although they may not realize it, many people are not firmly decided on a course of action until they take it. Psychology describes how people give weight to certain types of information as they choose courses of action and the factors that can nudge their decisions.
+
+Trust is foundational to all relationships — including relationships between users and websites. It is important for designs to establish credibility and win users’ trust to develop a long-term relationship.
+
+Number
+
+Link
+
+Format
+
+Description
+
+1
+
+The Reciprocity Principle: Give Before You Take in Web Design
+
+article
+
+When people are given something freely, they generally feel a need to repay the kind gesture.
+
+2
+
+Social Proof in the User Experience
+
+article
+
+People reference opinions and behaviors of others to guide their own behaviors.
+
+3
+
+Social Proof in UX
+
+video
+
+4
+
+The 'Liking' Principle in User Interface Design
+
+article
+
+People are persuaded by the opinions and actions of those they like and are similar to.
+
+5
+
+Scarcity Principle: Making Users Click RIGHT NOW or Lose Out
+
+article
+
+When people have limited access to a resource, they perceive it to be more valuable.
+
+6
+
+The Scarcity Principle in UX: Don't Miss Out!
+
+video
+
+7
+
+The Authority Principle
+
+article
+
+Those with recognized authority (in virtually any domain) hold strong persuasive power over others.
+
+8
+
+The Principle of Commitment and Behavioral Consistency
+
+article
+
+Someone committed to a course of action feels pressure to follow through with it.
+
+9
+
+Deceptive Patterns in UX: How to Recognize and Avoid Them
+
+article
+
+Deceptive patterns are design choices that make it more difficult for a user to take their desired actions.
+
+10
+
+What Makes a Dark UI Pattern?
+
+video
+
+11
+
+Don’t Trick Users: 2 Ways to Avoid Deceptive Design Patterns
+
+video
+
+A few careful considerations can help designers avoid deceptive patterns.
+
+12
+
+Sneaking: The Deceptive UX Pattern You Never Saw Coming
+
+article
+
+Sneaking refers to a deceptive pattern that tricks customers into agreeing to something they did not intend to.
+
+13
+
+The Rhetorical Triangle for Stakeholders: Make Your Point and Get Your Way
+
+article
+
+Logic, credibility, and emotional appeal craft a convincing argument.
+
+14
+
+Persuasive Design: New Captology Book
+
+article
+
+Jakob Nielsen summarizes a book on persuasive design written by B.J. Fogg.
+
+Trust
+
+15
+
+Hierarchy of Trust: The 5 Experiential Levels of Commitment
+
+article
+
+Users do not want to commit to an ongoing relationship and share personal information before they trust an organization.
+
+16
+
+Pyramid of Trust
+
+video
+
+17
+
+Trustworthiness in Web Design: 4 Credibility Factors
+
+article
+
+Certain design choices have power to help or hurt users' trust in a website.
+
+18
+
+Creepiness–Convenience Tradeoff
+
+article
+
+People weigh the advantages and the dangers associated with sharing personal data.
+
+19
+
+Prominence-Interpretation Theory
+
+article
+
+When evaluating users' credibility perceptions, first identify which page elements they notice, then what they think of them.
+
+Emotion and Delight
+Don Norman wrote, “without emotions, your decision-making ability would be impaired.” Emotions play a critical role in daily functioning and determine which experiences will delight people.
+
+Number
+
+Link
+
+Format
+
+Description
+
+1
+
+Emotional Design
+
+video
+
+Emotions are an important part of human functioning.
+
+2
+
+The 3 Levels of Emotional Processing
+
+video
+
+Humans tend to have emotional reactions to products at three levels: visceral, behavioral, and reflective.
+
+3
+
+Three Pillars of User Delight
+
+article
+
+Some methods are better than others for evaluating visceral, behavioral, and reflective delight.
+
+4
+
+A Theory of User Delight: Why Usability Is the Foundation for Delightful Experiences
+
+article
+
+Designs can delight users at two levels: on the surface and on a deep, fundamental level.
+
+5
+
+The Aesthetic-Usability Effect
+
+article
+
+When a design is attractive users tend to perceive it as easier to use (whether it really is or not).
+
+6
+
+The Aesthetic Usability Effect and Prioritizing Appearance vs. Functionality
+
+video
+
+Functionality and usability should not be sacrificed to prioritize an attractive appearance.
+
+7
+
+You Can't Impose Joy (UX Slogan #3)
+
+video
+
+Users ultimately experience joy by getting something done, not from creative visuals.
+
+8
+
+First Impressions Matter: How Designers Can Support Humans’ Automatic Cognitive Processing
+
+article
+
+The initial visceral reactions users have to a design affect their subsequent experiences with it and perceptions of it.
+
+9
+
+The ELIZA Effect: Why We Love AI
+
+article
+
+People attribute human-like characteristics to systems that reflect their personality back to them.
+
+10
+
+The ELIZA Effect: Why We Fall in Love With AI
+
+video
+
+Attitudes toward Technology
+The way people use technology affects their lives. Designers must take care to impact people in positive ways through the designs they create.
+
+Number
+
+Link
+
+Format
+
+Description
+
+1
+
+The Vortex: Why Users Feel Trapped in Their Devices
+
+article
+
+Users begin with one task and then get sucked into "the vortex" by getting distracted. This often causes negative emotional reactions.
+
+2
+
+Why Users Feel Trapped in Their Devices: The Vortex
+
+video
+
+3
+
+Children’s Exposure to Digital Technology Causes Parental Anxiety
+
+article
+
+Many parents have strong concerns about the effects of technology on their children.
+
+Additional Paid Resources
+Books:
+
+Emotional Design: Why We Love (Or Hate) Everyday Things
+Human Information Processing: Introduction to Psychology
+Explorations in Cognition
+Learning and Memory: A Primer
+Related Courses
+The Human Mind and Usability
+Use psychology to predict and explain how your customers think and act
+
+Interaction
+
+Persuasive and Emotional Design
+Create delightful experiences that touch, convince, or excite your audience
+
+Interaction
+
+Web Page UX Design
+Strategically combine content, visuals, and interactive components to design successful web pages
+
+Interaction
+
+Related Topics
+Psychology and UX
+ 
+Study Guides
+ 
+Persuasive Design
+ 
+Behavior Patterns
+Learn More:
+
+Basic Psychology Is Essential for UX Practitioners
+
+Tanner Kohler · 4 min
+
+What Is Cognitive Load?
+
+Maddie Brown · 4 min
+
+
+Why the UX Team Doesn't Get the Credit
+
+Tanner Kohler · 4 min
+
+
+How to Use the Zeigarnik Effect in UX
+
+Feifei Liu · 5 min
+
+Related Articles:
+Growing in Your UX Career: Study Guide
+
+Taylor Dykes · 4 min
+
+Memory Recognition and Recall in User Interfaces
+
+Raluca Budiu · 8 min
+
+Minimize Cognitive Load to Maximize Usability
+
+Kathryn Whitenton · 2 min
+
+UX Basics: Study Guide
+
+Tim Neusesser · 6 min
+
+Design-Pattern Guidelines: Study Guide
+
+Samhita Tankala and Alita Kendrick · 6 min
+
+Mobile UX: Study Guide
+
+Raluca Budiu · 12 min
+
+Subscribe to Our Newsletter
+Get weekly UX articles, videos, and upcoming training events straight to your inbox.
+
+Email
+norman@gmail.com
+Follow Us
+LinkedIn
+Instagram
+Youtube
+Podcast
+X (Twitter)
+Facebook
+Certification
+What is UX Certification?
+Specialties
+Exams
+UX Certified People
+UX Training
+All Live Courses
+Live Online Training Events
+Private Team Training
+Course Calendar
+Consulting
+Expert Review
+User Testing
+Customized Research
+Applied Workshops
+Keynote Speaking
+Free Guidance
+Articles & Videos
+The NN/g UX Podcast
+About
+Why NN/g
+About Us
+People
+Clients
+Contact
+Return Policy
+Copyright © 1998-2025 Nielsen Norman Group, All Rights Reserved.
+
+Cookie Preferences
+Cookie Declaration
+Privacy Policy
+BairesDev
+Blog
+Services
+
+
+
+
+
+Our Clients
+About Us
+Blog
+Careers
+Schedule a Call
+Nishant R.
+"Of the 15 engineers on my team, a third are from BairesDev"
+Nishant R. - Pinterest
+
+500+ companies trust us with
+their software development needs.
+
+Blog
+Technology
+The Psychology Behind UX/UI Design
+The Psychology Behind UX/UI Design
+Delve into the world of UX/UI, exploring how psychology shapes design. Discover cognitive principles, emotional resonance, and heuristics shaping seamless digital interactions.
+
+10 min read
+BairesDev Editorial Team
+By BairesDev Editorial Team
+
+BairesDev is an award-winning nearshore software outsourcing company. Our 4,000+ engineers and specialists are well-versed in 100s of technologies.
+
+UX-psychology
+Article Contents
+
+UX/UI design, in layman’s terms, is all about creating an engaging and intuitive user experience (UX) and user interface (UI). But here’s the twist: it’s about understanding how users think, feel, and behave when interacting with digital products. This is where psychology comes into play.
+
+We’ve all tried to navigate a poorly designed website or app that leaves us feeling frustrated and confused. It’s because the design doesn’t align with our cognitive processes. When we encounter something unfamiliar or complex, our brain goes into overdrive trying to figure it out. 
+
+We avoid these pitfalls by designing with psychology in mind. This means understanding cognitive load theory (the amount of mental effort required to process information), visual perception principles (how we see and interpret visual information), and emotional responses (how we feel when using a product).
+
+For instance, consider Amazon’s one-click buying feature. From a psychological perspective, it reduces cognitive load by simplifying the decision-making process — one click, and your purchase is on its way! The result? A seamless user experience that keeps customers coming back for more.
+
+Good UX/UI design isn’t just about aesthetics; it’s about creating an intuitive and enjoyable user experience that aligns with our psychological processes. This is how UX/UI design plays an important part in conversion rate, dropoff rate, user satisfaction, and user retention rate. 
+
+Theories of Perception in UX/UI Design
+Perception is the phenomenon that enables us to make sense of the world around us. And guess what? It plays a pivotal role in UX/UI design too! In the realm of UX/UI design, we’re concerned not just with how things look but also how they are perceived and interpreted by users. This is where theories of perception come into play. 
+
+The Gestalt Psychology theory suggests that humans perceive visual elements in groups or as a unified whole rather than as individual components. We instinctively search for patterns and order in complex visual stimuli to make sense of them. Ever noticed how your Instagram feed is organized into a grid format? That’s Gestalt psychology at work! The grid layout groups related content together, making it easier to process and navigate.
+
+When we design, we don’t just throw elements randomly onto a screen; we carefully arrange them to facilitate pattern recognition and ease cognitive load. By understanding and applying these perception theories, we can create more intuitive and user-friendly designs.
+
+Cognitive Load: Its Effects on UI Design
+In the world of UX/UI design, we’re wrestling with cognitive load. This refers to the total amount of mental effort being used in working memory (think of it as your brain’s RAM). Too much information or overly complex tasks can overload this system, leading to errors and frustration.
+
+In UI design, we aim to minimize this cognitive load to ensure a smooth and enjoyable user experience. It’s like hosting a dinner party — you wouldn’t want to overwhelm your guests with too many dishes at once. Instead, you’d serve them in courses, allowing them time to savor each dish.
+
+The same applies in UI design. We aim for simplicity and clarity over complexity and ambiguity. Take Google’s homepage for example: its clean, minimalist design puts users at ease by reducing cognitive load. There aren’t multiple menus or excessive text vying for attention. This allows users to focus on their task without unnecessary distractions.
+
+Managing cognitive load is all about understanding human limitations and designing accordingly. By doing so, we can create interfaces that are not only visually appealing but also cognitively considerate.
+
+ 
+
+Are you interested in leveling up your user experience through UX/UI design?  Learn more about our UX/UI Design Services.
+
+ 
+
+Emotional Response & UX Design
+As UX/UI designers, we don’t just design for functionality; we also design for emotion. Our aim is to evoke positive emotional responses from users through our designs.
+
+We achieve this with a blend of psychology and artistry. We strive to understand what makes users tick — their desires, frustrations, and habits — and then translate these insights into design elements that resonate with them on an emotional level.
+
+One technique is color psychology. Different colors can elicit different emotions in people. Blue often conveys trust and reliability (think Facebook or LinkedIn), while green tends to be associated with growth and tranquility. We can subtly influence how users feel when interacting with our interfaces.
+
+We have to ensure that each step in the process is intuitive and satisfying — from the moment they land on the homepage to when they complete their intended task (be it making a purchase or finding information).
+
+Good UX design isn’t just about reducing cognitive load; it’s also about creating an emotionally engaging experience. This can foster brand loyalty and turn casual users into raving fans.
+
+
+
+The Role of Memory in User Interaction
+Memory plays a pivotal role in shaping user interactions. Humans are creatures of habit. We’re wired to remember and repeat past actions that have yielded positive results.
+
+When we interact with an interface, we rely on our cognitive map to guide us through the process. This means that consistent design patterns and recognizable elements can significantly streamline user interaction.
+
+However, while familiarity breeds comfort, it also breeds expectation. If an element looks like something users have interacted with before but functions differently, it can lead to confusion and frustration. So while we want to leverage users’ memories to enhance usability, we also need to ensure consistency in functionality across our designs.
+
+By understanding how memory works and applying this knowledge in our designs, we can create interfaces that feel intuitive and familiar, making the user experience not just functional but also delightful. 
+
+Understanding User Behavior Through Heuristics
+Heuristics, or mental shortcuts, are the unsung heroes of UX/UI design. They allow us to predict and anticipate user behavior, making our designs more intuitive and user-friendly. But understanding these cognitive shortcuts is not as simple as memorizing a list of do’s and don’ts.
+
+Consider the “recognition over recall” heuristic. It posits that users are better at recognizing information they’ve previously encountered than recalling it from memory. This principle explains why drop-down menus are generally more effective than open-ended input fields.
+
+We must balance this heuristic with others, like “less is more.” Overloading a drop-down menu with too many options can lead to choice paralysis. Heuristics guide us in crafting experiences that align with how users naturally think and behave. We can create interfaces that feel instinctive and effortless to navigate.
+
+usability-heuristics
+
+The Impact of Attention on User Experience
+Let’s consider a simple yet effective example about attention: push notifications. These little pop-ups are designed to grab our attention amid a sea of digital distractions. They work on the principle of selective attention, which allows users to focus on specific elements while ignoring others. Overuse or misuse of these notifications can lead to attention fatigue, causing users to disengage or even abandon the platform altogether.
+
+We must remember that guiding user attention is not just about making things noticeable. It’s about creating an environment where relevant information stands out without overwhelming or annoying users.
+
+User Motivation & Reward Systems in UX/UI Design
+In UX/UI design, we’re tasked with understanding what makes users tick and then leveraging that knowledge to create engaging, satisfying experiences. When it comes to driving user engagement, few tools are as potent as motivation and reward systems.
+
+These systems tap into our innate desire for achievement and recognition. They incentivize users to engage with a platform by offering rewards — tangible or intangible — for completing certain actions or reaching specific milestones.
+
+Consider the example of fitness apps. These digital coaches often employ gamification techniques to motivate users toward healthier lifestyles. Users might earn badges for hitting their daily step goals or receive motivational messages after logging workouts consistently. This is more than just fun and games; it’s about creating positive feedback loops that encourage continued use and engagement.
+
+It’s important to note that while reward systems can be powerful motivators, they need to be thoughtfully designed. Overly complex systems can confuse users, while too simplistic ones may fail to engage them effectively. It’s all about striking the right balance — a dance between challenge and reward that keeps users coming back for more.
+
+In essence, motivation and reward systems are vital cogs in the UX/UI design machinery. When done right, they can transform passive visitors into active participants, turning an ordinary user experience into an extraordinary one.
+
+ 
+
+Developing User-Centric Experiences in the Restaurant Industry
+
+We closely collaborated with a client from the restaurant industry to synchronize the charm of their in-location ambiance with a highly advanced e-commerce platform. Our software development team committed itself to crafting a new website. Our design strategy revolved around creating a seamless, user-centric interface that guides customers through their ordering process. This streamlined and intuitive shopping experience ensures customers can place orders and track their journey from purchase to delivery.
+
+ The end result is a platform where customers feel just as valued and indulged as they would in person, offering a true reflection of the brand’s essence.
+
+ 
+
+Five Additional Principles
+Let’s delve into these five cognitive psychology theories:
+
+Retention theory: Users spend a limited time on a homepage, suggesting that concise design aids faster progression.
+Serial-position effect: Users remember the first and last elements more than those in between.
+Hick’s Law: Too many choices lead to delayed response time, so avoid overwhelming users.
+The Schema theory: Organizing information into meaningful units is appealing.
+The chameleon effect: Mirroring user emotions aids connection and understanding.
+In Conclusion
+UX design and psychology share a common goal: understanding human cognition patterns, decision-making processes, and consumer needs. By incorporating these cognitive psychology theories into our work as UX designers, we can avoid certain design pitfalls while discovering solutions that enhance user experience.
+
+Article tags:
+custom software development
+ui
+ux
+BairesDev Editorial Team
+By BairesDev Editorial Team
+
+Founded in 2009, BairesDev is the leading nearshore technology solutions company, with 4,000+ professionals in more than 50 countries, representing the top 1% of tech talent. The company's goal is to create lasting value throughout the entire digital transformation journey.
+
+AI-for-SMEsHow Democratized AI Allows Smaller Businesses to Compete
+Previous article
+legal-techThe State of Legal Tech: Current Solutions and Opportunities
+Next article
+Hiring engineers?
+We provide nearshore tech talent to companies from startups to enterprises like Google and Rolls-Royce.
+
+Alejandro D.
+Alejandro D.
+Sr. Full-stack Dev.
+Gustavo A.
+Gustavo A.
+Sr. QA Engineer
+Fiorella G.
+Fiorella G.
+Sr. Data Scientist
+About Us
+Our Services
+Our Clients
+“
+BairesDev assembled a dream team for us and in just a few months our digital offering was completely transformed.
+
+VP Product Manager
+VP Product Manager
+Rolls-Royce
+Read Case Study
+Related articles
+Understanding Application Modernization: Benefits and Best Practices
+Quantum Chip Basics and Breakthroughs Explained
+The Ultimate AI Test: ChatGPT vs. Gemini vs. Perplexity vs. Copilot vs. Claude – Who’s the Smartest?
+Transforming Quality Assurance: Artificial Intelligence in Software Testing
+How OpenAI Pro Stacks Up Against Other LLMs
+The History of Internet Explorer, The Browser We All Loved to Hate
+BairesDev Logo
+Discover BairesDev.
+About Us
+Methodologies
+Technologies
+Certifications
+Software Development Services
+Software Development Solutions
+Dedicated Software Development Teams
+Staff Augmentation
+Software Development Outsourcing
+Diversity
+Social Responsibility
+Senior Advisor Program
+Resources.
+Case Studies
+Blog
+Press
+Industries Insights
+Technology Resource Center
+Client Referral Program
+Careers.
+Job Opportunities
+Talent Referrals
+Get in touch.
+
+Schedule a Call
+Contact Us
++1 (408) 478-2739
+Get insights from the experts on building and scaling technology teams.
+
+Your e-mail address
+name@email.com
+
+By subscribing I accept the Privacy Policy.
+
+Subscribe
+Follow us.
+
+Privacy Policy|Terms of Service|Do Not Sell My Personal Information
+BairesDev 2009 - 2025. All rights reserved.
+
+
+By continuing to use this site, you agree to our cookie policy and privacy policy.
+
+GOT IT
+
+Discover top website trends and insights for 2025
+Read report
+↗
+Skip to main content
+Enterprise
+Pricing
+Log in
+Contact sales
+Get started — it's free
+Blog
+→
+Design
+→
+Psychology in UX design: 8 ways to target audiences with your web designs
+Psychology in UX design: 8 ways to target audiences with your web designs
+Use psychology in your UX designs with these eight fundamental principles. Understand what resonates with a client’s target audience and why.
+
+
+Unleash your creativity on the web
+Build completely custom, production-ready websites — or ultra-high-fidelity prototypes — without writing a line of code. Only with Webflow.
+
+Get started for free↗
+Get started for free
+Written by
+Webflow Team
+Webflow Team
+Webflow Team
+Psychology helps you understand what users want, sometimes even better than they do.
+
+Psychology and UX design go hand in hand. Psychological principles outline how people respond to stimuli and what motivates them to take specific actions. Designers can use this information to create more effective sites. By better understanding subconscious behaviors like shape recognition, designers can satisfy expectations users might not even know they have.
+
+When designing a fitness app, for example, you could place exercise goals inside upward-facing triangles. These shapes signal growth and progress, subtly encouraging people to work out and reach new milestones. 
+
+8 principles of psychology in design
+The following eight psychological principles play a big part in UX design and have remained relevant through many years of experimentation and peer review.
+
+1. Color theory
+Colors affect how people interpret websites, and designers can use these feelings to subtly influence website visitors’ emotions. That’s what makes color theory so powerful — it helps designers decide when to select one color over another. 
+
+Blue, for example, denotes dependability and integrity, while red signifies danger and urgency. For this reason, websites tend to use blue when showcasing security and privacy features and red when calling attention to an alert that requires immediate action.
+
+2. Hick's Law
+Hick’s Law states that it takes more time to make a decision as options increase in complexity or volume. When too many stimuli compete for attention, the short-term memory overloads, causing people to avoid making a decision.
+
+Every stimulus source increases the cognitive load on the brain. The cognitive load is the effort it takes the brain to understand a situation. Leveraging Hick’s Law in your web design means reducing cognitive load to give your users options that are easy to understand. 
+
+For example, a restaurant’s online ordering page could start with categories like Pasta, Pizza, and Salads. Patrons can choose between those three options before selecting a specific dish so they won’t be overwhelmed by seeing the entire menu at once.
+
+3. Gestalt principles
+Gestalt psychology studies how humans perceive complex images and recognize patterns. Many principles of Gestalt psychology apply to UX design, including symmetry, similarity, and continuity. Understanding these foundations helps designers understand how users interpret websites. 
+
+Take similarity, for instance, which refers to people naturally grouping similar-looking items together. Designers can leverage this effect by making the “Next page” button a consistent color and shape across the website. This approach allows visitors to quickly identify and understand the button's purpose, improving navigation.
+
+4. The golden ratio
+The golden ratio is a visually appealing ratio of 1:1.618, which appears in nature in places like the shape of a ram’s horn or the number of petals growing on a flower. Artists like Leonardo da Vinci have used this ratio in famous works, and it still has a place in modern-day design.
+
+When UX designers size elements according to this ratio, their layouts are easier to understand because they follow a natural convention. This principle even applies in typography — making headers 1.618 times bigger than the body font clearly marks headers as important information.
+
+
+The marketer's guide to personalization
+Discover how to create personalized website experiences that meet buyers’ expectations in this ebook.
+
+Read now↗
+Read now
+5. Anchoring bias
+Anchoring bias occurs when people give more value to information they receive early in the decision-making process. Say shoppers see a table comparing two subscription service tiers, and the first column has fewer features than the second. Because the first column looks more basic, people will be more likely to buy the second tier, even if they don’t need all the listed features.
+
+Web designers use anchoring bias by front-loading information they want readers to internalize. For example, designers might create a homepage stating their client’s product is “protected by enterprise-grade security” or “backed by cyber-security professionals” so users are more likely to trust the brand.
+
+6. Persuasive design
+Persuasive design uses visual and social cues to affect people’s emotions. Designers use techniques like storytelling and color theory to subtly persuade their audience to complete desired tasks, often increasing conversions. 
+
+One example of a common persuasive tactic is the fear of missing out, or FOMO. Designers and marketers use limited-time offers or timed content to make their audience feel they’ll miss out on something if they don’t act fast. This pressure encourages customers to make a purchase or sign up for email campaigns.
+
+7. Social proof
+Social proof refers to accolades, customer reviews, and testimonials that brands use to improve an audience’s perception of their products. Potential customers are more likely to trust shoppers’ or outside institutions’ opinions of a product since they’ll see these endorsements as unbiased.
+
+Say a designer is building a website for a car company. To prove the cars are safer than competitors’, designers can feature safety awards on the brand’s homepage. This social proof signals that customers’ families will be safe during accidents, leading to more sales.
+
+8. Scanning patterns
+When people read a website, they tend to follow either an F-shaped or Z-shaped pattern, so named because that’s how readers’ eyes travel across the page: 
+
+Z-shaped pattern — Users start by scanning horizontally across the top from left to right, then diagonally down and across again. Website visitors who follow this method will better understand the whole site.
+F-shaped pattern — Readers first review the top of a page before scanning down just the left side, which can lead to missed details in the middle and right sections.
+Designers aim to discourage F-shaped patterns by using strategies such as clear headings, bolded key terms, and structured lists. 
+
+These formatting choices emphasize important information, encouraging visitors to slow down and pay more attention to the content. By fully engaging the reader, you may be able to teach them something new or convince them to check out your client’s product.
+
+Why psychology matters in web design
+User testing, focus groups, and surveys are all great at capturing user feedback, but these research methods don’t assess the subconscious reasons people respond to content. When web designers consider psychological principles, they use decades of established data to decide which elements will catch readers’ attention. Understanding visitor intent allows teams to build websites that suit people’s needs and nudge them to complete desired tasks.
+
+Test your design with Webflow
+Incorporating psychology into your design is essential for creating sites for clients that engage various users’ decision-making processes. Employing these principles can help you drive conversions and help your clients connect with their audience. 
+
+Try experimenting with psychology during your next website experiment with Webflow Optimize. Make consistent, comprehensive changes across your site with reusable components, and surface valuable data with analytics integrations.
+
+To learn more, check out how other designers use Webflow.
+
+
+Discover what performs best and deliver it at scale
+Maximize conversions with rapid insights, tailored visitor experiences, and AI-powered delivery.
+
+Learn more about Optimize↗
+Learn more about Optimize
+Last Updated
+October 7, 2024
+Category
+Design
+Share this
+
+Unlock exclusive Webflow content
+Subscribe now for best practices, research reports, and more.
+
+Business email
+Enter your email
+Country
+United States
+I acknowledge that submitting this form subscribes me to marketing communications regarding Webflow’s products, services, and events. I understand I can unsubscribe at any time.
+
+I’d like to receive marketing communications regarding Webflow’s products, services, and events. I understand I can unsubscribe at any time.
+Subscribe
+Get started for free
+Try Webflow for as long as you like with our free Starter plan. Purchase a paid Site plan to publish, host, and unlock additional features.
+
+Get started — it's free
+Transforming the design process at
+PhilipsMonday.comBBDOIdeoUpworkOrangeTheory FitnessGreenhouseNCRTEDHellosignropboxNew York TimesDiscord
+Product
+Platform
+Design
+Edit mode
+Interactions
+GSAP
+Page building
+New
+Shared Libraries
+New
+CMS
+Hosting
+Localization
+Security
+Ecommerce
+Analyze
+New
+Optimize
+New
+SEO
+Webflow Cloud
+Beta
+DevLink
+Labs
+Figma to Webflow
+Labs
+Accessibility
+AI
+Solutions
+Enterprise
+Startups
+Global alliances
+Agencies
+Freelancers
+Classrooms
+Resources
+University
+Blog
+Customer stories
+Webinars and ebooks
+Apps
+Libraries
+Templates
+Developers
+Made in Webflow
+Glossary
+Livestreams
+Company
+About
+Careers
+We're Hiring
+Press
+Webflow Ventures
+Webflow Shop
+Terms of Service
+Privacy policy
+Cookie policy
+Cookie preferences
+Accessibility statement
+Sitemap
+Community
+Discover the community
+Partner with Webflow
+Certified Partners
+Become a template designer
+Become an affiliate
+Become a Global Leader
+Find a meetup near you
+Get help
+Support
+Pricing
+Status
+Forum
+Wishlist
+© 2025 Webflow, Inc. All rights reserved
+Made in Webflow
+
+Search
+Write
+Sign up
+
+Sign in
+
+
+
+Muzli - Design Inspiration
+Muzli - Design Inspiration
+All the design inspiration you need. It's like crack for designers. And good for you too! #design #ux #ui #inspiration #creativity #art #startup
+
+Follow publication
+
+Top highlight
+
+
+The psychology behind great UI design
+Ryan Almeida
+Ryan Almeida
+
+Follow
+6 min read
+·
+Jun 17, 2025
+245
+
+
+3
+
+
+
+You know those designs that just feel right? The ones where everything seems to be exactly where it should be, and you don’t have to squint, think, or rage-click to figure things out?
+
+That’s not magic. It’s psychology.
+
+Good UI design doesn’t just happen because you picked the right shade of blue or used a beautiful font. It works because it understands how people think. What they notice, what they ignore, and what makes them quietly swear under their breath.
+
+Let’s break down the psychology behind great UI design so you can build experiences that make users feel like geniuses, even if they haven’t had coffee yet.
+
+1. Your brain’s a lazy genius (cognitive load)
+
+Here’s the thing: the human brain is powerful, but also wildly lazy.
+
+We’re constantly trying to conserve mental energy. That’s why good UI design doesn’t make people think more than they need to. If your app feels like a puzzle, users will leave, and possibly leave a strongly worded review on the way out.
+
+Design isn’t about showing off how clever you are. It’s about making users feel smart.
+
+Tips that won’t melt brains:
+
+Use clear hierarchy. One main action per screen is usually enough.
+Avoid unnecessary choices. This isn’t a quiz show.
+Hide complexity until it’s needed. (Yes, “advanced settings,” I’m talking about you.)
+
+2. The “too many choices” problem (Hick’s Law)
+Hick’s Law is simple: the more options you give someone, the longer they take to choose. And the more they want to cry. Or quit.
+
+Have you ever stared at a dropdown with 30 countries listed alphabetically starting with “Afghanistan”? Yeah, that.
+
+Design is about decision reduction. Not by removing freedom, but by making the path obvious.
+
+Design like a minimalist:
+
+Break big tasks into smaller steps.
+Highlight the most common or recommended options.
+Use defaults, because most users will go with them anyway.
+3. Targets should be easy to hit (Fitts’ Law)
+
+Tiny buttons. Super thin text links. Close-able modals with an “X” smaller than a fruit fly.
+
+We’ve all cursed them. Fitts’ Law says the time it takes to click something is based on two things: its size and distance. So if you want people to actually tap your button, make it tappable.
+
+Practical ideas:
+
+Increase touch targets, especially on mobile. No one has the finger precision of a ninja.
+Place primary buttons where they’re easy to reach. Think thumb zone.
+Avoid stacking actions too close together. Accidental taps are the new rage click.
+4. Visual hierarchy: Why your users are lost
+
+Users don’t read screens top to bottom. They scan like squirrels on espresso.
+
+So you need to control the visual hierarchy like a conductor leading an orchestra. Use size, color, weight, and spacing to say, “Hey, look here first!”
+
+Without hierarchy, everything competes for attention. And when everything is shouting, no one gets heard.
+
+Try this:
+
+Bold for primary actions. Lighter weights for less critical stuff.
+Use white space like it’s your job. (Because it is.)
+Want a quick test? Squint at your design. What stands out? That’s your focal point.
+5. Familiarity beats creativity
+You might want to be the Picasso of buttons or reinvent the navigation bar. But guess what? People like what they know.
+
+There’s a reason login forms always have email and password in the same order. It’s not laziness. It’s familiar.
+
+What to do:
+
+Stick with standard UI patterns for key flows: sign up, checkout, navigation.
+Save the creative stuff for microinteractions or visuals, not fundamental layouts.
+Remember: Familiar = trustworthy. Weird = suspicious.
+6. Group things that belong together (Gestalt psychology)
+
+Gestalt psychology is basically our brain’s way of speed-reading reality. We don’t see things as isolated elements. We group them based on proximity, similarity, alignment, and continuity.
+
+If your UI doesn’t respect these patterns, users will be confused. And confusion is the fast lane to closing your tab.
+
+Examples:
+
+Buttons that look the same should do similar things. Don’t trick people.
+Put related fields in forms close together. Don’t scatter ‘name’ and ‘email’ like easter eggs.
+Align content. Misaligned items trigger subconscious discomfort.
+7. Emotion > logic
+Here’s a secret: people make decisions emotionally, then justify them logically. That applies to UI, too.
+
+Think about it. Have you ever clicked a button just because it felt nice? That satisfying hover? That subtle animation?
+
+Design can spark joy, or frustration.
+
+How to design for feelings:
+
+Use microcopy with personality. A little charm goes a long way.
+Animations should feel like butter, not a Michael Bay movie.
+Create moments of delight: a cheerful success message, a confetti animation, or a satisfying loading state.
+8. People remember peaks and endings (Peak-End Rule)
+
+Users don’t remember every second of their journey. They remember the most intense moment and the ending. That’s the Peak-End Rule.
+
+So if your checkout flow is seamless, but the confirmation screen looks like a 404 page, guess what they’ll remember?
+
+Design tip:
+
+Identify your “peak moments.” Make them delightful.
+Never neglect your endings. Confirmation messages, thank-you screens, sign up success pages, they matter more than you think.
+9. The real UX villain: Uncertainty
+If your user isn’t sure what a button will do, they’ll hesitate. And hesitation kills momentum.
+
+The best UIs remove doubt. They say, “Hey, click here. It’s safe. You won’t accidentally delete everything.”
+
+Use these weapons:
+
+Clear labels: “Save draft” is better than “Submit.”
+Microcopy: A small line of text can eliminate fear.
+Feedback: Show what just happened, and what’s next.
+10. Tools that keep you sane
+
+Let’s be honest, sometimes, you just don’t have the time to build every flow from scratch. That’s where a plugin like Made in Figma can be a lifesaver.
+
+It lets you drop in pre-built UI flows and components that already follow best practices. No guesswork. No hunting for inspiration. It’s like having a design co-pilot that doesn’t talk too much.
+
+I use it regularly when I want to move fast without sacrificing quality, or when my brain is running on caffeine fumes and I just need a solid layout to riff on.
+
+Bonus: If you’re still reading…
+First of all, thanks. You’re clearly serious about good design.
+
+Second, here’s your cheat sheet for psychology-powered UI:
+
+Cut the noise (less = better)
+Guide the eye
+Respect defaults and patterns
+Design for emotion, not just logic
+Help users feel in control
+And when in doubt? Don’t be clever. Be clear
+……
+
+💡 Stay Inspired Every Day!
+Follow us for a daily stream of design, creativity, and innovation.
+Linkedin | Instagram | Twitter
+
+
+
+UI Design
+UI
+Ui Ux Design
+Ui Ux
+Figma
+245
+
+
+3
+
+
+Muzli - Design Inspiration
+Published in Muzli - Design Inspiration
+214K followers
+·
+Last published 4 days ago
+All the design inspiration you need. It's like crack for designers. And good for you too! #design #ux #ui #inspiration #creativity #art #startup
+
+
+Follow
+Ryan Almeida
+Written by Ryan Almeida
+73 followers
+·
+8 following
+Madeinfigma.com — helping designers work faster
+
+
+Follow
+Responses (3)
+
+Write a response
+
+What are your thoughts?
+
+Cancel
+Respond
+Adesanmiadedayo
+Adesanmiadedayo
+
+Jun 22
+
+
+Interesting
+Reply
+
+Raisul Rana
+Raisul Rana
+
+Jun 22
+
+
+Worth reading!
+Reply
+
+Samuel Grace
+Samuel Grace
+
+Jun 21
+
+
+I loved it❤️
+
+1 reply
+
+Reply
+
+More from Ryan Almeida and Muzli - Design Inspiration
+7 Figma plugins every designer should be using
+Ryan Almeida
+Ryan Almeida
+
+7 Figma plugins every designer should be using
+There are two kinds of designers: those who claim to love long, painful design sprints… and those who find smarter ways to get it done…
+Jun 18
+139
+figma plugins
+Muzli - Design Inspiration
+In
+
+Muzli - Design Inspiration
+
+by
+
+Muzli
+
+Best Figma Plugins For Designers In 2025
+Designing in Figma only continues to improve — and in 2025, the perfect plugins are what tip the scales. This list, handpicked by…
+Jun 9
+180
+5
+UI Design Trends In 2025
+Muzli - Design Inspiration
+In
+
+Muzli - Design Inspiration
+
+by
+
+Souptik Debnath
+
+UI Design Trends In 2025
+Designing for 2025 isn’t just about hopping on the latest trends — it’s about creating experiences that truly matters the most. As the…
+
+Jan 20
+2.2K
+32
+Top UI/UX Trends
+Ryan Almeida
+Ryan Almeida
+
+Top UI/UX design trends to watch in 2025
+What’s next for your Figma files.
+3d ago
+97
+2
+See all from Ryan Almeida
+See all from Muzli - Design Inspiration
+Recommended from Medium
+The Portfolio Crisis of 2025: Why Case Studies No Longer Work – And What Designers Must Do Instead
+Srivats Mutalik | Freelance Product Designer
+Srivats Mutalik | Freelance Product Designer
+
+The Portfolio Crisis of 2025: Why Case Studies No Longer Work – And What Designers Must Do Instead
+Photo by Lee Campbell on Unsplash
+
+Jun 8
+642
+24
+30+ websites I swear by as a UI/UX designer (You’ll Love #7)
+Bootcamp
+In
+
+Bootcamp
+
+by
+
+Kanvimakwana
+
+30+ websites I swear by as a UI/UX designer (You’ll Love #7)
+Curated from experience, panic design sessions, late-night client calls, and those moments when inspiration just… hides.
+
+Apr 6
+443
+8
+The various settings of Liquid Glass proves the versatility of glass as a material. What actually is the accessibility issue?
+UX Collective
+In
+
+UX Collective
+
+by
+
+Darren Yeo
+
+Liquid Glass isn’t a design failure; it is Apple’s most tactile digital future yet
+Why Apple’s most polarizing visual style may actually be its most ambitious move towards better human experiences
+
+Jun 15
+508
+22
+I’ll Instantly Know You Used Chat Gpt If I See This
+Long. Sweet. Valuable.
+In
+
+Long. Sweet. Valuable.
+
+by
+
+Ossai Chinedum
+
+I’ll Instantly Know You Used Chat Gpt If I See This
+Trust me you’re not as slick as you think
+
+May 16
+12.7K
+719
+Google Stitch Apple Liquid Glass Design — Featured Image
+Generative AI
+In
+
+Generative AI
+
+by
+
+Joe Njenga
+
+I Asked Google Stitch to Design a Habits App Using Apple Liquid Glass Design (This Can’t Be Right)
+I am not a UI/UX designer; if you are one, this should be either genius or garbage. If this is what AI thinks good design looks like, we
+
+Jun 23
+138
+4
+Best Practices for Providing Actions in Data Tables
+UX World
+In
+
+UX World
+
+by
+
+Saadia Minhas
+
+Best Practices for Providing Actions in Data Tables
+When working with data tables in digital applications, it is essential to provide users with clear and efficient methods for performing…
+
+Jun 19
+252
+2
+See more recommendations
+Help
+
+Status
+
+About
+
+Careers
+
+Press
+
+Blog
+
+Privacy
+
+Rules
+
+Terms
+
+Text to speech

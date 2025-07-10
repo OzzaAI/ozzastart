@@ -25,12 +25,8 @@ const polarClient = new Polar({
 });
 
 export const auth = betterAuth({
-  trustedOrigins: [`${process.env.NEXT_PUBLIC_APP_URL}`],
-  allowedDevOrigins: [`${process.env.NEXT_PUBLIC_APP_URL}`],
-  cookieCache: {
-    enabled: true,
-    maxAge: 5 * 60, // Cache duration in seconds
-  },
+  baseURL: process.env.NEXT_PUBLIC_APP_URL,
+  secret: process.env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {
@@ -38,9 +34,12 @@ export const auth = betterAuth({
       session,
       account,
       verification,
-      subscription,
     },
   }),
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: false,
+  },
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -48,145 +47,55 @@ export const auth = betterAuth({
     },
   },
   plugins: [
-    polar({
-      client: polarClient,
-      createCustomerOnSignUp: true,
-      use: [
-        checkout({
-          products: [
-            {
-              productId:
-                process.env.NEXT_PUBLIC_STARTER_TIER ||
-                (() => {
-                  throw new Error(
-                    "NEXT_PUBLIC_STARTER_TIER environment variable is required",
-                  );
-                })(),
-              slug:
-                process.env.NEXT_PUBLIC_STARTER_SLUG ||
-                (() => {
-                  throw new Error(
-                    "NEXT_PUBLIC_STARTER_SLUG environment variable is required",
-                  );
-                })(),
-            },
-          ],
-          successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/${process.env.POLAR_SUCCESS_URL}`,
-          authenticatedUsersOnly: true,
-        }),
-        portal(),
-        usage(),
-        webhooks({
-          secret:
-            process.env.POLAR_WEBHOOK_SECRET ||
-            (() => {
-              throw new Error(
-                "POLAR_WEBHOOK_SECRET environment variable is required",
-              );
-            })(),
-          onPayload: async ({ data, type }) => {
-            if (
-              type === "subscription.created" ||
-              type === "subscription.active" ||
-              type === "subscription.canceled" ||
-              type === "subscription.revoked" ||
-              type === "subscription.uncanceled" ||
-              type === "subscription.updated"
-            ) {
-              console.log("🎯 Processing subscription webhook:", type);
-              console.log("📦 Payload data:", JSON.stringify(data, null, 2));
-
-              try {
-                // STEP 1: Extract user ID from customer data
-                const userId = data.customer?.externalId;
-                // STEP 2: Build subscription data
-                const subscriptionData = {
-                  id: data.id,
-                  createdAt: new Date(data.createdAt),
-                  modifiedAt: safeParseDate(data.modifiedAt),
-                  amount: data.amount,
-                  currency: data.currency,
-                  recurringInterval: data.recurringInterval,
-                  status: data.status,
-                  currentPeriodStart:
-                    safeParseDate(data.currentPeriodStart) || new Date(),
-                  currentPeriodEnd:
-                    safeParseDate(data.currentPeriodEnd) || new Date(),
-                  cancelAtPeriodEnd: data.cancelAtPeriodEnd || false,
-                  canceledAt: safeParseDate(data.canceledAt),
-                  startedAt: safeParseDate(data.startedAt) || new Date(),
-                  endsAt: safeParseDate(data.endsAt),
-                  endedAt: safeParseDate(data.endedAt),
-                  customerId: data.customerId,
-                  productId: data.productId,
-                  discountId: data.discountId || null,
-                  checkoutId: data.checkoutId || "",
-                  customerCancellationReason:
-                    data.customerCancellationReason || null,
-                  customerCancellationComment:
-                    data.customerCancellationComment || null,
-                  metadata: data.metadata
-                    ? JSON.stringify(data.metadata)
-                    : null,
-                  customFieldData: data.customFieldData
-                    ? JSON.stringify(data.customFieldData)
-                    : null,
-                  userId: userId as string | null,
-                };
-
-                console.log("💾 Final subscription data:", {
-                  id: subscriptionData.id,
-                  status: subscriptionData.status,
-                  userId: subscriptionData.userId,
-                  amount: subscriptionData.amount,
-                });
-
-                // STEP 3: Use Drizzle's onConflictDoUpdate for proper upsert
-                await db
-                  .insert(subscription)
-                  .values(subscriptionData)
-                  .onConflictDoUpdate({
-                    target: subscription.id,
-                    set: {
-                      modifiedAt: subscriptionData.modifiedAt || new Date(),
-                      amount: subscriptionData.amount,
-                      currency: subscriptionData.currency,
-                      recurringInterval: subscriptionData.recurringInterval,
-                      status: subscriptionData.status,
-                      currentPeriodStart: subscriptionData.currentPeriodStart,
-                      currentPeriodEnd: subscriptionData.currentPeriodEnd,
-                      cancelAtPeriodEnd: subscriptionData.cancelAtPeriodEnd,
-                      canceledAt: subscriptionData.canceledAt,
-                      startedAt: subscriptionData.startedAt,
-                      endsAt: subscriptionData.endsAt,
-                      endedAt: subscriptionData.endedAt,
-                      customerId: subscriptionData.customerId,
-                      productId: subscriptionData.productId,
-                      discountId: subscriptionData.discountId,
-                      checkoutId: subscriptionData.checkoutId,
-                      customerCancellationReason:
-                        subscriptionData.customerCancellationReason,
-                      customerCancellationComment:
-                        subscriptionData.customerCancellationComment,
-                      metadata: subscriptionData.metadata,
-                      customFieldData: subscriptionData.customFieldData,
-                      userId: subscriptionData.userId,
-                    },
-                  });
-
-                console.log("✅ Upserted subscription:", data.id);
-              } catch (error) {
-                console.error(
-                  "💥 Error processing subscription webhook:",
-                  error,
-                );
-                // Don't throw - let webhook succeed to avoid retries
-              }
-            }
-          },
-        }),
-      ],
-    }),
     nextCookies(),
   ],
+  callbacks: {
+    session: ({ session, user }) => ({
+      ...session,
+      user: {
+        ...session.user,
+        role: user.role,
+      },
+    }),
+    signIn: async ({ user, account, profile, isNewUser, url }) => {
+      console.log('signIn callback triggered');
+      if (account?.provider === "google") {
+        console.log('Google provider detected');
+        const inviteToken = url.searchParams.get('invite');
+        const inviteEmail = url.searchParams.get('email');
+        console.log(`Invite Token: ${inviteToken}, Invite Email: ${inviteEmail}`);
+
+        if (inviteToken && inviteEmail) {
+          // Verify the invite token server-side
+          const verifyResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/verify-invite?token=${inviteToken}&email=${encodeURIComponent(inviteEmail)}`);
+          const verifyData = await verifyResponse.json();
+          console.log('Verify Invite Response:', verifyData);
+
+          if (verifyData.valid && verifyData.role === 'coach') {
+            console.log('Invite token valid and role is coach. Updating user role...');
+            // Update user role to coach
+            await db.update(user).set({ role: 'coach' }).where(eq(user.id, user.id));
+            console.log('User role updated to coach.');
+            // Mark invite as used (if you have such an API)
+            // await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/mark-invite-used`, { method: 'POST', body: JSON.stringify({ token: inviteToken }) });
+          } else {
+            console.log('Invite token not valid or role is not coach.');
+          }
+        } else {
+          console.log('No invite token or email found in URL.');
+        }
+      }
+      return true;
+    },
+    profile: async (profile, account) => {
+      console.log('Profile callback triggered');
+      if (account?.provider === "google") {
+        console.log('Google provider detected in profile callback');
+        // The profile object contains data from Google. We can't directly access the URL here.
+        // This callback is more for transforming the profile data before it's saved.
+        // We'll need to rely on the signIn callback for the invite token.
+      }
+      return profile;
+    },
+  },
 });

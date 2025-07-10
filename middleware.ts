@@ -10,17 +10,26 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (sessionCookie && ["/sign-in", "/sign-up"].includes(pathname)) {
+  // Redirect old sign-in paths to new login paths
+  if (pathname === "/sign-in") {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  if (pathname === "/sign-up") {
+    return NextResponse.redirect(new URL("/signup", request.url));
+  }
+
+  if (sessionCookie && ["/login", "/signup"].includes(pathname)) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  if (!sessionCookie && pathname.startsWith("/dashboard")) {
-    return NextResponse.redirect(new URL("/sign-in", request.url));
+  if (!sessionCookie && (pathname.startsWith("/dashboard") || pathname.startsWith("/admin") || pathname.startsWith("/dashboard/agency") || pathname.startsWith("/dashboard/client"))) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/sign-in", "/sign-up"],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/dashboard/agency/:path*", "/dashboard/client/:path*", "/sign-in", "/sign-up", "/login", "/signup"],
 };

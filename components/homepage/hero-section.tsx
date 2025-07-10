@@ -1,55 +1,93 @@
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
 import Link from "next/link";
+import { Bot, Sparkles, MessageCircle, BarChart3 } from "lucide-react";
 
 export default function HeroSection() {
   return (
-    <section className="py-20">
-      <div className="relative z-10 mx-auto w-full max-w-2xl px-6 lg:px-0">
-        <div className="relative text-center">
-          <p className="text-3xl">🔥</p>
-          <h1 className="mx-auto mt-12 max-w-xl text-balance text-5xl font-medium">
-            Nextjs Starter Kit
-          </h1>
-          <p className="text-muted-foreground mx-auto mb-6 mt-4 text-balance text-xl">
-            This powerful starter kit is designed to help you launch your SAAS
-            application quickly and efficiently.
-          </p>
-          <div className="flex flex-col items-center gap-2 *:w-full sm:flex-row sm:justify-center sm:*:w-auto">
-            <Button asChild variant="default" size="sm">
-              <Link href="/dashboard" prefetch={true}>
-                <span className="text-nowrap">Get Started</span>
+    <section className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Background Effects */}
+      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
+      
+      <div className="relative z-10 mx-auto w-full max-w-6xl px-6 lg:px-8">
+        <div className="text-center space-y-12">
+          {/* Main Hero */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-center mb-8">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                <Sparkles className="w-10 h-10 text-white" />
+              </div>
+            </div>
+            
+            <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-bold tracking-tight bg-gradient-to-r from-white via-blue-200 to-purple-200 bg-clip-text text-transparent animate-in fade-in-0 slide-in-from-bottom-4 duration-1000">
+              Ozza
+            </h1>
+            
+            <p className="text-xl sm:text-2xl md:text-3xl text-gray-300 max-w-4xl mx-auto leading-relaxed animate-in fade-in-0 slide-in-from-bottom-4 duration-1000 delay-200">
+              Your AI-powered business intelligence workspace.
+              <br />
+              <span className="text-lg text-gray-400">Conversation beats navigation.</span>
+            </p>
+          </div>
+
+          {/* Features Preview */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto animate-in fade-in-0 slide-in-from-bottom-4 duration-1000 delay-400">
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 text-center">
+              <MessageCircle className="w-8 h-8 text-blue-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-white mb-2">Chat-First Interface</h3>
+              <p className="text-gray-400 text-sm">Ask questions, get insights. No more clicking through dashboards.</p>
+            </div>
+            
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 text-center">
+              <BarChart3 className="w-8 h-8 text-purple-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-white mb-2">Business Intelligence</h3>
+              <p className="text-gray-400 text-sm">AI analyzes your data and provides actionable insights.</p>
+            </div>
+            
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 text-center">
+              <Bot className="w-8 h-8 text-green-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-white mb-2">AI Assistant</h3>
+              <p className="text-gray-400 text-sm">Your personal business analyst, available 24/7.</p>
+            </div>
+          </div>
+          
+          {/* CTA */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-in fade-in-0 slide-in-from-bottom-4 duration-1000 delay-600">
+            <Button asChild size="lg" className="w-full sm:w-auto group transition-all duration-300 hover:scale-105 hover:shadow-lg bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0">
+              <Link href="/auth/signin" prefetch={true}>
+                <MessageCircle className="w-5 h-5 mr-2" />
+                <span className="text-nowrap font-medium">Start Chatting</span>
               </Link>
             </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link
-                href="https://github.com/michaelshimeles/nextjs-starter-kit"
-                target="_blank"
-                rel="noreferrer"
-              >
-                <span className="text-nowrap">Github</span>
+            
+            <Button asChild variant="outline" size="lg" className="w-full sm:w-auto group transition-all duration-300 hover:scale-105 hover:shadow-lg border-white/20 text-white hover:bg-white/10">
+              <Link href="/console" prefetch={true}>
+                <span className="text-nowrap font-medium">Management Console</span>
               </Link>
             </Button>
           </div>
-        </div>
-
-        <div className="relative mt-8 overflow-hidden rounded-3xl bg-black/10">
-          <Image
-            src="https://images.unsplash.com/photo-1547623641-d2c56c03e2a7?q=80&w=3087&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-            alt=""
-            className="absolute inset-0 size-full object-cover"
-            width={1920}
-            height={1080}
-          />
-
-          <div className="bg-background rounded-(--radius) relative m-4 overflow-hidden border border-transparent shadow-xl shadow-black/15 ring-1 ring-black/10 sm:m-8 md:m-12">
-            <Image
-              src="https://jdj14ctwppwprnqu.public.blob.vercel-storage.com/GsZRNq5WsAAMbrG-H9YrPK4HJnXSQV692jECFST4zyYpva.jpg"
-              alt="app screen"
-              width="2880"
-              height="1842"
-              className="object-top-left size-full object-cover"
-            />
+          
+          {/* Demo Preview */}
+          <div className="mt-16 animate-in fade-in-0 slide-in-from-bottom-4 duration-1000 delay-800">
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 max-w-2xl mx-auto">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                  <Bot className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-sm text-gray-400">Ozza AI</span>
+              </div>
+              <div className="text-left text-gray-300 space-y-2">
+                <p>"How are my projects performing this month?"</p>
+                <div className="text-sm text-gray-500 italic">
+                  → AI analyzes your data and shows: 85% completion rate, 3 overdue projects, $45K revenue...
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="text-center animate-in fade-in-0 slide-in-from-bottom-4 duration-1000 delay-1000">
+            <p className="text-sm text-gray-500">
+              The future of business management is conversational.
+            </p>
           </div>
         </div>
       </div>
