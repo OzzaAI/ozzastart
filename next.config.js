@@ -9,10 +9,12 @@ try {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Server external packages (moved from experimental)
+  serverExternalPackages: ['@axe-core/react', 'drizzle-orm', 'openai'],
+
   // Enable experimental features for better accessibility and i18n
   experimental: {
-    // Enable server components for better performance
-    serverExternalPackages: ['@axe-core/react'],
+    // Reserved for experimental features
   },
 
   // Security headers for accessibility and general security
@@ -172,24 +174,24 @@ const nextConfig = {
   },
 
   // Webpack configuration for accessibility tools
-  webpack: (config, { dev, isServer }) => {
-    // Add axe-core in development for accessibility testing
-    if (dev && !isServer) {
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        '@axe-core/react': require.resolve('@axe-core/react'),
-      }
-    }
-
-    // Optimize bundle for accessibility libraries
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-      path: false,
-    }
-
-    return config
-  },
+  // webpack: (config, { dev, isServer }) => {
+  //   // Add axe-core in development for accessibility testing
+  //   if (dev && !isServer) {
+  //     config.resolve.alias = {
+  //       ...config.resolve.alias,
+  //       '@axe-core/react': require.resolve('@axe-core/react'),
+  //     }
+  //   }
+  //
+  //   // Optimize bundle for accessibility libraries
+  //   config.resolve.fallback = {
+  //     ...config.resolve.fallback,
+  //     fs: false,
+  //     path: false,
+  //   }
+  //
+  //   return config
+  // },
 
   // Environment variables for accessibility and i18n
   env: {
