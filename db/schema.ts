@@ -464,7 +464,7 @@ export const chat_sessions = pgTable("chat_sessions", {
   updatedAtIdx: index("chat_sessions_updated_at_idx").on(table.updatedAt),
 }));
 
-// User Settings Table
+// User Settings Table with 2FA Support
 export const user_settings = pgTable("user_settings", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: text("userId").notNull().unique().references(() => user.id, { onDelete: "cascade" }),
@@ -472,11 +472,20 @@ export const user_settings = pgTable("user_settings", {
   preferences: jsonb("preferences").default('{}'), // User preferences
   apiKeys: jsonb("apiKeys").default('{}'), // Encrypted API keys
   integrations: jsonb("integrations").default('{}'), // Third-party integrations
+  
+  // 2FA and Security Fields
+  twoFactorEnabled: boolean("twoFactorEnabled").notNull().default(false),
+  otpSecret: text("otpSecret"), // Encrypted TOTP secret
+  backupCodes: jsonb("backupCodes").default('[]'), // Array of encrypted backup codes
+  lastSecurityAudit: timestamp("lastSecurityAudit"),
+  securityLevel: text("securityLevel").notNull().default('basic'), // basic, standard, high
+  
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 }, (table) => ({
   userIdx: index("user_settings_user_idx").on(table.userId),
   updatedAtIdx: index("user_settings_updated_at_idx").on(table.updatedAt),
+  twoFactorIdx: index("user_settings_2fa_idx").on(table.twoFactorEnabled),
 }));
 
 // Shares Table for Viral Tracking
@@ -492,5 +501,58 @@ export const shares = pgTable("shares", {
   agentIdx: index("shares_agent_idx").on(table.agentId),
   platformIdx: index("shares_platform_idx").on(table.platform),
   createdAtIdx: index("shares_created_at_idx").on(table.createdAt),
+}));
+
+// Security Tables
+
+// Security Events for Audit Logging
+export const security_events = pgTable("security_events", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("userId").notNull().references(() => user.id, { onDelete: "cascade" }),
+  eventType: text("eventType").notNull(), // login, logout, 2fa_enabled, password_change, etc.
+  eventDetails: jsonb("eventDetails").notNull().default('{}'),
+  ipAddress: text("ipAddress"),
+  userAgent: text("userAgent"),
+  severity: text("severity").notNull().default('info'), // info, warning, critical
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+}, (table) => ({
+  userIdx: index("security_events_user_idx").on(table.userId),
+  typeIdx: index("security_events_type_idx").on(table.eventType),
+  severityIdx: index("security_events_severity_idx").on(table.severity),
+  createdAtIdx: index("security_events_created_at_idx").on(table.createdAt),
+}));
+
+// API Keys for Proper Management
+export const api_keys = pgTable("api_keys", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("userId").notNull().references(() => user.id, { onDelete: "cascade" }),
+  keyName: text("keyName").notNull(),
+  keyHash: text("keyHash").notNull(), // Hashed API key
+  keyPrefix: text("keyPrefix").notNull(), // First 8 chars for identification
+  permissions: jsonb("permissions").notNull().default('[]'), // Array of permissions
+  isActive: boolean("isActive").notNull().default(true),
+  lastUsed: timestamp("lastUsed"),
+  expiresAt: timestamp("expiresAt"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+}, (table) => ({
+  userIdx: index("api_keys_user_idx").on(table.userId),
+  hashIdx: index("api_keys_hash_idx").on(table.keyHash),
+  prefixIdx: index("api_keys_prefix_idx").on(table.keyPrefix),
+  activeIdx: index("api_keys_active_idx").on(table.isActive),
+}));
+
+// Login Attempts for Brute Force Protection
+export const login_attempts = pgTable("login_attempts", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  identifier: text("identifier").notNull(), // email or username
+  ipAddress: text("ipAddress").notNull(),
+  success: boolean("success").notNull().default(false),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+}, (table) => ({
+  identifierIdx: index("login_attempts_identifier_idx").on(table.identifier),
+  ipIdx: index("login_attempts_ip_idx").on(table.ipAddress),
+  createdAtIdx: index("login_attempts_created_at_idx").on(table.createdAt),
+  successIdx: index("login_attempts_success_idx").on(table.success),
 }));
 

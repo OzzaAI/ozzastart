@@ -383,3 +383,108 @@ export async function generateUsageInvoice(userId: string, planId: string = "fre
     lineItems,
   };
 }
+
+// Grok Heavy Tier Access Functions
+export async function hasGrokHeavyTierAccess(): Promise<boolean> {
+  try {
+    const result = await getSubscriptionDetails();
+    
+    // Check if user has active Grok Heavy subscription
+    if (result.hasSubscription && 
+        result.subscription?.status === "active" && 
+        result.subscription?.productId === "grok_heavy") {
+      return true;
+    }
+    
+    // Also check for enterprise tier as it includes Heavy features
+    if (result.hasSubscription && 
+        result.subscription?.status === "active" && 
+        result.subscription?.productId === "enterprise") {
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error("Error checking Grok Heavy tier access:", error);
+    return false;
+  }
+}
+
+export async function getGrokTierInfo(): Promise<{
+  tier: "free" | "pro" | "enterprise" | "grok_heavy";
+  hasHeavyAccess: boolean;
+  multiAgentEnabled: boolean;
+  contextLimit: string;
+  parallelProcessing: boolean;
+}> {
+  try {
+    const result = await getSubscriptionDetails();
+    
+    if (!result.hasSubscription || result.subscription?.status !== "active") {
+      return {
+        tier: "free",
+        hasHeavyAccess: false,
+        multiAgentEnabled: false,
+        contextLimit: "32K tokens",
+        parallelProcessing: false,
+      };
+    }
+    
+    const productId = result.subscription.productId;
+    const isHeavyTier = productId === "grok_heavy" || productId === "enterprise";
+    
+    return {
+      tier: productId as "free" | "pro" | "enterprise" | "grok_heavy",
+      hasHeavyAccess: isHeavyTier,
+      multiAgentEnabled: isHeavyTier,
+      contextLimit: isHeavyTier ? "256K tokens" : "32K tokens",
+      parallelProcessing: isHeavyTier,
+    };
+  } catch (error) {
+    console.error("Error getting Grok tier info:", error);
+    return {
+      tier: "free",
+      hasHeavyAccess: false,
+      multiAgentEnabled: false,
+      contextLimit: "32K tokens",
+      parallelProcessing: false,
+    };
+  }
+}
+
+export async function checkGrokModelCompatibility(modelId: string): Promise<{
+  compatible: boolean;
+  requiredTier?: string;
+  message: string;
+}> {
+  const tierInfo = await getGrokTierInfo();
+  
+  // Grok 4 requires Heavy tier for full features
+  if (modelId === 'grok-4-0709') {
+    if (tierInfo.hasHeavyAccess) {
+      return {
+        compatible: true,
+        message: "Grok 4 fully supported with Heavy tier access"
+      };
+    } else {
+      return {
+        compatible: false,
+        requiredTier: "grok_heavy",
+        message: "Grok 4 requires Heavy tier subscription for multi-agent features"
+      };
+    }
+  }
+  
+  // Legacy models work with any tier
+  if (modelId === 'grok-beta') {
+    return {
+      compatible: true,
+      message: "Grok Beta supported on all tiers"
+    };
+  }
+  
+  return {
+    compatible: false,
+    message: `Unknown model: ${modelId}`
+  };
+}
