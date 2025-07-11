@@ -480,12 +480,53 @@ export const user_settings = pgTable("user_settings", {
   lastSecurityAudit: timestamp("lastSecurityAudit"),
   securityLevel: text("securityLevel").notNull().default('basic'), // basic, standard, high
   
+  // Onboarding
+  hasCompletedOnboarding: boolean("hasCompletedOnboarding").notNull().default(false),
+  onboardingStep: integer("onboardingStep").default(0),
+  
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 }, (table) => ({
   userIdx: index("user_settings_user_idx").on(table.userId),
   updatedAtIdx: index("user_settings_updated_at_idx").on(table.updatedAt),
   twoFactorIdx: index("user_settings_2fa_idx").on(table.twoFactorEnabled),
+}));
+
+// Branding Table for White-Label Support
+export const branding = pgTable("branding", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("userId").notNull().unique().references(() => user.id, { onDelete: "cascade" }),
+  logoUrl: text("logoUrl"),
+  primaryColor: text("primaryColor").default('#3b82f6'), // Default blue
+  secondaryColor: text("secondaryColor").default('#1e40af'),
+  accentColor: text("accentColor").default('#06b6d4'),
+  isWhiteLabelEnabled: boolean("isWhiteLabelEnabled").notNull().default(false),
+  customDomain: text("customDomain"),
+  brandName: text("brandName"),
+  favicon: text("favicon"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+}, (table) => ({
+  userIdx: index("branding_user_idx").on(table.userId),
+  whiteLabelIdx: index("branding_white_label_idx").on(table.isWhiteLabelEnabled),
+}));
+
+// Integrations Table for API Keys and Webhooks
+export const integrations = pgTable("integrations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("userId").notNull().references(() => user.id, { onDelete: "cascade" }),
+  apiKey: text("apiKey").notNull().unique(),
+  webhookUrl: text("webhookUrl"),
+  enabledEvents: jsonb("enabledEvents").default('[]'), // Array of event types
+  webhookSecret: text("webhookSecret"), // For webhook verification
+  isActive: boolean("isActive").notNull().default(true),
+  lastUsed: timestamp("lastUsed"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+}, (table) => ({
+  userIdx: index("integrations_user_idx").on(table.userId),
+  apiKeyIdx: index("integrations_api_key_idx").on(table.apiKey),
+  activeIdx: index("integrations_active_idx").on(table.isActive),
 }));
 
 // Shares Table for Viral Tracking

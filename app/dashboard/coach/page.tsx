@@ -265,7 +265,9 @@ export default function CoachDashboard() {
       />
 
       {/* Welcome Message */}
-      <WelcomeMessage userName={coachData.user?.name || 'User'} revenue={coachData.revenue} />
+      <div data-tour="dashboard-overview">
+        <WelcomeMessage userName={coachData.user?.name || 'User'} revenue={coachData.revenue} />
+      </div>
 
       {/* Setup Progress - Takes Priority Unless Completed */}
       <div className="mb-8">
@@ -273,7 +275,7 @@ export default function CoachDashboard() {
       </div>
 
       {/* Primary Income Section with Your Beautiful Graph Component */}
-      <div className="mb-8">
+      <div className="mb-8" data-tour="upload">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-white flex items-center gap-2">
             <DollarSign className="w-6 h-6 text-teal-400" />
@@ -298,15 +300,19 @@ export default function CoachDashboard() {
       </div>
 
       {/* ROI Tracker - AI Performance & Analytics */}
-      <ROITracker coachMode={coachMode} />
+      <div data-tour="chat">
+        <ROITracker coachMode={coachMode} />
+      </div>
 
       {/* Coach Dashboard - Only visible when coach mode is enabled */}
-      <CoachMetrics coachMode={coachMode} />
+      <div data-tour="coach-metrics">
+        <CoachMetrics coachMode={coachMode} />
+      </div>
 
       {/* Snapshots with Action Items */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Community Analytics Snapshot */}
-        <div className="bg-gradient-to-br from-white/3 via-white/1 to-white/2 backdrop-blur-xl border border-white/8 rounded-xl p-6">
+        <div className="bg-gradient-to-br from-white/3 via-white/1 to-white/2 backdrop-blur-xl border border-white/8 rounded-xl p-6" data-tour="client-management">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-teal-400" />

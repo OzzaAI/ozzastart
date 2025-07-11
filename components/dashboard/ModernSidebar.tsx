@@ -126,6 +126,17 @@ const navigationItems: NavItem[] = [
     ]
   },
   {
+    label: 'Branding',
+    href: '/dashboard/branding',
+    icon: Zap,
+    isNew: true
+  },
+  {
+    label: 'Integrations',
+    href: '/dashboard/integrations',
+    icon: Settings
+  },
+  {
     label: 'Guidance',
     href: '/dashboard/coach/guidance',
     icon: BookOpen,
@@ -275,17 +286,26 @@ export default function ModernSidebar({
           <div className="flex grow flex-col overflow-y-auto glass-scroll-custom">
             <div className="flex h-full flex-col justify-between">
               {/* Navigation */}
-              <nav className="flex flex-col gap-0.5 p-4">
+              <nav className="flex flex-col gap-0.5 p-4" data-tour="navigation">
                 {navigationItems.map((item) => {
                   const isActive = pathname === item.href || 
                                  (item.href !== '/dashboard' && pathname.startsWith(item.href));
                   const isExpanded = expandedSections[item.href] || false;
+                  
+                  // Add tour attributes for specific items
+                  const getTourAttribute = (href: string) => {
+                    if (href.includes('/chat')) return 'chat';
+                    if (href.includes('/upload')) return 'upload';
+                    if (href.includes('/settings')) return 'settings';
+                    return undefined;
+                  };
                   
                   return (
                     <div key={item.href}>
                       <Link
                         href={item.href}
                         onClick={() => setIsMobileMenuOpen?.(false)}
+                        data-tour={getTourAttribute(item.href)}
                         className={`group flex items-center gap-2.5 rounded-lg px-2 text-sm font-semibold ${
                           isActive 
                             ? 'text-white bg-white/15 hover:bg-white/20 backdrop-blur-sm' 
@@ -321,6 +341,7 @@ export default function ModernSidebar({
                                 key={child.href}
                                 href={child.href}
                                 onClick={() => setIsMobileMenuOpen?.(false)}
+                                data-tour={getTourAttribute(child.href)}
                                 className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium ${
                                   isChildActive 
                                     ? 'text-white bg-white/10' 
@@ -366,7 +387,7 @@ export default function ModernSidebar({
 
           {/* Sidebar Footer */}
           {user && (
-            <div className="flex flex-none items-center border-t border-white/10 p-4">
+            <div className="flex flex-none items-center border-t border-white/10 p-4" data-tour="user-menu">
               {/* User Dropdown */}
               <div className="relative w-full">
                 {/* Dropdown Toggle Button */}

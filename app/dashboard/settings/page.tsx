@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { DeleteAccountButton } from "@/components/settings/delete-account-button";
+import Link from "next/link";
 import { 
   Palette, 
   Save, 
@@ -15,7 +16,11 @@ import {
   DollarSign,
   AlertTriangle,
   UserCheck,
-  Shield
+  Shield,
+  Zap,
+  Key,
+  Webhook,
+  Paintbrush
 } from "lucide-react";
 
 interface WhiteLabelConfig {
@@ -435,6 +440,90 @@ export default function SettingsPage() {
             <button className="text-teal-300 hover:text-teal-200 text-sm font-medium flex items-center gap-1">
               Save Settings <ArrowRight className="w-3 h-3" />
             </button>
+          </div>
+        </div>
+
+        {/* Advanced Features */}
+        <div className="bg-gradient-to-br from-white/3 via-white/1 to-white/2 backdrop-blur-xl border border-white/8 rounded-xl p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Zap className="w-5 h-5 text-teal-400" />
+              Advanced Features
+            </h3>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Branding */}
+            <Link href="/dashboard/branding" className="group">
+              <div className="bg-white/5 rounded-lg p-4 border border-white/10 hover:border-teal-400/30 hover:bg-white/10 transition-all duration-300">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-lg">
+                    <Paintbrush className="w-5 h-5 text-purple-300" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-white">Custom Branding</h4>
+                    <p className="text-sm text-gray-400">White-label customization</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mb-3">
+                  Upload your logo, customize colors, and enable white-label mode for your brand.
+                </p>
+                <div className="flex items-center text-teal-300 text-sm font-medium group-hover:text-teal-200">
+                  Customize Branding <ArrowRight className="w-3 h-3 ml-1 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </Link>
+
+            {/* Integrations */}
+            <Link href="/dashboard/integrations" className="group">
+              <div className="bg-white/5 rounded-lg p-4 border border-white/10 hover:border-teal-400/30 hover:bg-white/10 transition-all duration-300">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-lg">
+                    <Key className="w-5 h-5 text-blue-300" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-white">Integrations & API</h4>
+                    <p className="text-sm text-gray-400">Connect external tools</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mb-3">
+                  Generate API keys, set up webhooks, and connect with Zapier, Slack, and more.
+                </p>
+                <div className="flex items-center text-teal-300 text-sm font-medium group-hover:text-teal-200">
+                  Manage Integrations <ArrowRight className="w-3 h-3 ml-1 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </Link>
+          </div>
+
+          {/* Onboarding Tour */}
+          <div className="mt-4 bg-white/5 rounded-lg p-4 border border-white/10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg">
+                  <UserCheck className="w-5 h-5 text-green-300" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-white">Onboarding Tour</h4>
+                  <p className="text-sm text-gray-400">Retake the guided tour</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  // Reset onboarding status to trigger tour
+                  fetch('/api/onboarding/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ completed: false, step: 0 })
+                  }).then(() => {
+                    window.location.href = '/dashboard';
+                  });
+                }}
+                className="text-teal-300 hover:text-teal-200 text-sm font-medium flex items-center gap-1"
+              >
+                Start Tour <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
           </div>
         </div>
 

@@ -4,12 +4,18 @@ import { ReactNode, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import Tour from "@/components/onboarding/Tour";
 
 interface User {
   id: string;
   name: string;
   email: string;
   role: string;
+}
+
+interface OnboardingStatus {
+  hasCompletedOnboarding: boolean;
+  onboardingStep: number;
 }
 
 export default function RootDashboardLayout({
@@ -19,6 +25,11 @@ export default function RootDashboardLayout({
 }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>({
+    hasCompletedOnboarding: false,
+    onboardingStep: 0
+  });
+  const [showTour, setShowTour] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -70,6 +81,9 @@ export default function RootDashboardLayout({
         
         console.log('Extracted user data:', { id: finalId, name: finalName, email: finalEmail, role: finalRole });
         
+        // Check onboarding status
+        await checkOnboardingStatus();
+        
       } catch (error) {
         console.error('Auth check failed:', error);
         router.push('/login');
@@ -80,6 +94,58 @@ export default function RootDashboardLayout({
 
     checkAuth();
   }, [router]);
+
+  const checkOnboardingStatus = async () => {
+    try {
+      const response = await fetch('/api/onboarding/complete');
+      if (response.ok) {
+        const status = await response.json();
+        setOnboardingStatus(status);
+        
+        // Show tour if user hasn't completed onboarding and is on dashboard
+        if (!status.hasCompletedOnboarding && pathname === '/dashboard') {
+          // Delay to ensure DOM elements are rendered
+          setTimeout(() => setShowTour(true), 1000);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking onboarding status:', error);
+    }
+  };
+
+  const handleTourComplete = async () => {
+    try {
+      await fetch('/api/onboarding/complete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ completed: true, step: 0 }),
+      });
+      
+      setOnboardingStatus(prev => ({ ...prev, hasCompletedOnboarding: true }));
+      setShowTour(false);
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+    }
+  };
+
+  const handleTourSkip = async () => {
+    try {
+      await fetch('/api/onboarding/complete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ completed: true, step: -1 }),
+      });
+      
+      setOnboardingStatus(prev => ({ ...prev, hasCompletedOnboarding: true }));
+      setShowTour(false);
+    } catch (error) {
+      console.error('Error skipping onboarding:', error);
+    }
+  };
 
   const handleLogout = async () => {
     await authClient.signOut();
@@ -100,27 +166,37 @@ export default function RootDashboardLayout({
 
   // Use new Tailkit layout for all dashboard pages
   return (
-    <DashboardLayout
-      user={{
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        plan: 'Pro'
-      }}
-      onLogout={handleLogout}
-      showOnboarding={user.role === 'coach'}
-      notifications={[
-        {
-          id: '1',
-          type: 'system',
-          title: 'Welcome to your dashboard',
-          description: 'Your account has been set up successfully',
-          timestamp: '2 hours ago',
-          isRead: false
-        }
-      ]}
-    >
-      {children}
-    </DashboardLayout>
+    <>
+      <DashboardLayout
+        user={{
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          plan: 'Pro'
+        }}
+        onLogout={handleLogout}
+        showOnboarding={user.role === 'coach'}
+        notifications={[
+          {
+            id: '1',
+            type: 'system',
+            title: 'Welcome to your dashboard',
+            description: 'Your account has been set up successfully',
+            timestamp: '2 hours ago',
+            isRead: false
+          }
+        ]}
+      >
+        {children}
+      </DashboardLayout>
+      
+      {/* Onboarding Tour */}
+      <Tour
+        isOpen={showTour}
+        onComplete={handleTourComplete}
+        onSkip={handleTourSkip}
+        userRole={user.role}
+      />
+    </>
   );
 }

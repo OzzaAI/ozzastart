@@ -15,6 +15,13 @@
       "when": 1751056610754,
       "tag": "0001_reflective_fenris",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1752210108580,
+      "tag": "0002_narrow_lady_bullseye",
+      "breakpoints": true
     }
   ]
 }

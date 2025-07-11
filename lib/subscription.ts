@@ -147,6 +147,8 @@ export async function getUserSubscriptionStatus(): Promise<"active" | "canceled"
   return "none";
 }
 
+export const getSubscriptionStatus = getUserSubscriptionStatus;
+
 // Usage-based billing types
 export type UsageRecord = {
   userId: string;
