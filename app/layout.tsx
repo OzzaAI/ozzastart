@@ -1,14 +1,7 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
 import { Toaster } from 'sonner'
 import './globals.css'
-
-const inter = Inter({ 
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-inter',
-})
 
 export const metadata: Metadata = {
   title: {
@@ -70,12 +63,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html 
       lang="en" 
-      className={inter.variable}
+      className="font-sans"
       suppressHydrationWarning
     >
       <head>
         {/* Preload critical resources */}
-        <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         
         {/* Accessibility meta tags */}
         <meta name="color-scheme" content="light dark" />
@@ -91,19 +83,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
         {/* Preconnect to external domains */}
         <link rel="preconnect" href="https://api.x.ai" />
         <link rel="preconnect" href="https://api.openai.com" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body 
-        className={`
-          ${inter.className} 
-          min-h-screen 
-          bg-background 
-          font-sans 
-          antialiased
-          selection:bg-primary/20
-          selection:text-primary-foreground
-        `}
+        className="min-h-screen bg-background font-sans antialiased selection:bg-primary/20 selection:text-primary-foreground"
         suppressHydrationWarning
       >
         <ThemeProvider

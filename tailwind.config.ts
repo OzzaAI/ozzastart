@@ -16,7 +16,21 @@ const config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Inter", ...defaultTheme.fontFamily.sans],
+        sans: [
+          "ui-sans-serif", 
+          "system-ui", 
+          "-apple-system", 
+          "BlinkMacSystemFont", 
+          "Segoe UI", 
+          "Roboto", 
+          "Helvetica Neue", 
+          "Arial", 
+          "sans-serif", 
+          "Apple Color Emoji", 
+          "Segoe UI Emoji", 
+          "Segoe UI Symbol", 
+          "Noto Color Emoji"
+        ],
       },
       maxWidth: {
         "8xl": "90rem",

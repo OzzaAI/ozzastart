@@ -23,7 +23,11 @@
       "Bash(true)",
       "Bash(git checkout:*)",
       "Bash(cp:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(ss:*)",
+      "Bash(timeout:*)",
+      "WebFetch(domain:fonts.google.com)"
     ],
     "deny": []
   }
