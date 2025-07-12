@@ -27,7 +27,8 @@
       "Bash(mv:*)",
       "Bash(ss:*)",
       "Bash(timeout:*)",
-      "WebFetch(domain:fonts.google.com)"
+      "WebFetch(domain:fonts.google.com)",
+      "Bash(cat:*)"
     ],
     "deny": []
   }

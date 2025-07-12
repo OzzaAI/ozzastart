@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { ThemeProvider } from 'next-themes'
 import { Toaster } from 'sonner'
-import './globals.css'
+import './test.css'
 
 export const metadata: Metadata = {
   title: {

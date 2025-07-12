@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+/* Test CSS */
+.test-red {
+  background-color: red;
+  color: white;
+  padding: 1rem;
+}
+
+/* This should generate Tailwind utilities */
