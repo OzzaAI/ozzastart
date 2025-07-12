@@ -1,8 +1,6 @@
-/* Temporarily disabled to test build without Tailwind v4/LightningCSS
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-*/
 
 /* CSS Custom Properties for theming and accessibility */
 @layer base {
