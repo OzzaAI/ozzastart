@@ -31,8 +31,8 @@ import CombinedRevenueCard from '@/components/analytics/CombinedRevenueCard';
 import MiniTopNav from '@/components/dashboard/MiniTopNav';
 import AIHelper from '@/components/dashboard/AIHelper';
 import SetupGuidance from '@/components/dashboard/SetupGuidance';
-import ROITracker from '@/app/dashboard/_components/roi-tracker';
-import CoachMetrics from '@/app/dashboard/_components/coach-metrics';
+import ROITracker from '@/app/[locale]/dashboard/_components/roi-tracker';
+import CoachMetrics from '@/app/[locale]/dashboard/_components/coach-metrics';
 
 interface SetupStep {
   id: string;

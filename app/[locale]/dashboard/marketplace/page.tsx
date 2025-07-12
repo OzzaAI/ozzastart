@@ -22,7 +22,7 @@ import {
   Settings,
   Plus
 } from "lucide-react";
-import ViralShare from "@/app/dashboard/_components/viral-share";
+import ViralShare from "@/app/[locale]/dashboard/_components/viral-share";
 
 interface Agent {
   id: string;
