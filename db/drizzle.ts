@@ -1,6 +1,6 @@
 import { config } from "dotenv";
 import { drizzle } from 'drizzle-orm/neon-http';
-import { neonConfig } from '@neondatabase/serverless';
+import { neon } from '@neondatabase/serverless';
 import * as schema from "./schema";
 import * as aiWorkspaceSchema from "./ai-workspace-schema";
 
@@ -12,8 +12,8 @@ if (!databaseUrl) {
   throw new Error('DATABASE_URL is not set');
 }
 
-// Configure Neon for better connection handling
-neonConfig.fetchConnectionCache = true;
+// Create explicit Neon connection to fix connection issues
+const sql = neon(databaseUrl);
 
 // Combine all schemas
 const combinedSchema = {
@@ -21,7 +21,11 @@ const combinedSchema = {
   ...aiWorkspaceSchema,
 };
 
-export const db = drizzle(databaseUrl, { schema: combinedSchema });
+// Use explicit Neon client instead of serverless to fix transaction/connection issues
+export const db = drizzle(sql, { 
+  schema: combinedSchema,
+  logger: process.env.NODE_ENV === 'development'
+});
 
 // Export schemas for use in other files
 export { schema, aiWorkspaceSchema };

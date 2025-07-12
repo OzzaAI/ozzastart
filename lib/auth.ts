@@ -1,5 +1,6 @@
 import { db } from "@/db/drizzle";
 import { account, session, subscription, user, verification } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import {
   checkout,
   polar,
@@ -48,6 +49,17 @@ export const auth = betterAuth({
   },
   plugins: [
     nextCookies(),
+    polar({
+      polarClient,
+      // Fix customer creation error handling
+      onError: (error) => {
+        console.error('Polar plugin error:', error);
+        // Don't fail user creation if Polar fails
+        return null;
+      },
+      // Prevent duplicate customer creation
+      createCustomerOnSignUp: false,
+    }),
   ],
   callbacks: {
     session: ({ session, user }) => ({
