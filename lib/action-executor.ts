@@ -1,7 +1,7 @@
 // Business action execution with safeguards and rollback capability
 export interface BusinessAction {
   type: 'increase_ad_budget' | 'create_invoice' | 'update_project' | 'send_email' | 'set_goal';
-  params: any;
+  params: Record<string, unknown>;
   safeguards: ActionSafeguards;
   confirmationRequired: boolean;
   description: string;
@@ -18,7 +18,7 @@ export interface ActionSafeguards {
 
 export interface RollbackPlan {
   canRollback: boolean;
-  rollbackAction: any;
+  rollbackAction: Record<string, unknown>;
   rollbackWindow: number; // minutes
 }
 
@@ -32,15 +32,15 @@ export interface MonitoringRule {
 export interface ActionResult {
   success: boolean;
   message: string;
-  data?: any;
-  rollbackData?: any;
+  data?: Record<string, unknown>;
+  rollbackData?: Record<string, unknown>;
   monitoringId?: string;
 }
 
 export interface ActionConfirmation {
   actionId: string;
   description: string;
-  params: any;
+  params: Record<string, unknown>;
   expectedImpact: string;
   safeguards: string[];
   approved: boolean;
@@ -69,7 +69,7 @@ class ActionExecutor {
 
       // 2. Get user confirmation if required
       if (action.confirmationRequired && !skipConfirmation) {
-        const actionId = await this.requestConfirmation(action, userId);
+        const actionId = await this.requestConfirmation(action);
         return {
           success: true,
           message: `Action queued for confirmation. ID: ${actionId}`,
@@ -78,15 +78,12 @@ class ActionExecutor {
       }
 
       // 3. Execute with rollback capability
-      const result = await this.performActionWithRollback(action, userId, accountId);
+      const result = await this.performActionWithRollback(action);
 
       // 4. Set up monitoring if specified
       if (action.safeguards.monitoringRules && result.success) {
         const monitoringId = await this.setupMonitoring(
-          action.safeguards.monitoringRules,
-          result,
-          userId,
-          accountId
+          action.safeguards.monitoringRules
         );
         result.monitoringId = monitoringId;
       }
@@ -123,16 +120,16 @@ class ActionExecutor {
     return await this.executeAction(action, 'user', 'account', true);
   }
 
-  private async validateSafeguards(safeguards: ActionSafeguards, params: any): Promise<{valid: boolean, reason?: string}> {
+  private async validateSafeguards(safeguards: ActionSafeguards, params: Record<string, unknown>): Promise<{valid: boolean, reason?: string}> {
     // Amount validation
-    if (safeguards.maxAmount && params.amount > safeguards.maxAmount) {
+    if (safeguards.maxAmount && typeof params.amount === 'number' && params.amount > safeguards.maxAmount) {
       return {
         valid: false,
         reason: `Amount ${params.amount} exceeds maximum allowed ${safeguards.maxAmount}`
       };
     }
 
-    if (safeguards.minAmount && params.amount < safeguards.minAmount) {
+    if (safeguards.minAmount && typeof params.amount === 'number' && params.amount < safeguards.minAmount) {
       return {
         valid: false,
         reason: `Amount ${params.amount} below minimum required ${safeguards.minAmount}`
@@ -153,7 +150,7 @@ class ActionExecutor {
     return { valid: true };
   }
 
-  private async requestConfirmation(action: BusinessAction, userId: string): Promise<string> {
+  private async requestConfirmation(action: BusinessAction): Promise<string> {
     const actionId = `confirm-${Date.now()}`;
     
     // Store pending action
@@ -167,18 +164,16 @@ class ActionExecutor {
   }
 
   private async performActionWithRollback(
-    action: BusinessAction,
-    userId: string,
-    accountId: string
+    action: BusinessAction
   ): Promise<ActionResult> {
     // Capture pre-state for rollback
     const rollbackData = await this.capturePreState(action);
 
     try {
-      const result = await this.performAction(action, userId, accountId);
+      const result = await this.performAction(action);
       
       // Store successful action
-      this.executedActions.set(`${userId}-${Date.now()}`, {
+      this.executedActions.set(`action-${Date.now()}`, {
         ...result,
         rollbackData
       });
@@ -187,29 +182,29 @@ class ActionExecutor {
     } catch (error) {
       // Attempt rollback if action failed
       if (rollbackData && action.safeguards.rollbackPlan?.canRollback) {
-        await this.performRollback(rollbackData, action.safeguards.rollbackPlan);
+        await this.performRollback(rollbackData);
       }
       
       throw error;
     }
   }
 
-  private async performAction(action: BusinessAction, userId: string, accountId: string): Promise<ActionResult> {
+  private async performAction(action: BusinessAction): Promise<ActionResult> {
     switch (action.type) {
       case 'increase_ad_budget':
-        return await this.increaseAdBudget(action.params, userId, accountId);
+        return await this.increaseAdBudget(action.params);
       
       case 'create_invoice':
-        return await this.createInvoice(action.params, userId, accountId);
+        return await this.createInvoice(action.params);
       
       case 'update_project':
-        return await this.updateProject(action.params, userId, accountId);
+        return await this.updateProject(action.params);
       
       case 'send_email':
-        return await this.sendEmail(action.params, userId, accountId);
+        return await this.sendEmail(action.params);
         
       case 'set_goal':
-        return await this.setGoal(action.params, userId, accountId);
+        return await this.setGoal(action.params);
 
       default:
         throw new Error(`Unknown action type: ${action.type}`);
@@ -217,11 +212,12 @@ class ActionExecutor {
   }
 
   // Action implementations
-  private async increaseAdBudget(params: any, userId: string, accountId: string): Promise<ActionResult> {
+  private async increaseAdBudget(params: Record<string, unknown>): Promise<ActionResult> {
     // This would integrate with Google Ads API, Facebook Ads API, etc.
     // For MVP, simulate the action
     
-    const { amount, campaign } = params;
+    const amount = typeof params.amount === 'number' ? params.amount : 0;
+    const campaign = typeof params.campaign === 'string' ? params.campaign : undefined;
     const newBudget = 800 + amount; // Current budget + increase
     
     // Simulate API call delay
@@ -240,9 +236,11 @@ class ActionExecutor {
     };
   }
 
-  private async createInvoice(params: any, userId: string, accountId: string): Promise<ActionResult> {
+  private async createInvoice(params: Record<string, unknown>): Promise<ActionResult> {
     // This would integrate with Stripe, QuickBooks, etc.
-    const { clientId, amount, description } = params;
+    const clientId = typeof params.clientId === 'string' ? params.clientId : '';
+    const amount = typeof params.amount === 'number' ? params.amount : 0;
+    const description = typeof params.description === 'string' ? params.description : '';
     
     return {
       success: true,
@@ -257,9 +255,11 @@ class ActionExecutor {
     };
   }
 
-  private async updateProject(params: any, userId: string, accountId: string): Promise<ActionResult> {
+  private async updateProject(params: Record<string, unknown>): Promise<ActionResult> {
     // This would update the project in your database
-    const { projectId, status, notes } = params;
+    const projectId = typeof params.projectId === 'string' ? params.projectId : '';
+    const status = typeof params.status === 'string' ? params.status : '';
+    const notes = typeof params.notes === 'string' ? params.notes : '';
     
     return {
       success: true,
@@ -274,9 +274,10 @@ class ActionExecutor {
     };
   }
 
-  private async sendEmail(params: any, userId: string, accountId: string): Promise<ActionResult> {
+  private async sendEmail(params: Record<string, unknown>): Promise<ActionResult> {
     // This would integrate with email service
-    const { to, subject, body } = params;
+    const to = typeof params.to === 'string' ? params.to : '';
+    const subject = typeof params.subject === 'string' ? params.subject : '';
     
     return {
       success: true,
@@ -290,9 +291,11 @@ class ActionExecutor {
     };
   }
 
-  private async setGoal(params: any, userId: string, accountId: string): Promise<ActionResult> {
+  private async setGoal(params: Record<string, unknown>): Promise<ActionResult> {
     // This would integrate with your conversation memory system
-    const { type, target, timeframe } = params;
+    const type = typeof params.type === 'string' ? params.type : '';
+    const target = typeof params.target === 'number' ? params.target : 0;
+    const timeframe = typeof params.timeframe === 'string' ? params.timeframe : '';
     
     return {
       success: true,
@@ -307,7 +310,7 @@ class ActionExecutor {
     };
   }
 
-  private async capturePreState(action: BusinessAction): Promise<any> {
+  private async capturePreState(action: BusinessAction): Promise<Record<string, unknown> | null> {
     // Capture current state for rollback
     switch (action.type) {
       case 'increase_ad_budget':
@@ -320,16 +323,13 @@ class ActionExecutor {
     }
   }
 
-  private async performRollback(rollbackData: any, rollbackPlan: RollbackPlan): Promise<void> {
+  private async performRollback(rollbackData: Record<string, unknown>): Promise<void> {
     // Implement rollback logic
     console.log('Performing rollback:', rollbackData);
   }
 
   private async setupMonitoring(
-    rules: MonitoringRule[],
-    result: ActionResult,
-    userId: string,
-    accountId: string
+    rules: MonitoringRule[]
   ): Promise<string> {
     const monitoringId = `monitor-${Date.now()}`;
     

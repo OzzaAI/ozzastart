@@ -1,5 +1,5 @@
 import { db } from "@/db/drizzle";
-import { account, session, subscription, user, verification } from "@/db/schema";
+import { account, session, subscription, user as userTable, verification } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import {
   checkout,
@@ -20,10 +20,11 @@ function safeParseDate(value: string | Date | null | undefined): Date | null {
   return new Date(value);
 }
 
-const polarClient = new Polar({
+// Create Polar client only if access token is available
+const polarClient = process.env.POLAR_ACCESS_TOKEN ? new Polar({
   accessToken: process.env.POLAR_ACCESS_TOKEN,
   server: "sandbox",
-});
+}) : null;
 
 export const auth = betterAuth({
   baseURL: process.env.NEXT_PUBLIC_APP_URL,
@@ -31,7 +32,7 @@ export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {
-      user,
+      user: userTable,
       session,
       account,
       verification,
@@ -49,7 +50,8 @@ export const auth = betterAuth({
   },
   plugins: [
     nextCookies(),
-    polar({
+    // Only add Polar plugin if client is available
+    ...(polarClient ? [polar({
       polarClient,
       // Fix customer creation error handling
       onError: (error) => {
@@ -59,7 +61,7 @@ export const auth = betterAuth({
       },
       // Prevent duplicate customer creation
       createCustomerOnSignUp: false,
-    }),
+    })] : []),
   ],
   callbacks: {
     session: ({ session, user }) => ({
@@ -86,7 +88,7 @@ export const auth = betterAuth({
           if (verifyData.valid && verifyData.role === 'coach') {
             console.log('Invite token valid and role is coach. Updating user role...');
             // Update user role to coach
-            await db.update(user).set({ role: 'coach' }).where(eq(user.id, user.id));
+            await db.update(userTable).set({ role: 'coach' }).where(eq(userTable.id, user.id));
             console.log('User role updated to coach.');
             // Mark invite as used (if you have such an API)
             // await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/mark-invite-used`, { method: 'POST', body: JSON.stringify({ token: inviteToken }) });

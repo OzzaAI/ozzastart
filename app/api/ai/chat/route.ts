@@ -1,8 +1,8 @@
 import { openai } from '@ai-sdk/openai';
 import { streamText } from 'ai';
 import { db } from '@/db/drizzle';
-import { user, ozza_accounts, ozza_account_members, projects, tasks, milestones } from '@/db/schema';
-import { eq, and, desc, count, sum, avg } from 'drizzle-orm';
+import { ozza_accounts, ozza_account_members, projects } from '@/db/schema';
+import { eq, and, desc, count } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { getBusinessMetrics, generateBusinessInsights, formatBusinessSummary } from '@/lib/business-intelligence';
@@ -10,11 +10,14 @@ import { getBusinessIntelligence } from '@/lib/business-intelligence-enhanced';
 import { conversationMemory } from '@/lib/conversation-memory';
 import { actionExecutor, actionTemplates } from '@/lib/action-executor';
 
+// Force dynamic rendering to prevent build-time execution
+export const dynamic = 'force-dynamic';
+
 // Business Intelligence Functions
 async function getBusinessData(userId: string, userRole: string) {
   try {
     // Get user's accounts and projects based on role
-    let businessData: any = {};
+    let businessData: Record<string, unknown> = {};
 
     if (userRole === 'coach') {
       // Coach: Get agencies and their performance
@@ -38,7 +41,7 @@ async function getBusinessData(userId: string, userRole: string) {
         type: 'coach',
         accounts: coachAccounts.length,
         totalProjects: totalProjects[0]?.count || 0,
-        agencies: coachAccounts.map(acc => ({
+        agencies: (coachAccounts || []).map(acc => ({
           name: acc.name,
           memberCount: acc.members.length
         }))
@@ -80,8 +83,8 @@ async function getBusinessData(userId: string, userRole: string) {
           agencyName: agencyAccount.name,
           totalProjects: totalProjectsCount[0]?.count || 0,
           completedProjects: completedProjectsCount[0]?.count || 0,
-          activeProjects: clientProjects.filter(p => p.status === 'active').length,
-          recentProjects: clientProjects.map(p => ({
+          activeProjects: (clientProjects || []).filter(p => p.status === 'active').length,
+          recentProjects: (clientProjects || []).map(p => ({
             name: p.name,
             status: p.status,
             budget: p.budget ? p.budget / 100 : 0, // Convert cents to dollars
@@ -112,9 +115,9 @@ async function getBusinessData(userId: string, userRole: string) {
           type: 'client',
           clientName: clientAccount.name,
           totalProjects: clientProjects.length,
-          activeProjects: clientProjects.filter(p => p.status === 'active').length,
-          completedProjects: clientProjects.filter(p => p.status === 'completed').length,
-          projects: clientProjects.map(p => ({
+          activeProjects: (clientProjects || []).filter(p => p.status === 'active').length,
+          completedProjects: (clientProjects || []).filter(p => p.status === 'completed').length,
+          projects: (clientProjects || []).map(p => ({
             name: p.name,
             status: p.status,
             budget: p.budget ? p.budget / 100 : 0,
@@ -187,8 +190,8 @@ export async function POST(req: Request) {
     
     // Get detailed metrics if we have an account
     let metrics = null;
-    let insights = [];
-    let businessSummary = '';
+    
+    const businessData = await getBusinessData(userId, userRole);
     
     if (businessData && !businessData.error) {
       try {
@@ -211,8 +214,8 @@ export async function POST(req: Request) {
 
         if (accountId) {
           metrics = await getBusinessMetrics(accountId, session.user.role);
-          insights = generateBusinessInsights(metrics, businessData);
-          businessSummary = formatBusinessSummary(businessData, metrics);
+          generateBusinessInsights(metrics, businessData);
+          formatBusinessSummary(businessData, metrics);
         }
       } catch (error) {
         console.error('Error fetching business metrics:', error);
@@ -289,7 +292,7 @@ Always offer to take actions when relevant, but get confirmation for significant
 }
 
 // Detect if user message is requesting an action
-async function detectActionRequest(userMessage: string): Promise<any> {
+async function detectActionRequest(userMessage: string): Promise<ReturnType<typeof actionTemplates[keyof typeof actionTemplates]> | null> {
   const lowerMessage = userMessage.toLowerCase();
   
   // Budget increase detection

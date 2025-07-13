@@ -6,6 +6,9 @@ import { db } from "@/db/drizzle";
 import { agents, user, shares } from "@/db/schema";
 import { canPerformAction, recordUsage } from "@/lib/subscription";
 
+// Force dynamic rendering to prevent build-time execution
+export const dynamic = 'force-dynamic';
+
 // GET - Retrieve marketplace data
 export async function GET(request: NextRequest) {
   try {
@@ -39,11 +42,11 @@ export async function GET(request: NextRequest) {
 
     // Create a map for quick lookup of share counts
     const sharesMap = new Map(
-      sharesCounts.map(item => [item.agentId, Number(item.shareCount)])
+      (sharesCounts || []).map(item => [item.agentId, Number(item.shareCount)])
     );
 
     // Enhance agents with additional marketplace data
-    const enhancedAgents = allAgents.map(agent => {
+    const enhancedAgents = (allAgents || []).map(agent => {
       // Extract description from spec YAML
       const specLines = agent.spec.split('\n');
       const descLine = specLines.find(line => line.trim().startsWith('description:'));
@@ -80,9 +83,9 @@ export async function GET(request: NextRequest) {
 
     // Calculate marketplace stats
     const totalAgents = enhancedAgents.length;
-    const totalDownloads = enhancedAgents.reduce((sum, agent) => sum + agent.downloads, 0);
-    const totalShares = enhancedAgents.reduce((sum, agent) => sum + agent.shares, 0);
-    const revenue = enhancedAgents.reduce((sum, agent) => sum + (agent.price * agent.downloads * 0.1), 0); // 10% commission
+    const totalDownloads = (enhancedAgents || []).reduce((sum, agent) => sum + agent.downloads, 0);
+    const totalShares = (enhancedAgents || []).reduce((sum, agent) => sum + agent.shares, 0);
+    const revenue = (enhancedAgents || []).reduce((sum, agent) => sum + (agent.price * agent.downloads * 0.1), 0); // 10% commission
 
     const stats = {
       totalAgents,

@@ -45,7 +45,7 @@ export interface BusinessAction {
   id: string;
   type: 'increase_budget' | 'create_invoice' | 'update_project' | 'send_email';
   description: string;
-  parameters: any;
+  parameters: Record<string, unknown>;
   result: ActionResult;
   executedAt: Date;
   impact?: string;
@@ -54,8 +54,8 @@ export interface BusinessAction {
 export interface ActionResult {
   success: boolean;
   message: string;
-  data?: any;
-  rollbackData?: any;
+  data?: Record<string, unknown>;
+  rollbackData?: Record<string, unknown>;
 }
 
 export interface UserPreferences {
@@ -110,7 +110,7 @@ class ConversationMemory {
     }
 
     // Load from storage (Redis/Database)
-    const stored = await this.loadFromStorage(userId, accountId);
+    const stored = await this.loadFromStorage();
     if (stored) {
       this.contexts.set(key, stored);
       return stored;
@@ -331,7 +331,7 @@ INSTRUCTIONS:
     };
   }
 
-  private async loadFromStorage(userId: string, accountId: string): Promise<ConversationContext | null> {
+  private async loadFromStorage(): Promise<ConversationContext | null> {
     // This would integrate with Redis or database
     // For now, return null to always create fresh context
     return null;

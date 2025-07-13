@@ -1,6 +1,6 @@
 import { db } from '@/db/drizzle';
-import { projects, tasks, milestones, ozza_accounts, user } from '@/db/schema';
-import { eq, and, desc, count, sum, avg, gte, lte, between } from 'drizzle-orm';
+import { projects, tasks } from '@/db/schema';
+import { eq, and, count, sum, lte, between } from 'drizzle-orm';
 // Simple date utilities (avoiding date-fns dependency)
 function startOfWeek(date: Date): Date {
   const diff = date.getDate() - date.getDay();
@@ -110,7 +110,7 @@ export async function getBusinessMetrics(accountId: string, userRole: string): P
   };
 }
 
-export function generateBusinessInsights(metrics: BusinessMetrics, businessData: any): string[] {
+export function generateBusinessInsights(metrics: BusinessMetrics, businessData: { type: string; totalProjects?: number; [key: string]: unknown }): string[] {
   const insights: string[] = [];
 
   // Project completion insights
@@ -145,7 +145,7 @@ export function generateBusinessInsights(metrics: BusinessMetrics, businessData:
   return insights;
 }
 
-export function formatBusinessSummary(businessData: any, metrics: BusinessMetrics): string {
+export function formatBusinessSummary(businessData: { type: string; agencyName?: string; clientName?: string; accounts?: number; totalProjects?: number; completedProjects?: number; activeProjects?: number; [key: string]: unknown }, metrics: BusinessMetrics): string {
   const summary = [];
 
   if (businessData.type === 'coach') {

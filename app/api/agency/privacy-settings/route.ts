@@ -5,6 +5,9 @@ import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { eq, and } from 'drizzle-orm';
 
+// Force dynamic rendering to prevent build-time execution
+export const dynamic = 'force-dynamic';
+
 type PrivacySettings = {
   blindMode: boolean;
   shareClientNames: boolean;

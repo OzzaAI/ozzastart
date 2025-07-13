@@ -52,7 +52,7 @@ export async function GET(request: Request) { // eslint-disable-line @typescript
         .leftJoin(ozza_accounts, eq(ozza_account_members.account_id, ozza_accounts.id))
         .where(eq(ozza_account_members.user_id, userId));
 
-      assignedAgencies = userMemberships
+      assignedAgencies = (userMemberships || [])
         .filter((member) => member.accountId) // Only include valid accounts
         .map((member) => ({
           id: member.accountId,
@@ -68,7 +68,7 @@ export async function GET(request: Request) { // eslint-disable-line @typescript
       // Continue with empty agencies array for new coaches
     }
 
-    const coachMembership = userMemberships.find((member) => member.role === 'coach');
+    const coachMembership = (userMemberships || []).find((member) => member.role === 'coach');
 
     return NextResponse.json({
       isCoach: true,

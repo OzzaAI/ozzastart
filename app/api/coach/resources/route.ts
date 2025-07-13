@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 
+// Force dynamic rendering to prevent build-time execution
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const result = await auth.api.getSession({
@@ -74,7 +77,10 @@ export async function GET() {
       },
     ];
 
-    return NextResponse.json({ resources });
+    // Ensure resources is always an array
+    const safeResources = Array.isArray(resources) ? resources : [];
+    
+    return NextResponse.json({ resources: safeResources });
 
   } catch (error) {
     console.error('Error fetching resources:', error);

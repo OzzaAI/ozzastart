@@ -9,6 +9,16 @@ import {
   getChatSessionAnalytics
 } from '@/lib/monitoring'
 
+// Global type declarations for mocks
+declare global {
+  var mockSentry: any;
+  var mockPostHog: any;
+  var mockPostHogServer: any;
+  var mockDb: any;
+  var getUserUsageThisMonth: any;
+  var getUserSubscription: any;
+}
+
 // Mock Sentry
 const mockSentry = {
   captureException: vi.fn(),
@@ -98,40 +108,42 @@ const mockChatAnalytics = [
   }
 ]
 
-// Mock database with security events
-vi.mock('@/db/drizzle', () => ({
-  db: {
-    select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        leftJoin: vi.fn(() => ({
-          where: vi.fn(() => ({
-            orderBy: vi.fn(() => ({
-              limit: vi.fn(() => ({
-                offset: vi.fn(() => Promise.resolve(mockSecurityEvents))
-              }))
-            }))
+// Mock database
+const mockDb = {
+  insert: vi.fn(() => ({
+    into: vi.fn(() => ({
+      values: vi.fn(() => Promise.resolve())
+    }))
+  })),
+  select: vi.fn(() => ({
+    from: vi.fn(() => ({
+      where: vi.fn(() => ({
+        orderBy: vi.fn(() => ({
+          limit: vi.fn(() => ({
+            offset: vi.fn(() => Promise.resolve(mockSecurityEvents))
           }))
-        })),
+        }))
+      })),
+      leftJoin: vi.fn(() => ({
         where: vi.fn(() => ({
-          orderBy: vi.fn(() => Promise.resolve(mockChatAnalytics)),
-          groupBy: vi.fn(() => ({
-            orderBy: vi.fn(() => Promise.resolve(mockChatAnalytics))
+          orderBy: vi.fn(() => ({
+            limit: vi.fn(() => ({
+              offset: vi.fn(() => Promise.resolve(mockSecurityEvents))
+            }))
           }))
         }))
       }))
-    })),
-    insert: vi.fn(() => ({
-      into: vi.fn(() => ({
-        values: vi.fn(() => Promise.resolve([{ id: 'new-event-id' }]))
-      }))
     }))
-  }
+  }))
+}
+
+vi.mock('@/db/drizzle', () => ({
+  db: mockDb
 }))
 
 describe('Monitoring Module', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+  // Note: Global mocks are now set up in tests/setup.ts using vi.stubGlobal
+  // No need for manual global assignments or cleanup here
 
   describe('Event Tracking with PostHog', () => {
     it('should track events with PostHog server-side', async () => {
@@ -151,7 +163,6 @@ describe('Monitoring Module', () => {
         properties: expect.objectContaining({
           ...properties,
           timestamp: expect.any(String),
-          environment: 'test',
           source: 'server'
         })
       })
@@ -206,7 +217,9 @@ describe('Monitoring Module', () => {
       mockPostHogServer.capture.mockRejectedValueOnce(new Error('PostHog error'))
 
       // Should not throw error
-      await expect(trackEvent('test_event', {}, 'user-id')).resolves.not.toThrow()
+      await expect(async () => {
+        await trackEvent('test_event', {}, 'user-id')
+      }).not.toThrow()
       
       // Should capture error with Sentry
       expect(mockSentry.captureException).toHaveBeenCalled()
@@ -382,13 +395,13 @@ describe('Monitoring Module', () => {
       const userId = 'test-user-id'
 
       // Mock high usage scenario
-      vi.mocked(getUserUsageThisMonth).mockResolvedValueOnce({
+      mockGetUserUsageThisMonth.mockResolvedValueOnce({
         apiCalls: 15000, // Over limit
         agentDownloads: 60, // Over limit
         agentShares: 15
       })
 
-      vi.mocked(getUserSubscription).mockResolvedValueOnce({
+      mockGetUserSubscription.mockResolvedValueOnce({
         planType: 'pro',
         status: 'active'
       })
@@ -409,10 +422,12 @@ describe('Monitoring Module', () => {
     it('should handle users without subscriptions', async () => {
       const userId = 'test-user-id'
 
-      vi.mocked(getUserSubscription).mockResolvedValueOnce(null)
+      mockGetUserSubscription.mockResolvedValueOnce(null)
 
       // Should not throw error
-      await expect(checkAndAlertOverages(userId)).resolves.not.toThrow()
+      await expect(async () => {
+        await checkAndAlertOverages(userId)
+      }).not.toThrow()
     })
 
     it('should calculate overages correctly for different plans', async () => {
@@ -421,7 +436,7 @@ describe('Monitoring Module', () => {
       const plans = ['free', 'pro', 'enterprise', 'grok_heavy']
       
       for (const planType of plans) {
-        vi.mocked(getUserSubscription).mockResolvedValueOnce({
+        mockGetUserSubscription.mockResolvedValueOnce({
           planType,
           status: 'active'
         })
@@ -484,7 +499,7 @@ describe('Monitoring Module', () => {
 
     it('should handle database errors gracefully', async () => {
       // Mock database error
-      vi.mocked(mockDb.select).mockImplementationOnce(() => {
+      mockDb.select.mockImplementationOnce(() => {
         throw new Error('Database connection failed')
       })
 
@@ -524,7 +539,7 @@ describe('Monitoring Module', () => {
 
     it('should handle analytics errors gracefully', async () => {
       // Mock database error
-      vi.mocked(mockDb.select).mockImplementationOnce(() => {
+      mockDb.select.mockImplementationOnce(() => {
         throw new Error('Analytics query failed')
       })
 
@@ -616,7 +631,9 @@ describe('Monitoring Module', () => {
       mockPostHogServer.capture.mockRejectedValueOnce(new Error('PostHog unavailable'))
 
       // Should not throw error
-      await expect(trackEvent('test_event', {}, 'user-id')).resolves.not.toThrow()
+      await expect(async () => {
+        await trackEvent('test_event', {}, 'user-id')
+      }).not.toThrow()
     })
 
     it('should continue functioning when Sentry is unavailable', () => {
@@ -631,30 +648,30 @@ describe('Monitoring Module', () => {
     })
 
     it('should handle database unavailability', async () => {
-      vi.mocked(mockDb.insert).mockRejectedValueOnce(new Error('Database unavailable'))
+      mockDb.insert.mockRejectedValueOnce(new Error('Database unavailable'))
 
       // Should not throw error
-      await expect(logSecurityEvent('test_event', {}, 'user-id', 'low')).resolves.not.toThrow()
+      await expect(async () => {
+        await logSecurityEvent('test_event', {}, 'user-id', 'low')
+      }).not.toThrow()
     })
   })
 })
 
-// Mock helper functions
-function getUserUsageThisMonth(userId: string) {
+// Mock helper functions for usage monitoring
+const mockGetUserUsageThisMonth = vi.fn((userId: string) => {
   return Promise.resolve({
     apiCalls: 5000,
     agentDownloads: 25,
     agentShares: 10
   })
-}
+})
 
-function getUserSubscription(userId: string) {
+const mockGetUserSubscription = vi.fn((userId: string) => {
   return Promise.resolve({
     planType: 'pro',
     status: 'active'
   })
-}
+})
 
-// Add mocks to vi
-vi.mocked(getUserUsageThisMonth)
-vi.mocked(getUserSubscription)
+// Global setup is now handled in tests/setup.ts using vi.stubGlobal

@@ -7,6 +7,9 @@ import { getSubscriptionStatus } from '@/lib/subscription';
 import { nanoid } from 'nanoid';
 import crypto from 'crypto';
 
+// Force dynamic rendering to prevent build-time execution
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const sessionResponse = await authClient.getSession();
@@ -31,7 +34,7 @@ export async function GET(request: NextRequest) {
       .where(eq(integrations.userId, userId));
 
     // Mask API keys for security (show only first 8 characters)
-    const maskedIntegrations = userIntegrations.map(integration => ({
+    const maskedIntegrations = (userIntegrations || []).map(integration => ({
       ...integration,
       apiKey: integration.apiKey.substring(0, 8) + '...' + integration.apiKey.slice(-4),
       apiKeyFull: integration.apiKey // Include full key for copy functionality

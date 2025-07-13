@@ -349,7 +349,7 @@ describe('LangGraph Chatbot with Grok 4', () => {
         Object.values(finalStep.mcpResults).forEach((result: any) => {
           if (result.status === 'completed') {
             expect(result).toHaveProperty('result')
-            expect(result).toHaveProperty('timestamp')
+            expect(result).toHaveProperty('timestamp', expect.any(String))
           }
         })
       }

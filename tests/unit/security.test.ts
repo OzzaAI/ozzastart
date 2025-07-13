@@ -51,7 +51,8 @@ vi.mock('@/lib/security', () => ({
     if (!input || input.trim().length === 0) {
       throw new Error('Input is required')
     }
-    if (input.includes('<script>')) {
+    // Check for script tags with more comprehensive detection
+    if (/<script[^>]*>/i.test(input) || /<script\s*>/i.test(input)) {
       throw new Error('Invalid input detected')
     }
     return input.trim()
@@ -60,8 +61,40 @@ vi.mock('@/lib/security', () => ({
     return html.replace(/<script[^>]*>.*?<\/script>/gi, '')
   }),
   validateEmail: vi.fn((email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email)
+    if (!email || email.length === 0 || email.length > 254) {
+      return false;
+    }
+    
+    // Additional checks before validator
+    if (email.includes('..') || email.startsWith('@') || email.endsWith('@') || !email.includes('@')) {
+      return false;
+    }
+    
+    // Split into local and domain parts
+    const parts = email.split('@');
+    if (parts.length !== 2) {
+      return false;
+    }
+    
+    const [local, domain] = parts;
+    if (!local || !domain) {
+      return false;
+    }
+    
+    // Check for domain with TLD (must have at least one dot and a TLD after the last dot)
+    if (!domain.includes('.') || domain.startsWith('.') || domain.endsWith('.')) {
+      return false;
+    }
+    
+    // Ensure there's at least 2 characters after the last dot (TLD requirement)
+    const lastDotIndex = domain.lastIndexOf('.');
+    if (lastDotIndex === -1 || domain.length - lastDotIndex < 3) {
+      return false;
+    }
+    
+    // Basic email regex validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
   }),
   hashPassword: vi.fn((password: string) => {
     return Promise.resolve(`hashed_${password}`)

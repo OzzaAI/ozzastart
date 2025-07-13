@@ -5,6 +5,9 @@ import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { eq } from 'drizzle-orm';
 
+// Force dynamic rendering to prevent build-time execution
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const result = await auth.api.getSession({
@@ -56,7 +59,7 @@ export async function GET() {
 
     // Mock aggregated analytics data for now
     // In production, this would query real client/website/revenue data
-    const agencyMetrics = userMemberships
+    const agencyMetrics = (userMemberships || [])
       .filter((member) => member.accountId)
       .map((member) => ({
         id: member.accountId,
@@ -76,14 +79,14 @@ export async function GET() {
     // Calculate aggregate metrics
     const aggregateMetrics = {
       totalAgencies: agencyMetrics.length,
-      totalClients: agencyMetrics.reduce((sum, agency) => sum + agency.clientCount, 0),
-      totalWebsites: agencyMetrics.reduce((sum, agency) => sum + agency.websitesBuilt, 0),
+      totalClients: (agencyMetrics || []).reduce((sum, agency) => sum + agency.clientCount, 0),
+      totalWebsites: (agencyMetrics || []).reduce((sum, agency) => sum + agency.websitesBuilt, 0),
       avgConversionRate: agencyMetrics.length > 0 
-        ? Math.round(agencyMetrics.reduce((sum, agency) => sum + agency.conversionRate, 0) / agencyMetrics.length)
+        ? Math.round((agencyMetrics || []).reduce((sum, agency) => sum + agency.conversionRate, 0) / (agencyMetrics || []).length)
         : 0,
-      totalRevenue: agencyMetrics.reduce((sum, agency) => sum + agency.monthlyRevenue, 0),
-      activeIssues: agencyMetrics.reduce((sum, agency) => sum + agency.issueCount, 0),
-      completedProjects: agencyMetrics.reduce((sum, agency) => sum + agency.websitesBuilt, 0),
+      totalRevenue: (agencyMetrics || []).reduce((sum, agency) => sum + agency.monthlyRevenue, 0),
+      activeIssues: (agencyMetrics || []).reduce((sum, agency) => sum + agency.issueCount, 0),
+      completedProjects: (agencyMetrics || []).reduce((sum, agency) => sum + agency.websitesBuilt, 0),
       pendingTasks: Math.floor(Math.random() * 12) + 3,
     };
 

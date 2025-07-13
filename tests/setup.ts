@@ -357,15 +357,156 @@ vi.mock('posthog-node', () => ({
 // Setup MSW server
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' })
+  
+  // Set consistent date for all tests to avoid timestamp mismatches
+  vi.setSystemTime(new Date('2025-07-13T04:07:12.000Z'))
+  
+  // Setup global mocks using vi.stubGlobal for proper cleanup
+  const mockDb = {
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn(() => Promise.resolve([])),
+          offset: vi.fn(() => Promise.resolve([])),
+          orderBy: vi.fn(() => Promise.resolve([])),
+          leftJoin: vi.fn(() => ({
+            where: vi.fn(() => ({
+              limit: vi.fn(() => Promise.resolve([])),
+              orderBy: vi.fn(() => Promise.resolve([]))
+            }))
+          }))
+        })),
+        leftJoin: vi.fn(() => ({
+          where: vi.fn(() => ({
+            limit: vi.fn(() => Promise.resolve([])),
+            orderBy: vi.fn(() => Promise.resolve([]))
+          }))
+        })),
+        limit: vi.fn(() => Promise.resolve([])),
+        orderBy: vi.fn(() => Promise.resolve([]))
+      }))
+    })),
+    insert: vi.fn(() => ({
+      into: vi.fn(() => ({
+        values: vi.fn(() => ({
+          returning: vi.fn(() => Promise.resolve([{
+            id: 'test-id',
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }])),
+          onConflictDoUpdate: vi.fn(() => Promise.resolve([]))
+        }))
+      }))
+    })),
+    update: vi.fn(() => ({
+      set: vi.fn(() => ({
+        where: vi.fn(() => Promise.resolve([{
+          id: 'test-id',
+          updatedAt: new Date()
+        }]))
+      }))
+    })),
+    delete: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => Promise.resolve([]))
+      }))
+    }))
+  }
+
+  const mockSentry = {
+    captureException: vi.fn(),
+    captureMessage: vi.fn(),
+    addBreadcrumb: vi.fn(),
+    withScope: vi.fn((callback) => {
+      const scope = {
+        setUser: vi.fn(),
+        setContext: vi.fn(),
+        setLevel: vi.fn(),
+        setTag: vi.fn()
+      }
+      callback(scope)
+    }),
+    startTransaction: vi.fn(() => ({
+      setTag: vi.fn(),
+      setData: vi.fn(),
+      finish: vi.fn()
+    }))
+  }
+
+  const mockPostHog = {
+    capture: vi.fn(),
+    identify: vi.fn(),
+    people: {
+      set: vi.fn()
+    },
+    isFeatureEnabled: vi.fn(() => false),
+    __loaded: true
+  }
+
+  const mockPostHogServer = {
+    capture: vi.fn(),
+    identify: vi.fn(),
+    shutdown: vi.fn()
+  }
+
+  // Stub global variables
+  vi.stubGlobal('mockDb', mockDb)
+  vi.stubGlobal('mockSentry', mockSentry)
+  vi.stubGlobal('mockPostHog', mockPostHog)
+  vi.stubGlobal('mockPostHogServer', mockPostHogServer)
+  vi.stubGlobal('getUserUsageThisMonth', vi.fn(() => Promise.resolve({
+    apiCalls: 5000,
+    agentDownloads: 25,
+    agentShares: 10
+  })))
+  vi.stubGlobal('getUserSubscription', vi.fn(() => Promise.resolve({
+    planType: 'pro',
+    status: 'active'
+  })))
 })
 
 afterEach(() => {
   server.resetHandlers()
   vi.clearAllMocks()
+  
+  // Reset global mock states
+  if (global.mockDb) {
+    Object.values(global.mockDb).forEach(mockFn => {
+      if (typeof mockFn === 'function' && mockFn.mockClear) {
+        mockFn.mockClear()
+      }
+    })
+  }
+  
+  if (global.mockSentry) {
+    Object.values(global.mockSentry).forEach(mockFn => {
+      if (typeof mockFn === 'function' && mockFn.mockClear) {
+        mockFn.mockClear()
+      }
+    })
+  }
+  
+  if (global.mockPostHog) {
+    if (global.mockPostHog.capture && global.mockPostHog.capture.mockClear) {
+      global.mockPostHog.capture.mockClear()
+    }
+    if (global.mockPostHog.identify && global.mockPostHog.identify.mockClear) {
+      global.mockPostHog.identify.mockClear()
+    }
+  }
+  
+  if (global.mockPostHogServer) {
+    Object.values(global.mockPostHogServer).forEach(mockFn => {
+      if (typeof mockFn === 'function' && mockFn.mockClear) {
+        mockFn.mockClear()
+      }
+    })
+  }
 })
 
 afterAll(() => {
   server.close()
+  vi.useRealTimers()
 })
 
 // Global test utilities

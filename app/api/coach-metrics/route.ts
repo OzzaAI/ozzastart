@@ -127,9 +127,9 @@ export async function GET(request: NextRequest) {
     const usage = await getUserUsageThisMonth(userId);
 
     // Calculate metrics
-    const onboardedUsersTotal = Math.floor(totalSessions[0]?.count * 0.6) || 0; // Estimate 60% of sessions are from onboarded users
-    const onboardedThisWeek = Math.floor(thisWeekSessions[0]?.count * 0.6) || 0;
-    const onboardedLastWeek = Math.floor(lastWeekSessions[0]?.count * 0.6) || 0;
+    const onboardedUsersTotal = Math.floor((totalSessions[0]?.count || 0) * 0.6); // Estimate 60% of sessions are from onboarded users
+    const onboardedThisWeek = Math.floor((thisWeekSessions[0]?.count || 0) * 0.6);
+    const onboardedLastWeek = Math.floor((lastWeekSessions[0]?.count || 0) * 0.6);
     
     const onboardedTrend = onboardedThisWeek > onboardedLastWeek ? "up" : 
                           onboardedThisWeek < onboardedLastWeek ? "down" : "stable";

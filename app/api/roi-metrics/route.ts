@@ -5,6 +5,9 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db/drizzle";
 import { chat_sessions, agents, shares } from "@/db/schema";
 
+// Force dynamic rendering to prevent build-time execution
+export const dynamic = 'force-dynamic';
+
 // Calculate time ranges
 function getTimeRanges() {
   const now = new Date();
@@ -39,7 +42,7 @@ function extractMetricsFromSessions(sessions: any[]) {
   let totalDuration = 0;
   const taskTypes = new Map<string, number>();
 
-  sessions.forEach(session => {
+  (sessions || []).forEach(session => {
     const state = session.state;
     const metadata = session.metadata;
 
@@ -170,7 +173,7 @@ export async function GET(request: NextRequest) {
     const lastWeekMetrics = extractMetricsFromSessions(lastWeekSessions);
 
     // Calculate share metrics
-    const sharesByPlatform = allShares.reduce((acc, share) => {
+    const sharesByPlatform = (allShares || []).reduce((acc, share) => {
       acc[share.platform] = (acc[share.platform] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -205,7 +208,7 @@ export async function GET(request: NextRequest) {
       const date = new Date();
       date.setDate(date.getDate() - i);
       
-      const daySessions = thisWeekSessions.filter(s => {
+      const daySessions = (thisWeekSessions || []).filter(s => {
         const sessionDate = new Date(s.updatedAt);
         return sessionDate.toDateString() === date.toDateString();
       });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +13,6 @@ import { toast } from 'sonner';
 import { 
   Shield, 
   Users, 
-  Building, 
   Eye, 
   UserPlus, 
   Link as LinkIcon,
@@ -31,6 +30,12 @@ type User = {
   createdAt: string;
   lastLogin?: string;
   status: 'active' | 'suspended';
+};
+
+type AdminUser = {
+  id: string;
+  email: string;
+  role: 'admin';
 };
 
 type Agency = {
@@ -53,7 +58,7 @@ type SystemStats = {
 };
 
 export default function AdminPortal() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
@@ -65,9 +70,9 @@ export default function AdminPortal() {
 
   useEffect(() => {
     checkAdminAccess();
-  }, []);
+  }, [checkAdminAccess]);
 
-  const checkAdminAccess = async () => {
+  const checkAdminAccess = useCallback(async () => {
     try {
       const sessionResponse = await authClient.getSession();
       
@@ -76,8 +81,6 @@ export default function AdminPortal() {
         return;
       }
 
-      const session = sessionResponse.data.session;
-      
       // Check admin access via API
       const response = await fetch('/api/admin/verify');
       const data = await response.json();
@@ -95,7 +98,7 @@ export default function AdminPortal() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
   const loadAdminData = async () => {
     try {

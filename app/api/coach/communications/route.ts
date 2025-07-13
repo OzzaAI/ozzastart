@@ -52,7 +52,7 @@ export async function GET() {
     }
 
     // Mock agencies with communication data
-    const agencies = userMemberships
+    const agencies = (userMemberships || [])
       .filter((member) => member.accountId)
       .map((member) => ({
         id: member.accountId,

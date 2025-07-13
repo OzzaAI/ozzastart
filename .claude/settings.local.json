@@ -32,7 +32,14 @@
       "Bash(git add:*)",
       "Bash(git config:*)",
       "Bash(git push:*)",
-      "Bash(npm audit:*)"
+      "Bash(npm audit:*)",
+      "Bash(npm update:*)",
+      "Bash(npx eslint:*)",
+      "Bash(chmod:*)",
+      "Bash(npx husky:*)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(npm test:*)",
+      "Bash(npm ls:*)"
     ],
     "deny": []
   }

@@ -4,6 +4,9 @@ import { auth } from '@/lib/auth'
 import { getSecurityLogs, type LogsFilter, type LogsPagination } from '@/lib/monitoring'
 import { captureError, logSecurityEvent } from '@/lib/monitoring'
 
+// Force dynamic rendering to prevent build-time execution
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Check authentication and admin access
@@ -104,15 +107,15 @@ export async function GET(request: NextRequest) {
 async function checkAdminRole(userId: string): Promise<boolean> {
   try {
     const { db } = await import('@/db/drizzle')
-    const { users } = await import('@/db/schema')
+    const { user } = await import('@/db/schema')
     const { eq } = await import('drizzle-orm')
     
-    const user = await db.select({ role: users.role })
-      .from(users)
-      .where(eq(users.id, userId))
+    const userRecord = await db.select({ role: user.role })
+      .from(user)
+      .where(eq(user.id, userId))
       .limit(1)
     
-    return user[0]?.role === 'admin'
+    return userRecord[0]?.role === 'admin'
   } catch (error) {
     console.error('Error checking admin role:', error)
     return false
@@ -123,17 +126,21 @@ async function checkAdminRole(userId: string): Promise<boolean> {
 function generateCSV(logs: any[]): string {
   const headers = ['Date', 'Event Type', 'Severity', 'User', 'Details']
   
-  const rows = logs.map(log => [
+  const rows = (logs || []).map(log => [
     new Date(log.createdAt).toISOString(),
     log.eventType,
     log.severity,
     log.userName || 'Unknown',
-    JSON.stringify(log.details).replace(/"/g, '""') // Escape quotes for CSV
+    JSON.stringify(log.details) // Don't pre-escape here, let the cell wrapper handle it
   ])
   
   const csvContent = [
     headers.join(','),
-    ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ...(rows || []).map(row => (row || []).map(cell => {
+      // Properly escape CSV cells by wrapping in quotes and escaping internal quotes
+      const escapedCell = String(cell || '').replace(/"/g, '""')
+      return `"${escapedCell}"`
+    }).join(','))
   ].join('\n')
   
   return csvContent

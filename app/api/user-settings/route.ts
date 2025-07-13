@@ -6,6 +6,9 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db/drizzle";
 import { user_settings } from "@/db/schema";
 
+// Force dynamic rendering to prevent build-time execution
+export const dynamic = 'force-dynamic';
+
 // Validation schemas
 const WhiteLabelConfigSchema = z.object({
   logoUrl: z.string().url().optional().or(z.literal("")),
@@ -104,7 +107,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: "Invalid settings data",
-          details: validationResult.error.errors.map(e => `${e.path.join(".")}: ${e.message}`).join(", ")
+          details: (validationResult.error.errors || []).map(e => `${e.path.join(".")}: ${e.message}`).join(", ") || "Validation failed"
         },
         { status: 400 }
       );
@@ -213,7 +216,7 @@ export async function PUT(request: NextRequest) {
         {
           success: false,
           error: "Invalid settings data",
-          details: validationResult.error.errors.map(e => `${e.path.join(".")}: ${e.message}`).join(", ")
+          details: (validationResult.error.errors || []).map(e => `${e.path.join(".")}: ${e.message}`).join(", ") || "Validation failed"
         },
         { status: 400 }
       );

@@ -5,10 +5,18 @@ import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { eq } from 'drizzle-orm';
 
+// Force dynamic rendering to prevent build-time execution
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
+    // During build time, return empty response
+    if (process.env.NEXT_PHASE === 'phase-production-build') {
+      return NextResponse.json({ settings: null });
+    }
+
     const result = await auth.api.getSession({
-      headers: headers(),
+      headers: await headers(),
     });
 
     if (!result.session) {

@@ -6,6 +6,9 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { z } from "zod";
 
+// Force dynamic rendering to prevent build-time execution
+export const dynamic = 'force-dynamic';
+
 // Request body validation schema
 const ConvertRequestSchema = z.object({
   workflowJson: z.string().min(1, "Workflow JSON is required"),
@@ -35,7 +38,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: "Invalid request",
-          details: validationResult.error.errors.map(e => `${e.path.join(".")}: ${e.message}`).join(", ")
+          details: (validationResult.error.errors || []).map(e => `${e.path.join(".")}: ${e.message}`).join(", ") || "Validation failed"
         },
         { status: 400 }
       );

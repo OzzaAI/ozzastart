@@ -1,5 +1,5 @@
 import { ChatOpenAI } from "@langchain/openai";
-import { StateGraph, Annotation, START, END } from "@langchain/langgraph";
+import { StateGraph, START, END } from "@langchain/langgraph";
 import { z } from "zod";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
@@ -7,16 +7,16 @@ import { hasGrokHeavyTierAccess } from "@/lib/subscription";
 
 // Mock MCP Adapter (in production, replace with langchain-mcp-adapters)
 interface MCPAdapter {
-  executeTask(taskType: string, params: Record<string, any>): Promise<any>;
+  executeTask(taskType: string, params: Record<string, unknown>): Promise<unknown>;
   validateScopes(scopes: string[]): Promise<{ valid: boolean; invalidScopes: string[] }>;
 }
 
 class MockMCPAdapter implements MCPAdapter {
-  async executeTask(taskType: string, params: Record<string, any>): Promise<any> {
+  async executeTask(taskType: string, params: Record<string, unknown>): Promise<unknown> {
     // Simulate async MCP task execution
     await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 400));
     
-    const mockResults: Record<string, any> = {
+    const mockResults: Record<string, unknown> = {
       "web_search": {
         results: [
           { title: "Sample Search Result", url: "https://example.com", snippet: "Mock search result content..." },
@@ -134,37 +134,27 @@ const FileOperationResponseSchema = z.object({
   error: z.string().optional(),
 });
 
-// State interface for LangGraph
-const ChatState = Annotation.Root({
-  messages: Annotation<string[]>({
-    reducer: (existing, update) => [...(existing || []), ...update],
-    default: () => [],
-  }),
-  plan: Annotation<z.infer<typeof PlanSchema> | null>({
-    reducer: (existing, update) => update ?? existing,
-    default: () => null,
-  }),
-  mcpResults: Annotation<Record<string, any>>({
-    reducer: (existing, update) => ({ ...(existing || {}), ...update }),
-    default: () => ({}),
-  }),
-  needsHuman: Annotation<boolean>({
-    reducer: (existing, update) => update ?? existing,
-    default: () => false,
-  }),
-  currentStep: Annotation<string>({
-    reducer: (existing, update) => update ?? existing,
-    default: () => "start",
-  }),
-  errorMessage: Annotation<string | null>({
-    reducer: (existing, update) => update ?? existing,
-    default: () => null,
-  }),
-  finalResponse: Annotation<string | null>({
-    reducer: (existing, update) => update ?? existing,
-    default: () => null,
-  }),
-});
+// State interface for LangGraph - Simple interface for v0.2.74
+interface ChatState {
+  messages: string[];
+  plan: z.infer<typeof PlanSchema> | null;
+  mcpResults: Record<string, unknown>;
+  needsHuman: boolean;
+  currentStep: string;
+  errorMessage: string | null;
+  finalResponse: string | null;
+}
+
+// Initial state - used as template for new chat sessions
+const initialState: ChatState = {
+  messages: [],
+  plan: null,
+  mcpResults: {},
+  needsHuman: false,
+  currentStep: "start",
+  errorMessage: null,
+  finalResponse: null
+};
 
 // LLM Provider Configuration
 const LLM_PROVIDER = process.env.LLM_PROVIDER || 'openai';
@@ -339,9 +329,14 @@ const fileOperationTool = new DynamicStructuredTool({
   func: async ({ operation, filename, content, encoding }) => {
     console.log(`📁 Performing ${operation} operation on ${filename}`);
     
-    // Security check: prevent absolute paths
-    if (filename.startsWith('/') || filename.includes('..')) {
-      throw new Error("Absolute paths and directory traversal not allowed for security");
+    // Enhanced security check: prevent absolute paths and directory traversal
+    if (filename.startsWith('/') || 
+        filename.includes('..') || 
+        filename.match(/^[A-Z]:\\/) ||  // Windows absolute paths (C:\, D:\, etc.)
+        filename.includes('\\..\\') ||  // Windows directory traversal
+        filename.includes('../') ||     // Unix directory traversal
+        filename.includes('..\\')) {    // Mixed directory traversal
+      throw new Error("Absolute paths and directory traversal not allowed");
     }
     
     const result = await mcpAdapter.executeTask("file_operation", { 
@@ -370,7 +365,7 @@ const tools = [
 const llmWithTools = llm.bindTools(tools);
 
 // Node: Planner - Analyzes user message and creates execution plan with Grok 4 function calling
-async function plannerNode(state: typeof ChatState.State): Promise<Partial<typeof ChatState.State>> {
+async function plannerNode(state: ChatState): Promise<Partial<ChatState>> {
   try {
     const lastMessage = state.messages[state.messages.length - 1] || "";
     
@@ -541,7 +536,7 @@ Analyze this request and provide the most appropriate response using available t
     let planData;
     try {
       planData = JSON.parse(response.content as string);
-    } catch (parseError) {
+    } catch {
       // If not JSON, create a simple plan
       planData = {
         tasks: [],
@@ -569,7 +564,7 @@ Analyze this request and provide the most appropriate response using available t
 }
 
 // Node: Task Runner - Executes MCP tasks from the plan
-async function taskRunnerNode(state: typeof ChatState.State): Promise<Partial<typeof ChatState.State>> {
+async function taskRunnerNode(state: ChatState): Promise<Partial<ChatState>> {
   try {
     if (!state.plan || !state.plan.tasks.length) {
       throw new Error("No valid plan available for execution");
@@ -593,6 +588,7 @@ async function taskRunnerNode(state: typeof ChatState.State): Promise<Partial<ty
           results[task.id] = {
             status: "pending_human_approval",
             message: "Task requires human approval before execution",
+            timestamp: new Date().toISOString(),
             task: task.description
           };
           continue;
@@ -604,6 +600,7 @@ async function taskRunnerNode(state: typeof ChatState.State): Promise<Partial<ty
         results[task.id] = {
           status: "completed",
           result: taskResult,
+          timestamp: new Date().toISOString(),
           executedAt: new Date().toISOString(),
           task: task.description
         };
@@ -615,6 +612,7 @@ async function taskRunnerNode(state: typeof ChatState.State): Promise<Partial<ty
         results[task.id] = {
           status: "failed",
           error: taskError instanceof Error ? taskError.message : String(taskError),
+          timestamp: new Date().toISOString(),
           task: task.description
         };
       }
@@ -636,7 +634,7 @@ async function taskRunnerNode(state: typeof ChatState.State): Promise<Partial<ty
 }
 
 // Node: Responder - Generates final response with Grok 4 enhanced capabilities
-async function responderNode(state: typeof ChatState.State): Promise<Partial<typeof ChatState.State>> {
+async function responderNode(state: ChatState): Promise<Partial<ChatState>> {
   try {
     const userMessage = state.messages[0] || "";
     const plan = state.plan;
@@ -797,7 +795,7 @@ Provide a complete, user-friendly response that incorporates all information wit
 }
 
 // Node: Human Loop - Handles human intervention requirements
-async function humanLoopNode(state: typeof ChatState.State): Promise<Partial<typeof ChatState.State>> {
+async function humanLoopNode(state: ChatState): Promise<Partial<ChatState>> {
   try {
     const plan = state.plan;
     const humanRequiredTasks = plan?.tasks.filter(t => t.requiresHuman) || [];
@@ -831,14 +829,14 @@ Please review and approve/modify this plan before execution continues.
 }
 
 // Conditional edge functions
-function shouldRouteToHuman(state: typeof ChatState.State): string {
+function shouldRouteToHuman(state: ChatState): string {
   if (state.needsHuman && state.currentStep === "planning_complete") {
     return "human_loop";
   }
   return "task_runner";
 }
 
-function shouldRetry(state: typeof ChatState.State): string {
+function shouldRetry(state: ChatState): string {
   if (state.errorMessage) {
     return END;
   }
@@ -849,7 +847,7 @@ function shouldRetry(state: typeof ChatState.State): string {
 }
 
 // Build the LangGraph workflow
-const workflow = new StateGraph(ChatState)
+const workflow = new StateGraph<ChatState>()
   // Add nodes
   .addNode("planner", plannerNode)
   .addNode("task_runner", taskRunnerNode)
@@ -924,10 +922,10 @@ if (isGrok4) {
 }
 export async function runAgenticChatbot(
   userMessage: string,
-  previousState?: Partial<typeof ChatState.State>
-): Promise<typeof ChatState.State> {
+  previousState?: Partial<ChatState>
+): Promise<ChatState> {
   try {
-    const initialState: Partial<typeof ChatState.State> = {
+    const initialState: Partial<ChatState> = {
       messages: [userMessage],
       ...previousState,
     };
@@ -954,10 +952,10 @@ export async function runAgenticChatbot(
 // Stream execution function for real-time updates
 export async function* streamAgenticChatbot(
   userMessage: string,
-  previousState?: Partial<typeof ChatState.State>
-): AsyncGenerator<typeof ChatState.State, void, unknown> {
+  previousState?: Partial<ChatState>
+): AsyncGenerator<ChatState, void, unknown> {
   try {
-    const initialState: Partial<typeof ChatState.State> = {
+    const initialState: Partial<ChatState> = {
       messages: [userMessage],
       ...previousState,
     };
@@ -965,7 +963,11 @@ export async function* streamAgenticChatbot(
     const stream = await agenticChatbot.stream(initialState);
     
     for await (const step of stream) {
-      yield step;
+      // Add timestamp to each streaming step for enhanced tracking
+      yield {
+        ...step,
+        timestamp: new Date().toISOString()
+      };
     }
 
   } catch (error) {

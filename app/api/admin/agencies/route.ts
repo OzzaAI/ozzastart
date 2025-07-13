@@ -5,6 +5,9 @@ import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { eq } from 'drizzle-orm';
 
+// Force dynamic rendering to prevent build-time execution
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const result = await auth.api.getSession({
@@ -39,7 +42,7 @@ export async function GET() {
         .leftJoin(ozza_account_members, eq(ozza_accounts.id, ozza_account_members.account_id));
 
       // Get coach emails
-      const agencyPromises = agencyData.map(async (agency) => {
+      const agencyPromises = (agencyData || []).map(async (agency) => {
         let coachEmail = 'Unassigned';
         
         if (agency.coachUserId) {

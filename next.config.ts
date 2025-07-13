@@ -11,11 +11,18 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Skip static optimization to avoid runtime errors during build
+  output: 'standalone',
   // Improve Fast Refresh reliability
   onDemandEntries: {
     maxInactiveAge: 25 * 1000,
     pagesBufferLength: 2,
   },
+  // Disable aggressive optimization to avoid runtime errors
+  experimental: {
+    optimizePackageImports: [],
+  },
+  skipTrailingSlashRedirect: true,
   images: {
     remotePatterns: [
       {
@@ -31,6 +38,13 @@ const nextConfig: NextConfig = {
         hostname: "images.unsplash.com",
       },
     ],
+  },
+  // Suppress OpenTelemetry/Sentry webpack warnings
+  webpack: (config) => {
+    config.ignoreWarnings = [
+      /Critical dependency: the request of a dependency is an expression/,
+    ];
+    return config;
   },
 };
 

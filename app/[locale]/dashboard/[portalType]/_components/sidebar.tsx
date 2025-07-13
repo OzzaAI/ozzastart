@@ -1,6 +1,5 @@
 "use client";
 
-import clsx from "clsx";
 import {
   Banknote,
   HomeIcon,
@@ -11,7 +10,6 @@ import {
   Users,
   Globe,
   TrendingUp,
-  UserPlus,
   Building,
   BarChart3,
   FolderKanban,

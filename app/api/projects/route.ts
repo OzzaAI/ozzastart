@@ -6,6 +6,9 @@ import { headers } from 'next/headers';
 import { eq, and, or, desc, asc, count, like, inArray } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
+// Force dynamic rendering to prevent build-time execution
+export const dynamic = 'force-dynamic';
+
 // Helper function to check if user has access to agency
 async function checkAgencyAccess(userId: string, agencyId: string) {
   const membership = await db
@@ -86,7 +89,7 @@ export async function GET(request: Request) {
         .from(ozza_account_members)
         .where(eq(ozza_account_members.user_id, userId));
 
-      const accessibleAgencyIds = userMemberships.map(m => m.account_id);
+      const accessibleAgencyIds = (userMemberships || []).map(m => m.account_id);
       
       if (accessibleAgencyIds.length === 0) {
         return NextResponse.json({ projects: [], totalCount: 0, page, limit });

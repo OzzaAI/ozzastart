@@ -6,11 +6,13 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db/drizzle";
 import { chat_sessions, agents } from "@/db/schema";
 import { 
-  agenticChatbot, 
   runAgenticChatbot, 
   streamAgenticChatbot,
   type ChatState 
 } from "@/lib/langgraph-chatbot";
+
+// Force dynamic rendering to prevent build-time execution
+export const dynamic = 'force-dynamic';
 
 // Request validation schema
 const ChatRequestSchema = z.object({
@@ -18,30 +20,30 @@ const ChatRequestSchema = z.object({
   sessionId: z.string().min(1, "Session ID is required"),
   agentId: z.string().uuid().optional(),
   streaming: z.boolean().default(false),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.unknown()).optional(),
 });
 
 // Response schemas
-const ChatResponseSchema = z.object({
-  response: z.string(),
-  sessionId: z.string(),
-  updatedState: z.record(z.any()).optional(),
-  needsHuman: z.boolean().optional(),
-  agentName: z.string().optional(),
-  executionSteps: z.array(z.string()).optional(),
-});
+type ChatResponse = {
+  response: string;
+  sessionId: string;
+  updatedState?: Record<string, unknown>;
+  needsHuman?: boolean;
+  agentName?: string;
+  executionSteps?: string[];
+};
 
 // Session state management
 interface SessionState {
   messages: string[];
-  plan: any | null;
-  mcpResults: Record<string, any>;
+  plan: Record<string, unknown> | null;
+  mcpResults: Record<string, unknown>;
   needsHuman: boolean;
   currentStep: string;
   errorMessage: string | null;
   finalResponse: string | null;
   agentSpec?: string;
-  sessionMetadata?: Record<string, any>;
+  sessionMetadata?: Record<string, unknown>;
 }
 
 // Load session state from database
@@ -173,7 +175,7 @@ async function saveSessionState(
 function convertToSessionState(
   langGraphState: typeof ChatState.State,
   agentSpec?: string,
-  sessionMetadata?: Record<string, any>
+  sessionMetadata?: Record<string, unknown>
 ): SessionState {
   return {
     messages: langGraphState.messages || [],
@@ -277,7 +279,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: "Invalid request",
-          details: validationResult.error.errors.map(e => `${e.path.join(".")}: ${e.message}`).join(", ")
+          details: (validationResult.error.errors || []).map(e => `${e.path.join(".")}: ${e.message}`).join(", ") || "Validation failed"
         },
         { status: 400 }
       );
@@ -345,7 +347,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Prepare response
-    const response: z.infer<typeof ChatResponseSchema> = {
+    const response: ChatResponse = {
       response: result.finalResponse || "I apologize, but I couldn't generate a proper response. Please try again.",
       sessionId,
       updatedState: {
@@ -356,7 +358,7 @@ export async function POST(request: NextRequest) {
         tasksExecuted: Object.keys(result.mcpResults || {}).length,
       },
       needsHuman: result.needsHuman,
-      agentName: updatedSessionState.sessionMetadata?.agentName,
+      agentName: typeof updatedSessionState.sessionMetadata?.agentName === 'string' ? updatedSessionState.sessionMetadata.agentName : undefined,
       executionSteps: [
         result.currentStep || "unknown"
       ].filter(Boolean),

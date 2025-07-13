@@ -30,7 +30,7 @@ export default function CoachResourcesPage() {
         throw new Error('Failed to fetch resources');
       }
       const data = await response.json();
-      setResources(data.resources);
+      setResources(data.resources || []);
     } catch (error) {
       console.error('Error fetching resources:', error);
       toast.error('Failed to load resources.');
@@ -50,7 +50,7 @@ export default function CoachResourcesPage() {
       <p className="text-muted-foreground">Access a library of valuable materials to support your coaching practice.</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {resources.length === 0 ? (
+        {!resources || resources.length === 0 ? (
           <p className="col-span-full">No resources available at the moment.</p>
         ) : (
           resources.map((resource) => (

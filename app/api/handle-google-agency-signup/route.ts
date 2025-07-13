@@ -6,6 +6,9 @@ import { user, ozza_accounts, ozza_account_members } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
+// Force dynamic rendering to prevent build-time execution
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const agencyInviteToken = searchParams.get('agency_invite_token');
