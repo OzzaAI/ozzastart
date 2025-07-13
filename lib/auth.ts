@@ -1,13 +1,7 @@
 import { db } from "@/db/drizzle";
 import { account, session, subscription, user as userTable, verification } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import {
-  checkout,
-  polar,
-  portal,
-  usage,
-  webhooks,
-} from "@polar-sh/better-auth";
+import { polar, portal } from "@polar-sh/better-auth";
 import { Polar } from "@polar-sh/sdk";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -52,26 +46,21 @@ export const auth = betterAuth({
     nextCookies(),
     // Only add Polar plugin if client is available
     ...(polarClient ? [polar({
-      polarClient,
-      // Fix customer creation error handling
-      onError: (error) => {
-        console.error('Polar plugin error:', error);
-        // Don't fail user creation if Polar fails
-        return null;
-      },
-      // Prevent duplicate customer creation
+      client: polarClient,
       createCustomerOnSignUp: false,
+      // Provide an empty 'use' array so the plugin doesn't attempt to map over undefined
+      use: [portal()],
     })] : []),
   ],
   callbacks: {
-    session: ({ session, user }) => ({
+    session: ({ session, user }: { session: any; user: any }) => ({
       ...session,
       user: {
         ...session.user,
         role: user.role,
       },
     }),
-    signIn: async ({ user, account, profile, isNewUser, url }) => {
+    signIn: async ({ user, account, profile, isNewUser, url }: any) => {
       console.log('signIn callback triggered');
       if (account?.provider === "google") {
         console.log('Google provider detected');
@@ -101,7 +90,7 @@ export const auth = betterAuth({
       }
       return true;
     },
-    profile: async (profile, account) => {
+    profile: async (profile: any, account: any) => {
       console.log('Profile callback triggered');
       if (account?.provider === "google") {
         console.log('Google provider detected in profile callback');
