@@ -12,11 +12,7 @@ import { useSmartDefaults } from '@/hooks/useContextualGuidance'
 import { 
   CheckCircle, 
   AlertTriangle, 
-  Lightbulb, 
-  TrendingUp, 
-  DollarSign,
-  Clock,
-  Users
+  Lightbulb
 } from 'lucide-react'
 
 interface SmartInputProps {
@@ -27,7 +23,7 @@ interface SmartInputProps {
   options?: Array<{ value: string; label: string; recommended?: boolean }>
   value: string
   onChange: (value: string) => void
-  context?: any
+  context?: Record<string, unknown>
   validation?: {
     required?: boolean
     minLength?: number
@@ -57,7 +53,7 @@ export const SmartInput: React.FC<SmartInputProps> = ({
   useEffect(() => {
     updateGuidance()
     validateField()
-  }, [value, field, context])
+  }, [value, field, context, updateGuidance, validateField])
 
   const updateGuidance = useCallback(() => {
     if (field === 'budget' && value) {
@@ -276,12 +272,12 @@ interface SmartFormProps {
       pattern?: RegExp
       custom?: (value: string) => string | null
     }
-    showWhen?: (data: any) => boolean
+    showWhen?: (data: Record<string, unknown>) => boolean
   }>
-  onSubmit: (data: any) => void
+  onSubmit: (data: Record<string, unknown>) => void
   onCancel?: () => void
   submitLabel?: string
-  context?: any
+  context?: Record<string, unknown>
 }
 
 export const SmartForm: React.FC<SmartFormProps> = ({
@@ -312,7 +308,7 @@ export const SmartForm: React.FC<SmartFormProps> = ({
     if (hasChanges) {
       setData(newData)
     }
-  }, [defaults])
+  }, [defaults, data])
 
   // Calculate completion progress
   useEffect(() => {
@@ -403,9 +399,9 @@ export const SmartForm: React.FC<SmartFormProps> = ({
                 <div className="flex items-start gap-3">
                   <Lightbulb className="h-5 w-5 text-blue-600 mt-0.5" />
                   <div>
-                    <h4 className="font-medium text-blue-800 text-sm">You're almost done!</h4>
+                    <h4 className="font-medium text-blue-800 text-sm">You&apos;re almost done!</h4>
                     <p className="text-blue-700 text-sm">
-                      Just a few more fields and you'll have everything set up perfectly.
+                      Just a few more fields and you&apos;ll have everything set up perfectly.
                     </p>
                   </div>
                 </div>
@@ -441,9 +437,9 @@ export const SmartForm: React.FC<SmartFormProps> = ({
 
 // Usage example component
 export const ProjectCreationForm: React.FC<{
-  onSubmit: (data: any) => void
+  onSubmit: (data: Record<string, unknown>) => void
   onCancel: () => void
-  context?: any
+  context?: Record<string, unknown>
 }> = ({ onSubmit, onCancel, context = {} }) => {
   const fields = [
     {

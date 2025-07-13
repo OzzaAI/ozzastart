@@ -2,9 +2,9 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, Eye, EyeOff } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 
 interface SmartCardProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: 'default' | 'metric' | 'interactive' | 'premium' | 'glass';
@@ -53,7 +53,7 @@ const SmartCard = React.forwardRef<HTMLDivElement, SmartCardProps>(
     ...props
   }, ref) => {
     const [isVisible, setIsVisible] = React.useState(false);
-    const [isHovered, setIsHovered] = React.useState(false);
+    const [_isHovered, setIsHovered] = React.useState(false);
     const cardRef = React.useRef<HTMLDivElement>(null);
 
     // Intersection Observer for entrance animations

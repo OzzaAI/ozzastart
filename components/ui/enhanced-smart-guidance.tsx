@@ -1,10 +1,10 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { 
   Lightbulb, 
   AlertTriangle, 
@@ -13,9 +13,6 @@ import {
   X, 
   Target,
   Clock,
-  Users,
-  MessageSquare,
-  TrendingUp,
   MousePointer,
   Eye,
   Timer,
@@ -59,14 +56,6 @@ interface TutorialStep {
   estimatedTime?: number // seconds
 }
 
-interface AdaptiveTutorial {
-  id: string
-  trigger: HesitationTrigger
-  steps: TutorialStep[]
-  userLevel: 'beginner' | 'intermediate' | 'expert'
-  context: string
-  priority: number
-}
 
 interface EnhancedGuidanceProps {
   type: 'tip' | 'warning' | 'success' | 'next-step' | 'hesitation-detected' | 'adaptive-tutorial' | 'smart-intervention'
@@ -93,7 +82,7 @@ const useAdvancedHesitationDetection = (
   onHesitationDetected: (pattern: UserBehaviorPattern, trigger: HesitationTrigger) => void,
   userLevel: 'beginner' | 'intermediate' | 'expert' = 'intermediate'
 ) => {
-  const behaviorRef = useRef<UserBehaviorPattern>({
+  const behaviorRef = useState<UserBehaviorPattern>({
     mouseMovements: 0,
     clickAttempts: 0,
     timeOnPage: 0,
@@ -103,72 +92,24 @@ const useAdvancedHesitationDetection = (
     errorCount: 0,
     rapidNavigationCount: 0,
     lastActivity: Date.now()
-  })
-  
-  const lastActivityRef = useRef(Date.now())
-  const pageStartRef = useRef(Date.now())
-  const lastScrollPositionRef = useRef(0)
-  const fieldFocusStartRef = useRef<number | null>(null)
-  const rapidNavigationRef = useRef(0)
-  const lastNavigationRef = useRef(Date.now())
-  
-  // Define hesitation triggers based on user level
-  const hesitationTriggers: HesitationTrigger[] = [
-    {
-      type: 'idle',
-      threshold: userLevel === 'beginner' ? 8000 : userLevel === 'intermediate' ? 12000 : 20000,
-      condition: (behavior) => behavior.idleTime > (userLevel === 'beginner' ? 8000 : 12000) && behavior.mouseMovements > 3,
-      message: "I noticed you've paused here. Would you like some guidance?",
-      urgency: 'medium'
-    },
-    {
-      type: 'repetitive_clicks',
-      threshold: userLevel === 'beginner' ? 5 : 8,
-      condition: (behavior) => behavior.clickAttempts > (userLevel === 'beginner' ? 5 : 8) && behavior.timeOnPage < 30000,
-      message: "Having trouble finding what you're looking for? Let me help.",
-      urgency: 'high'
-    },
-    {
-      type: 'field_focus_without_input',
-      threshold: userLevel === 'beginner' ? 10000 : 15000,
-      condition: (behavior) => behavior.formFieldFocusTime > (userLevel === 'beginner' ? 10000 : 15000) && behavior.clickAttempts < 3,
-      message: "Not sure what to enter here? I can walk you through it.",
-      urgency: 'high'
-    },
-    {
-      type: 'rapid_navigation',
-      threshold: 4,
-      condition: (behavior) => behavior.rapidNavigationCount > 4,
-      message: "You seem to be searching for something specific. Let me guide you.",
-      urgency: 'medium'
-    },
-    {
-      type: 'error_frequency',
-      threshold: 3,
-      condition: (behavior) => behavior.errorCount > 3,
-      message: "I see you're running into some issues. Let me help resolve them.",
-      urgency: 'high'
-    }
-  ]
+  })[0]
   
   useEffect(() => {
     const trackMouseMovement = () => {
-      behaviorRef.current.mouseMovements++
-      behaviorRef.current.lastActivity = Date.now()
-      lastActivityRef.current = Date.now()
+      behaviorRef.mouseMovements++
+      behaviorRef.lastActivity = Date.now()
     }
     
     const trackClicks = (e: MouseEvent) => {
-      behaviorRef.current.clickAttempts++
-      behaviorRef.current.lastActivity = Date.now()
-      lastActivityRef.current = Date.now()
+      behaviorRef.clickAttempts++
+      behaviorRef.lastActivity = Date.now()
       
       // Track failed clicks (clicks that don't result in navigation or form submission)
       setTimeout(() => {
         if (e.target instanceof HTMLElement && 
             !e.target.closest('button, a, input, select, textarea') &&
             !e.target.onclick) {
-          behaviorRef.current.errorCount++
+          behaviorRef.errorCount++
         }
       }, 100)
     }
@@ -177,12 +118,11 @@ const useAdvancedHesitationDetection = (
       const currentPosition = window.scrollY
       if (Math.abs(currentPosition - lastScrollPositionRef.current) > 100) {
         if (currentPosition < lastScrollPositionRef.current) {
-          behaviorRef.current.scrollBacktrack++
+          behaviorRef.scrollBacktrack++
         }
       }
       lastScrollPositionRef.current = currentPosition
-      behaviorRef.current.lastActivity = Date.now()
-      lastActivityRef.current = Date.now()
+      behaviorRef.lastActivity = Date.now()
     }
     
     const trackFieldFocus = (e: FocusEvent) => {
@@ -195,7 +135,7 @@ const useAdvancedHesitationDetection = (
       if (fieldFocusStartRef.current && 
           (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
         const focusTime = Date.now() - fieldFocusStartRef.current
-        behaviorRef.current.formFieldFocusTime += focusTime
+        behaviorRef.formFieldFocusTime += focusTime
         fieldFocusStartRef.current = null
       }
     }
@@ -204,15 +144,15 @@ const useAdvancedHesitationDetection = (
       const now = Date.now()
       if (now - lastNavigationRef.current < 2000) {
         rapidNavigationRef.current++
-        behaviorRef.current.rapidNavigationCount = rapidNavigationRef.current
+        behaviorRef.rapidNavigationCount = rapidNavigationRef.current
       } else {
         rapidNavigationRef.current = 0
       }
       lastNavigationRef.current = now
     }
     
-    const trackErrors = (e: ErrorEvent) => {
-      behaviorRef.current.errorCount++
+    const trackErrors = () => {
+      behaviorRef.errorCount++
     }
     
     // Event listeners
@@ -227,16 +167,16 @@ const useAdvancedHesitationDetection = (
     // Hesitation pattern checker
     const hesitationChecker = setInterval(() => {
       const now = Date.now()
-      const timeSinceActivity = now - lastActivityRef.current
+      const timeSinceActivity = now - behaviorRef.lastActivity
       const totalTimeOnPage = now - pageStartRef.current
       
-      behaviorRef.current.timeOnPage = totalTimeOnPage
-      behaviorRef.current.idleTime = timeSinceActivity
+      behaviorRef.timeOnPage = totalTimeOnPage
+      behaviorRef.idleTime = timeSinceActivity
       
       // Check each trigger condition
       hesitationTriggers.forEach(trigger => {
-        if (trigger.condition(behaviorRef.current)) {
-          onHesitationDetected(behaviorRef.current, trigger)
+        if (trigger.condition(behaviorRef)) {
+          onHesitationDetected(behaviorRef, trigger)
         }
       })
     }, 2000) // Check every 2 seconds for more responsive detection
@@ -251,9 +191,9 @@ const useAdvancedHesitationDetection = (
       window.removeEventListener('error', trackErrors)
       clearInterval(hesitationChecker)
     }
-  }, [onHesitationDetected])
+  }, [onHesitationDetected, behaviorRef.lastActivity, behaviorRef.mouseMovements, behaviorRef.clickAttempts, behaviorRef.timeOnPage, behaviorRef.idleTime, behaviorRef.errorCount, behaviorRef.rapidNavigationCount])
   
-  return behaviorRef.current
+  return behaviorRef
 }
 
 // Enhanced Smart Guidance Component
@@ -269,8 +209,6 @@ export const EnhancedSmartGuidance: React.FC<EnhancedGuidanceProps> = ({
   delay = 0,
   hesitationData,
   tutorialSteps = [],
-  currentStep = 0,
-  userLevel = 'intermediate',
   interventionType = 'gentle'
 }) => {
   const [isVisible, setIsVisible] = useState(false)
@@ -298,23 +236,23 @@ export const EnhancedSmartGuidance: React.FC<EnhancedGuidanceProps> = ({
 
       return () => clearTimeout(hideTimer)
     }
-  }, [isVisible, autoHide, tutorialActive, interventionType])
+  }, [isVisible, autoHide, tutorialActive, interventionType, handleDismiss]);
 
-  const handleDismiss = useCallback(() => {
+  const handleDismiss = () => {
     setIsAnimating(false)
     setDismissed(true)
     setTimeout(() => {
       setIsVisible(false)
       onDismiss?.()
     }, 300)
-  }, [onDismiss])
+  }
   
-  const startTutorial = useCallback(() => {
+  const startTutorial = () => {
     setTutorialActive(true)
     setActiveTutorialStep(0)
-  }, [])
+  }
   
-  const nextTutorialStep = useCallback(() => {
+  const nextTutorialStep = () => {
     if (activeTutorialStep < tutorialSteps.length - 1) {
       setActiveTutorialStep(prev => prev + 1)
     } else {
@@ -322,7 +260,7 @@ export const EnhancedSmartGuidance: React.FC<EnhancedGuidanceProps> = ({
       setActiveTutorialStep(0)
       handleDismiss()
     }
-  }, [activeTutorialStep, tutorialSteps.length, handleDismiss])
+  }
   
   const getIcon = () => {
     switch (type) {
@@ -429,14 +367,18 @@ export const EnhancedSmartGuidance: React.FC<EnhancedGuidanceProps> = ({
 
   const styles = getStyles()
   const displayMessage = type === 'hesitation-detected' ? getAdaptiveMessage() : message
-  const urgencyLevel = hesitationData?.errorCount > 3 ? 'high' : hesitationData?.idleTime > 20000 ? 'medium' : 'low'
+  const urgencyLevel = hesitationData?.errorCount > 3 
+    ? 'high' 
+    : hesitationData?.idleTime > 20000 
+      ? 'medium' 
+      : 'low';
 
   return (
     <>
       {/* Overlay for modal/spotlight positioning */}
       {(position === 'modal' || position === 'spotlight') && (
         <motion.div 
-          className=\"fixed inset-0 bg-black/50 z-40\"
+          className="fixed inset-0 bg-black/50 z-40"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -449,15 +391,15 @@ export const EnhancedSmartGuidance: React.FC<EnhancedGuidanceProps> = ({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: position === 'floating' ? 20 : 0 }}
         transition={{ 
-          type: \"spring\", 
+          type: "spring", 
           stiffness: 300, 
           damping: 30 
         }}
       >
         <Card className={`${styles.card} border-l-4 ${position === 'modal' || position === 'spotlight' ? 'max-w-md' : ''}`}>
-          <CardHeader className=\"pb-3\">
-            <div className=\"flex items-start justify-between\">
-              <div className=\"flex items-center gap-2\">
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2">
                 <motion.div 
                   className={styles.icon}
                   animate={
@@ -486,40 +428,40 @@ export const EnhancedSmartGuidance: React.FC<EnhancedGuidanceProps> = ({
               </div>
               {onDismiss && (
                 <Button
-                  variant=\"ghost\"
-                  size=\"sm\"
+                  variant="ghost"
+                  size="sm"
                   onClick={handleDismiss}
-                  className=\"h-6 w-6 p-0 hover:bg-transparent\"
+                  className="h-6 w-6 p-0 hover:bg-transparent"
                 >
-                  <X className=\"h-4 w-4\" />
+                  <X className="h-4 w-4" />
                 </Button>
               )}
             </div>
           </CardHeader>
-          <CardContent className=\"pt-0 space-y-4\">
+          <CardContent className="pt-0 space-y-4">
             <p className={`text-sm ${styles.text}`}>
               {displayMessage}
             </p>
             
             {/* Behavioral insights for hesitation detection */}
             {type === 'hesitation-detected' && hesitationData && (
-              <div className=\"grid grid-cols-2 gap-2 p-3 bg-amber-100/50 rounded-lg\">
-                <div className=\"text-xs text-amber-700 flex items-center gap-1\">
-                  <Timer className=\"w-3 h-3\" />
+              <div className="grid grid-cols-2 gap-2 p-3 bg-amber-100/50 rounded-lg">
+                <div className="text-xs text-amber-700 flex items-center gap-1">
+                  <Timer className="w-3 h-3" />
                   {Math.round(hesitationData.timeOnPage / 1000)}s on page
                 </div>
-                <div className=\"text-xs text-amber-700 flex items-center gap-1\">
-                  <MousePointer className=\"w-3 h-3\" />
+                <div className="text-xs text-amber-700 flex items-center gap-1">
+                  <MousePointer className="w-3 h-3" />
                   {hesitationData.clickAttempts} clicks
                 </div>
                 {hesitationData.errorCount > 0 && (
-                  <div className=\"text-xs text-red-600 flex items-center gap-1\">
-                    <AlertTriangle className=\"w-3 h-3\" />
+                  <div className="text-xs text-red-600 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />
                     {hesitationData.errorCount} issues
                   </div>
                 )}
-                <div className=\"text-xs text-amber-700 flex items-center gap-1\">
-                  <Activity className=\"w-3 h-3\" />
+                <div className="text-xs text-amber-700 flex items-center gap-1">
+                  <Activity className="w-3 h-3" />
                   {urgencyLevel} priority
                 </div>
               </div>
@@ -527,12 +469,12 @@ export const EnhancedSmartGuidance: React.FC<EnhancedGuidanceProps> = ({
             
             {/* Tutorial progress and steps */}
             {type === 'adaptive-tutorial' && tutorialSteps.length > 0 && (
-              <div className=\"space-y-3\">
-                <div className=\"flex items-center gap-2 text-xs text-indigo-600\">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-xs text-indigo-600">
                   <span>Step {activeTutorialStep + 1} of {tutorialSteps.length}</span>
-                  <div className=\"flex-1 bg-indigo-200 rounded-full h-1\">
+                  <div className="flex-1 bg-indigo-200 rounded-full h-1">
                     <motion.div 
-                      className=\"bg-indigo-500 h-1 rounded-full\"
+                      className="bg-indigo-500 h-1 rounded-full"
                       initial={{ width: 0 }}
                       animate={{ width: `${((activeTutorialStep + 1) / tutorialSteps.length) * 100}%` }}
                       transition={{ duration: 0.3 }}
@@ -541,20 +483,20 @@ export const EnhancedSmartGuidance: React.FC<EnhancedGuidanceProps> = ({
                 </div>
                 {tutorialActive && tutorialSteps[activeTutorialStep] && (
                   <motion.div 
-                    className=\"p-3 bg-indigo-50 rounded-lg border border-indigo-200\"
+                    className="p-3 bg-indigo-50 rounded-lg border border-indigo-200"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <h4 className=\"font-medium text-sm text-indigo-800 mb-1\">
+                    <h4 className="font-medium text-sm text-indigo-800 mb-1">
                       {tutorialSteps[activeTutorialStep].title}
                     </h4>
-                    <p className=\"text-xs text-indigo-700 mb-2\">
+                    <p className="text-xs text-indigo-700 mb-2">
                       {tutorialSteps[activeTutorialStep].content}
                     </p>
                     {tutorialSteps[activeTutorialStep].estimatedTime && (
-                      <div className=\"text-xs text-indigo-600 flex items-center gap-1\">
-                        <Clock className=\"w-3 h-3\" />
+                      <div className="text-xs text-indigo-600 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
                         ~{tutorialSteps[activeTutorialStep].estimatedTime}s
                       </div>
                     )}
@@ -564,28 +506,28 @@ export const EnhancedSmartGuidance: React.FC<EnhancedGuidanceProps> = ({
             )}
             
             {/* Action buttons */}
-            <div className=\"flex gap-2\">
+            <div className="flex gap-2">
               {action && (
                 <Button
                   onClick={action.onClick}
-                  size=\"sm\"
+                  size="sm"
                   className={`${styles.button} text-white flex-1`}
                 >
                   {action.label}
-                  <ArrowRight className=\"h-3 w-3 ml-1\" />
+                  <ArrowRight className="h-3 w-3 ml-1" />
                 </Button>
               )}
               
               {type === 'adaptive-tutorial' && (
                 <Button
                   onClick={tutorialActive ? nextTutorialStep : startTutorial}
-                  size=\"sm\"
+                  size="sm"
                   className={`${styles.button} text-white flex-1`}
                 >
                   {tutorialActive ? (
                     activeTutorialStep < tutorialSteps.length - 1 ? 'Next' : 'Finish'
                   ) : 'Start Tutorial'}
-                  <ChevronRight className=\"h-3 w-3 ml-1\" />
+                  <ChevronRight className="h-3 w-3 ml-1" />
                 </Button>
               )}
               
@@ -593,19 +535,19 @@ export const EnhancedSmartGuidance: React.FC<EnhancedGuidanceProps> = ({
                 <>
                   <Button 
                     onClick={startTutorial}
-                    size=\"sm\"
+                    size="sm"
                     className={`${styles.button} text-white flex-1`}
                   >
                     Guide me
-                    <Eye className=\"h-3 w-3 ml-1\" />
+                    <Eye className="h-3 w-3 ml-1" />
                   </Button>
                   <Button 
                     onClick={handleDismiss}
-                    size=\"sm\"
-                    variant=\"outline\"
-                    className=\"flex-1\"
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
                   >
-                    I'm fine
+                    I&apos;m fine
                   </Button>
                 </>
               )}
@@ -628,7 +570,7 @@ export const SmartGuidanceManager: React.FC<{
   const [detectionActive, setDetectionActive] = useState(true)
   const [interventionCount, setInterventionCount] = useState(0)
   
-  const handleHesitationDetected = useCallback((pattern: UserBehaviorPattern, trigger: HesitationTrigger) => {
+  const handleHesitationDetected = (pattern: UserBehaviorPattern, trigger: HesitationTrigger) => {
     // Limit interventions to prevent annoyance
     if (interventionCount >= 3 || !detectionActive) return
     
@@ -660,7 +602,7 @@ export const SmartGuidanceManager: React.FC<{
       userLevel,
       interventionType
     })
-  }, [currentPage, userRole, userLevel, interventionCount, detectionActive])
+  }
   
   // Use advanced hesitation detection
   useAdvancedHesitationDetection(handleHesitationDetected, userLevel)
@@ -741,15 +683,13 @@ export const SmartGuidanceManager: React.FC<{
   }
   
   return (
-    <div className=\"relative\">
+    <div className="relative">
       {children}
-      <AnimatePresence>
-        {activeGuidance && detectionActive && (
-          <EnhancedSmartGuidance
-            {...activeGuidance}
-          />
-        )}
-      </AnimatePresence>
+      {activeGuidance && detectionActive && (
+        <EnhancedSmartGuidance
+          {...activeGuidance}
+        />
+      )}
     </div>
   )
 }

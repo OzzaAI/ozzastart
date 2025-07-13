@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { LucideIcon } from 'lucide-react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useHoverPrefetch } from '@/hooks/use-hover-prefetch';
 import { cn } from '@/lib/utils';
 

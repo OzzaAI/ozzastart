@@ -1,10 +1,10 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { 
   Lightbulb, 
   AlertTriangle, 
@@ -14,14 +14,7 @@ import {
   Target,
   Clock,
   Users,
-  MessageSquare,
-  TrendingUp,
-  MousePointer,
-  Eye,
-  Timer,
-  Zap,
-  HelpCircle,
-  ChevronRight
+  TrendingUp
 } from 'lucide-react'
 
 // Hesitation Detection Types
@@ -381,7 +374,7 @@ export const ProgressNudge: React.FC<{
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h4 className="font-medium text-sm">You're making great progress!</h4>
+            <h4 className="font-medium text-sm">You&apos;re making great progress!</h4>
             <p className="text-xs text-muted-foreground">
               {currentStep} of {totalSteps} steps completed
             </p>
@@ -438,7 +431,7 @@ export const SmartEmptyState: React.FC<{
       return {
         icon: <Users className="h-16 w-16 mx-auto mb-4 text-purple-500" />,
         title: "Time to build your team",
-        description: "You're growing! Add team members to handle more client projects efficiently.",
+        description: "You&apos;re growing! Add team members to handle more client projects efficiently.",
         primaryAction: "Invite Team Members",
         secondaryAction: "Learn About Roles",
         tips: [

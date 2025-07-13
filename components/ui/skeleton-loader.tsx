@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { Skeleton } from './skeleton'
-import { Card, CardContent, CardHeader, CardTitle } from './card'
+import { Card, CardContent, CardHeader } from './card'
 
 export const DashboardSkeleton: React.FC = () => {
   return (

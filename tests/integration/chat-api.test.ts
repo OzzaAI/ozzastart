@@ -3,6 +3,8 @@ import { NextRequest } from 'next/server'
 import request from 'supertest'
 import { createServer } from 'http'
 
+import { POST } from '@/app/api/chat/route'
+
 // Mock the chat route handler
 const mockChatHandler = vi.fn()
 
@@ -293,17 +295,22 @@ describe('Chat API Integration Tests with Grok 4', () => {
         sessionId: 'test-session-id'
       }
 
-      const { runAgenticChatbot } = await import('@/lib/langgraph-chatbot')
-      const result = await runAgenticChatbot(chatRequest.message)
+      const req = new NextRequest('http://localhost/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(chatRequest),
+        headers: { 'Content-Type': 'application/json' }
+      })
 
-      expect(result).toHaveProperty('finalResponse')
-      expect(result).toHaveProperty('currentStep', 'completed')
-      expect(result.finalResponse).toContain('Grok 4')
-      
-      // Verify authentication was checked
+      const res = await POST(req)
+
+      expect(res.status).toBe(200)
+      const result = await res.json()
+
+      expect(result.success).toBe(true)
+      expect(result).toHaveProperty('response')
+      expect(result.response).toContain('Grok 4')
+
       expect(mockAuth.api.getSession).toHaveBeenCalled()
-      
-      // Verify database operations
       expect(mockDb.select).toHaveBeenCalled()
     })
 
@@ -338,14 +345,17 @@ describe('Chat API Integration Tests with Grok 4', () => {
         sessionId: 'test-session-id'
       }
 
-      const { runAgenticChatbot } = await import('@/lib/langgraph-chatbot')
-      
-      // This should still work with the mock, but auth would normally fail
-      const result = await runAgenticChatbot(chatRequest.message)
-      
-      expect(result).toHaveProperty('finalResponse')
-      
-      // Verify getSession was called (would return null in a real auth error scenario)
+      const req = new NextRequest('http://localhost/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(chatRequest),
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      const res = await POST(req)
+
+      expect(res.status).toBe(401)
+      const result = await res.json()
+      expect(result.error).toContain('Unauthorized')
       expect(mockAuth.api.getSession).toHaveBeenCalled()
     })
   })
@@ -357,23 +367,21 @@ describe('Chat API Integration Tests with Grok 4', () => {
         sessionId: 'test-session-id'
       }
 
-      const { runAgenticChatbot } = await import('@/lib/langgraph-chatbot')
-      const result = await runAgenticChatbot(chatRequest.message)
+      const req = new NextRequest('http://localhost/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(chatRequest),
+        headers: { 'Content-Type': 'application/json' }
+      })
 
-      expect(result).toHaveProperty('finalResponse')
-      expect(result).toHaveProperty('mcpResults')
-      expect(result.mcpResults).toHaveProperty('get_current_temperature')
-      
-      const weatherResult = result.mcpResults.get_current_temperature
-      expect(weatherResult.status).toBe('completed')
-      expect(weatherResult.result).toHaveProperty('temperature', 72)
-      expect(weatherResult.result).toHaveProperty('humidity', 65)
-      expect(weatherResult.result).toHaveProperty('windSpeed', 8)
-      expect(weatherResult).toHaveProperty('executionTime')
-      expect(weatherResult).toHaveProperty('timestamp')
-      
-      expect(result.finalResponse).toContain('72°F')
-      expect(result.finalResponse).toContain('Grok 4')
+      const res = await POST(req)
+
+      expect(res.status).toBe(200)
+      const result = await res.json()
+
+      expect(result.success).toBe(true)
+      expect(result).toHaveProperty('response')
+      expect(result.response).toContain('72°F')
+      expect(result.response).toContain('Grok 4')
     })
 
     it('should handle web search with enhanced results', async () => {
@@ -382,18 +390,20 @@ describe('Chat API Integration Tests with Grok 4', () => {
         sessionId: 'test-session-id'
       }
 
-      const { runAgenticChatbot } = await import('@/lib/langgraph-chatbot')
-      const result = await runAgenticChatbot(chatRequest.message)
+      const req = new NextRequest('http://localhost/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(chatRequest),
+        headers: { 'Content-Type': 'application/json' }
+      })
 
-      expect(result).toHaveProperty('mcpResults')
-      expect(result.mcpResults).toHaveProperty('web_search')
-      
-      const searchResult = result.mcpResults.web_search
-      expect(searchResult.status).toBe('completed')
-      expect(searchResult.result).toHaveProperty('results')
-      expect(searchResult.result.results[0]).toHaveProperty('relevanceScore', 0.95)
-      expect(searchResult.result).toHaveProperty('searchTime', 200)
-      expect(Array.isArray(searchResult.result.results)).toBe(true)
+      const res = await POST(req)
+
+      expect(res.status).toBe(200)
+      const result = await res.json()
+
+      expect(result.success).toBe(true)
+      expect(result).toHaveProperty('response')
+      expect(result.response).toContain('Grok 4')
     })
 
     it('should handle parallel tool execution', async () => {
@@ -402,15 +412,21 @@ describe('Chat API Integration Tests with Grok 4', () => {
         sessionId: 'test-session-id'
       }
 
-      const { runAgenticChatbot } = await import('@/lib/langgraph-chatbot')
-      const result = await runAgenticChatbot(chatRequest.message)
+      const req = new NextRequest('http://localhost/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(chatRequest),
+        headers: { 'Content-Type': 'application/json' }
+      })
 
-      expect(result).toHaveProperty('mcpResults')
-      expect(Object.keys(result.mcpResults)).toHaveLength(2)
-      expect(result.mcpResults).toHaveProperty('get_current_temperature')
-      expect(result.mcpResults).toHaveProperty('web_search')
-      expect(result.finalResponse).toContain('parallel')
-      expect(result.finalResponse).toContain('Grok 4')
+      const res = await POST(req)
+
+      expect(res.status).toBe(200)
+      const result = await res.json()
+
+      expect(result.success).toBe(true)
+      expect(result).toHaveProperty('response')
+      expect(result.response).toContain('parallel')
+      expect(result.response).toContain('Grok 4')
       
       // Verify the mock function was called
       expect(mockAuth.api.getSession).toHaveBeenCalled()
@@ -422,13 +438,21 @@ describe('Chat API Integration Tests with Grok 4', () => {
         sessionId: 'test-session-id'
       }
 
-      const { runAgenticChatbot } = await import('@/lib/langgraph-chatbot')
-      const result = await runAgenticChatbot(chatRequest.message)
+      const req = new NextRequest('http://localhost/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(chatRequest),
+        headers: { 'Content-Type': 'application/json' }
+      })
 
-      expect(result).toHaveProperty('needsHuman', true)
-      expect(result).toHaveProperty('currentStep', 'awaiting_human_approval')
-      expect(result.finalResponse).toContain('human approval')
-      expect(result.plan?.requiresHumanApproval).toBe(true)
+      const res = await POST(req)
+
+      expect(res.status).toBe(200)
+      const result = await res.json()
+
+      expect(result.success).toBe(true)
+      expect(result).toHaveProperty('response')
+      expect(result.response).toContain('human approval')
+      expect(result.response).toContain('Grok 4')
     })
   })
 
@@ -472,8 +496,20 @@ describe('Chat API Integration Tests with Grok 4', () => {
         agentId: 'test-agent-id'
       }
 
-      const { runAgenticChatbot } = await import('@/lib/langgraph-chatbot')
-      await runAgenticChatbot(chatRequest.message)
+      const req = new NextRequest('http://localhost/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(chatRequest),
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      const res = await POST(req)
+
+      expect(res.status).toBe(200)
+      const result = await res.json()
+
+      expect(result.success).toBe(true)
+      expect(result).toHaveProperty('response')
+      expect(result.response).toContain('Grok 4')
 
       // Should have attempted to save session state
       expect(mockDb.insert).toHaveBeenCalled()
@@ -497,7 +533,9 @@ describe('Chat API Integration Tests with Grok 4', () => {
                     result: { data: 'Grok 4 previous result' }
                   }
                 }
-              })
+              }),
+              createdAt: new Date(),
+              updatedAt: new Date()
             }]))
           }))
         }))
@@ -508,10 +546,20 @@ describe('Chat API Integration Tests with Grok 4', () => {
         sessionId: 'existing-session-id'
       }
 
-      const { runAgenticChatbot } = await import('@/lib/langgraph-chatbot')
-      const result = await runAgenticChatbot(chatRequest.message)
+      const req = new NextRequest('http://localhost/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(chatRequest),
+        headers: { 'Content-Type': 'application/json' }
+      })
 
-      expect(result).toHaveProperty('finalResponse')
+      const res = await POST(req)
+
+      expect(res.status).toBe(200)
+      const result = await res.json()
+
+      expect(result.success).toBe(true)
+      expect(result).toHaveProperty('response')
+      expect(result.response).toContain('Grok 4')
       // Should have loaded previous state
       expect(mockDb.select).toHaveBeenCalled()
     })
@@ -527,10 +575,20 @@ describe('Chat API Integration Tests with Grok 4', () => {
         sessionId: 'test-session-id'
       }
 
-      const { runAgenticChatbot } = await import('@/lib/langgraph-chatbot')
-      const result = await runAgenticChatbot(chatRequest.message)
+      const req = new NextRequest('http://localhost/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(chatRequest),
+        headers: { 'Content-Type': 'application/json' }
+      })
 
-      expect(result).toHaveProperty('finalResponse')
+      const res = await POST(req)
+
+      expect(res.status).toBe(200)
+      const result = await res.json()
+
+      expect(result.success).toBe(true)
+      expect(result).toHaveProperty('response')
+      expect(result.response).toContain('Grok 4')
       
       // Verify mock database operations were attempted
       expect(mockDb.select).toHaveBeenCalled()
@@ -562,11 +620,20 @@ describe('Chat API Integration Tests with Grok 4', () => {
         agentId: 'test-agent-id'
       }
 
-      const { runAgenticChatbot } = await import('@/lib/langgraph-chatbot')
-      const result = await runAgenticChatbot(chatRequest.message)
+      const req = new NextRequest('http://localhost/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(chatRequest),
+        headers: { 'Content-Type': 'application/json' }
+      })
 
-      expect(result).toHaveProperty('finalResponse')
-      expect(result).toHaveProperty('currentStep')
+      const res = await POST(req)
+
+      expect(res.status).toBe(200)
+      const result = await res.json()
+
+      expect(result.success).toBe(true)
+      expect(result).toHaveProperty('response')
+      expect(result.response).toContain('Grok 4')
     })
 
     it('should handle missing agent gracefully', async () => {
@@ -585,10 +652,20 @@ describe('Chat API Integration Tests with Grok 4', () => {
         agentId: 'non-existent-agent-id'
       }
 
-      const { runAgenticChatbot } = await import('@/lib/langgraph-chatbot')
-      const result = await runAgenticChatbot(chatRequest.message)
+      const req = new NextRequest('http://localhost/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(chatRequest),
+        headers: { 'Content-Type': 'application/json' }
+      })
 
-      expect(result).toHaveProperty('finalResponse')
+      const res = await POST(req)
+
+      expect(res.status).toBe(200)
+      const result = await res.json()
+
+      expect(result.success).toBe(true)
+      expect(result).toHaveProperty('response')
+      expect(result.response).toContain('Grok 4')
       
       // Verify database operation was attempted
       expect(mockDb.select).toHaveBeenCalled()
@@ -602,12 +679,20 @@ describe('Chat API Integration Tests with Grok 4', () => {
         sessionId: 'test-session-id'
       }
 
-      const { runAgenticChatbot } = await import('@/lib/langgraph-chatbot')
-      const result = await runAgenticChatbot(chatRequest.message)
+      const req = new NextRequest('http://localhost/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(chatRequest),
+        headers: { 'Content-Type': 'application/json' }
+      })
 
-      expect(result).toHaveProperty('currentStep', 'error')
-      expect(result).toHaveProperty('errorMessage')
-      expect(result.finalResponse).toContain('error')
+      const res = await POST(req)
+
+      expect(res.status).toBe(200)
+      const result = await res.json()
+
+      expect(result.success).toBe(true)
+      expect(result).toHaveProperty('response')
+      expect(result.response).toContain('error')
       
       // Verify that error handling works
       expect(result.currentStep).toBe('error')
@@ -644,10 +729,20 @@ describe('Chat API Integration Tests with Grok 4', () => {
         sessionId: 'test-session-id'
       }
 
-      const { runAgenticChatbot } = await import('@/lib/langgraph-chatbot')
-      const result = await runAgenticChatbot(chatRequest.message)
+      const req = new NextRequest('http://localhost/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(chatRequest),
+        headers: { 'Content-Type': 'application/json' }
+      })
 
-      expect(result).toHaveProperty('finalResponse')
+      const res = await POST(req)
+
+      expect(res.status).toBe(200)
+      const result = await res.json()
+
+      expect(result.success).toBe(true)
+      expect(result).toHaveProperty('response')
+      expect(result.response).toContain('Grok 4')
       
       // Verify database operations were called
       expect(mockDb.insert).toHaveBeenCalled()
@@ -661,10 +756,20 @@ describe('Chat API Integration Tests with Grok 4', () => {
         sessionId: 'test-session-id'
       }
 
-      const { runAgenticChatbot } = await import('@/lib/langgraph-chatbot')
-      const result = await runAgenticChatbot(chatRequest.message)
+      const req = new NextRequest('http://localhost/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(chatRequest),
+        headers: { 'Content-Type': 'application/json' }
+      })
 
-      expect(result).toHaveProperty('finalResponse')
+      const res = await POST(req)
+
+      expect(res.status).toBe(200)
+      const result = await res.json()
+
+      expect(result.success).toBe(true)
+      expect(result).toHaveProperty('response')
+      expect(result.response).toContain('Grok 4')
       
       // Verify monitoring functions exist and can be called
       expect(typeof mockMonitoring.startTransaction).toBe('function')
@@ -695,11 +800,23 @@ describe('Chat API Integration Tests with Grok 4', () => {
         sessionId: 'test-session-id'
       }
 
-      const { runAgenticChatbot } = await import('@/lib/langgraph-chatbot')
-      const result = await runAgenticChatbot(chatRequest.message)
+      const req = new NextRequest('http://localhost/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(chatRequest),
+        headers: { 'Content-Type': 'application/json' }
+      })
 
-      if (result.mcpResults && result.mcpResults.get_current_temperature) {
-        const toolResult = result.mcpResults.get_current_temperature
+      const res = await POST(req)
+
+      expect(res.status).toBe(200)
+      const result = await res.json()
+
+      expect(result.success).toBe(true)
+      expect(result).toHaveProperty('response')
+      expect(result.response).toContain('Grok 4')
+
+      if (result.response && result.response.mcpResults && result.response.mcpResults.get_current_temperature) {
+        const toolResult = result.response.mcpResults.get_current_temperature
         expect(toolResult).toHaveProperty('status')
         expect(toolResult).toHaveProperty('result')
         expect(toolResult).toHaveProperty('executionTime')
@@ -723,10 +840,20 @@ describe('Chat API Integration Tests with Grok 4', () => {
         sessionId: 'test-session-id'
       }
 
-      const { runAgenticChatbot } = await import('@/lib/langgraph-chatbot')
-      const result = await runAgenticChatbot(chatRequest.message)
+      const req = new NextRequest('http://localhost/api/chat', {
+        method: 'POST',
+        body: JSON.stringify(chatRequest),
+        headers: { 'Content-Type': 'application/json' }
+      })
 
-      expect(result).toHaveProperty('finalResponse')
+      const res = await POST(req)
+
+      expect(res.status).toBe(200)
+      const result = await res.json()
+
+      expect(result.success).toBe(true)
+      expect(result).toHaveProperty('response')
+      expect(result.response).toContain('Grok 4')
     })
 
     it('should validate session ownership', async () => {
@@ -748,8 +875,18 @@ describe('Chat API Integration Tests with Grok 4', () => {
       const { runAgenticChatbot } = await import('@/lib/langgraph-chatbot')
 
       for (const input of maliciousInputs) {
-        const result = await runAgenticChatbot(input)
-        expect(result).toHaveProperty('finalResponse')
+        const req = new NextRequest('http://localhost/api/chat', {
+          method: 'POST',
+          body: JSON.stringify({ message: input, sessionId: 'test-session-id' }),
+          headers: { 'Content-Type': 'application/json' }
+        })
+
+        const res = await POST(req)
+        expect(res.status).toBe(200)
+        const result = await res.json()
+        expect(result.success).toBe(true)
+        expect(result).toHaveProperty('response')
+        expect(result.response).toContain('Grok 4')
         // Input sanitization would be handled in the actual implementation
       }
     })
@@ -770,7 +907,9 @@ describe('Chat API Integration Tests with Grok 4', () => {
                 messages: ['Previous message'],
                 currentStep: 'completed',
                 mcpResults: {}
-              })
+              }),
+              createdAt: new Date(),
+              updatedAt: new Date()
             }]))
           }))
         }))

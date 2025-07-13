@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { Globe, Check, ChevronDown } from 'lucide-react'
 import { locales, localeConfig, getLocaleDisplayName, type Locale } from '../../i18n/config'
-import { useAccessibility, useFocusManagement, useAriaAttributes } from '../providers/accessibility-provider'
+import { useAccessibility, useAriaAttributes } from '../providers/accessibility-provider'
 import { Button } from './button'
 import { trackEvent } from '../../lib/monitoring'
 
@@ -25,11 +25,9 @@ export function LanguageSwitcher({
   const router = useRouter()
   const pathname = usePathname()
   const t = useTranslations('accessibility')
-  const tSettings = useTranslations('settings')
   
   const { announce } = useAccessibility()
-  const { trapFocus } = useFocusManagement()
-  const { setAriaExpanded, setAriaSelected } = useAriaAttributes()
+  const { setAriaExpanded } = useAriaAttributes()
   
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
